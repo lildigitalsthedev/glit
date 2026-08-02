@@ -69,7 +69,7 @@ export const updatePreferences = createServerFn({ method: "POST" })
     if (data.activeRepo !== undefined) patch["active_repo"] = data.activeRepo;
     const { error } = await context.supabase
       .from("user_preferences")
-      .upsert(patch, { onConflict: "user_id" });
+      .upsert(patch as never, { onConflict: "user_id" });
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -123,7 +123,7 @@ export const saveRepoPref = createServerFn({ method: "POST" })
     if (data.touch) patch["last_used_at"] = new Date().toISOString();
     const { error } = await context.supabase
       .from("repo_prefs")
-      .upsert(patch, { onConflict: "user_id,full_name" });
+      .upsert(patch as never, { onConflict: "user_id,full_name" });
     if (error) throw new Error(error.message);
     return { ok: true };
   });
