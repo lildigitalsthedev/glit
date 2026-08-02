@@ -15,11 +15,13 @@ import {
   PanelLeft,
   PanelRight,
   RotateCcw,
+  Lightbulb,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { usePlan } from "@/hooks/usePlan";
 import { useNavPrefs, type NavPosition, type NavSize } from "@/hooks/useNavPrefs";
 import { AccountRow, ConnectGithubDialog, useAccounts } from "@/components/connect-github";
+import { RequestFeatureDialog } from "@/components/request-feature-dialog";
 import { getPreferences, updatePreferences, type Preferences } from "@/lib/workspace.functions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -351,6 +353,25 @@ function Profile() {
               onCheckedChange={(checked) => navPrefs.setAutoHide(checked)}
             />
           </div>
+        </div>
+      </section>
+
+      {/* Feedback */}
+      <section className="mt-8">
+        <div className="flex items-center gap-2">
+          <Lightbulb className="size-4 text-muted-foreground" />
+          <h2 className="text-sm font-semibold">Feedback</h2>
+        </div>
+
+        <div className="mt-3 flex items-center justify-between gap-3 rounded-md border border-border bg-card p-4">
+          <div>
+            <p className="text-sm font-medium">Request a feature</p>
+            <p className="text-xs text-muted-foreground">
+              Tell us what you&apos;d like to see next — if we build it, you get 1 year free,
+              even on Pro features.
+            </p>
+          </div>
+          <RequestFeatureDialog />
         </div>
       </section>
     </main>
