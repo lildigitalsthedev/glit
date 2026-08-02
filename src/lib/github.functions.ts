@@ -108,7 +108,7 @@ export const pushFile = createServerFn({ method: "POST" })
       path: string;
       content: string;
       message: string;
-      description?: string;
+      description?: string | undefined;
     }) => data,
   )
   .handler(async ({ data, context }) => {
