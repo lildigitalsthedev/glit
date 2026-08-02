@@ -7,6 +7,8 @@ import Editor from "@monaco-editor/react";
 import { diffLines } from "diff";
 import {
   FilePlus,
+  FilePlus2,
+  FolderGit2,
   GitBranch,
   Loader2,
   Upload,
@@ -47,6 +49,7 @@ import {
 import { RenameRepositoryDialog } from "@/components/rename-repository-dialog";
 import { NewFileDialog } from "@/components/new-file-dialog";
 import { FileTree } from "@/components/file-tree";
+import { EmptyState } from "@/components/empty-state";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/workspace")({
@@ -289,14 +292,17 @@ function Workspace() {
 
   if (!accountId || !fullName) {
     return (
-      <main className="mx-auto max-w-md px-4 py-24 text-center">
-        <h1 className="text-xl font-semibold tracking-tight">Pick a repository first</h1>
-        <p className="mt-3 text-sm text-muted-foreground">
-          Choose a repo from your dashboard to open it in the workspace.
-        </p>
-        <Button asChild className="mt-6">
-          <Link to="/app">Go to repositories</Link>
-        </Button>
+      <main className="flex h-[calc(100vh-3rem)] items-center justify-center px-4">
+        <EmptyState
+          icon={FolderGit2}
+          title="Choose a repository to begin."
+          description="Pick a repo from your dashboard to open it here and start editing, committing, and pushing to GitHub."
+          action={
+            <Button asChild>
+              <Link to="/app">Go to repositories</Link>
+            </Button>
+          }
+        />
       </main>
     );
   }
@@ -424,7 +430,21 @@ function Workspace() {
             />
           </div>
           <div className="min-h-0 flex-1 overflow-auto">
-            {showDiff ? (
+            {!path ? (
+              <div className="flex h-full items-center justify-center">
+                <EmptyState
+                  icon={FilePlus2}
+                  title="Select a file or create a new one."
+                  description="Browse the tree on the left, search for a file, or use “New file” to start writing."
+                  action={
+                    <Button variant="outline" size="sm" onClick={() => setNewFileOpen(true)}>
+                      <FilePlus className="size-3.5" />
+                      New file
+                    </Button>
+                  }
+                />
+              </div>
+            ) : showDiff ? (
               <pre className="p-3 font-mono text-[11px] leading-5">
                 {diff.map((part, index) => (
                   <div
