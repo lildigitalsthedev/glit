@@ -514,7 +514,7 @@ function Workspace() {
         <Input
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
-          placeholder="Find file…"
+          placeholder="Find file, folder, or .ext…"
           className="h-8 font-mono text-xs"
         />
       </div>

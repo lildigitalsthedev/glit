@@ -111,8 +111,16 @@ const CONFIG_NAMES = new Set([
   "eslint.config.js",
 ]);
 
+function fileExtension(name: string): string {
+  const idx = name.lastIndexOf(".");
+  // A leading dot (e.g. ".gitignore") means "no extension", not an
+  // extension called "gitignore".
+  if (idx <= 0) return "";
+  return name.slice(idx + 1).toLowerCase();
+}
+
 function FileIcon({ name }: { name: string }) {
-  const ext = name.split(".").pop()?.toLowerCase() ?? "";
+  const ext = fileExtension(name);
   if (CONFIG_NAMES.has(name) || name.startsWith(".")) {
     return <FileCog className="size-3.5 shrink-0 text-muted-foreground" />;
   }
@@ -123,6 +131,143 @@ function FileIcon({ name }: { name: string }) {
   if (IMAGE_EXTENSIONS.has(ext)) return <FileImage className="size-3.5 shrink-0 text-accent" />;
   if (CODE_EXTENSIONS.has(ext)) return <FileCode2 className="size-3.5 shrink-0 text-primary" />;
   return <File className="size-3.5 shrink-0 text-muted-foreground" />;
+}
+
+/**
+ * Parsed search query. Typing a leading dot (e.g. ".ts" or ".tsx")
+ * switches to exact-extension mode so users can filter down to a single
+ * file type instead of getting substring matches from anywhere in the path.
+ */
+type ParsedQuery = { mode: "extension"; value: string } | { mode: "text"; value: string };
+
+function parseQuery(raw: string): ParsedQuery | null {
+  const trimmed = raw.trim().toLowerCase();
+  if (!trimmed) return null;
+  if (trimmed.startsWith(".") && trimmed.length > 1) {
+    return { mode: "extension", value: trimmed.slice(1) };
+  }
+  return { mode: "text", value: trimmed };
+}
+
+interface SearchMatch {
+  path: string;
+  name: string;
+  /** Lower relevance number = better match, used for sorting. */
+  score: number;
+  /** Character offset of the highlighted span within the full path label. -1 = no highlight. */
+  highlightStart: number;
+  highlightLength: number;
+}
+
+/**
+ * Scores a single file path against the parsed query. Returns null when the
+ * path doesn't match at all. Matching (and highlighting) considers the full
+ * path — so it covers file names, folder names, and extensions in one pass.
+ */
+function matchPath(path: string, name: string, query: ParsedQuery): SearchMatch | null {
+  const lowerPath = path.toLowerCase();
+  const lowerName = name.toLowerCase();
+
+  if (query.mode === "extension") {
+    const ext = fileExtension(name);
+    if (ext !== query.value) return null;
+    const dotIndex = lowerName.lastIndexOf(`.${query.value}`);
+    return {
+      path,
+      name,
+      score: 0,
+      highlightStart: path.length - (name.length - dotIndex),
+      highlightLength: name.length - dotIndex,
+    };
+  }
+
+  const { value } = query;
+
+  // Best: file name starts with the query.
+  if (lowerName.startsWith(value)) {
+    return {
+      path,
+      name,
+      score: 0,
+      highlightStart: path.length - name.length,
+      highlightLength: value.length,
+    };
+  }
+
+  // Next: file name contains the query anywhere.
+  const nameIdx = lowerName.indexOf(value);
+  if (nameIdx !== -1) {
+    return {
+      path,
+      name,
+      score: 1,
+      highlightStart: path.length - name.length + nameIdx,
+      highlightLength: value.length,
+    };
+  }
+
+  // Next: a folder segment in the path matches (folder-name search).
+  const segments = path.split("/");
+  let cursor = 0;
+  for (let i = 0; i < segments.length - 1; i++) {
+    const segment = segments[i]!;
+    const segIdx = segment.toLowerCase().indexOf(value);
+    if (segIdx !== -1) {
+      return {
+        path,
+        name,
+        score: 2,
+        highlightStart: cursor + segIdx,
+        highlightLength: value.length,
+      };
+    }
+    cursor += segment.length + 1;
+  }
+
+  // Fallback: match anywhere in the full path (e.g. spanning a "/").
+  const pathIdx = lowerPath.indexOf(value);
+  if (pathIdx !== -1) {
+    return { path, name, score: 3, highlightStart: pathIdx, highlightLength: value.length };
+  }
+
+  return null;
+}
+
+function searchFiles(paths: string[], query: ParsedQuery): SearchMatch[] {
+  const results: SearchMatch[] = [];
+  for (const path of paths) {
+    const name = path.split("/").pop() ?? path;
+    const match = matchPath(path, name, query);
+    if (match) results.push(match);
+  }
+  results.sort((a, b) => {
+    if (a.score !== b.score) return a.score - b.score;
+    return a.path.localeCompare(b.path);
+  });
+  return results;
+}
+
+/** Renders text with the matched span wrapped in a highlight <mark>. */
+function HighlightedLabel({
+  text,
+  start,
+  length,
+}: {
+  text: string;
+  start: number;
+  length: number;
+}) {
+  if (start < 0 || length <= 0 || start >= text.length) return <>{text}</>;
+  const before = text.slice(0, start);
+  const match = text.slice(start, start + length);
+  const after = text.slice(start + length);
+  return (
+    <>
+      {before}
+      <mark className="rounded-sm bg-primary/25 text-foreground">{match}</mark>
+      {after}
+    </>
+  );
 }
 
 const LONG_PRESS_MS = 500;
@@ -139,6 +284,7 @@ function FileRow({
   label,
   isActive,
   paddingLeft,
+  highlight,
   onOpenFile,
   onCopyPath,
   onDeleteFile,
@@ -149,6 +295,8 @@ function FileRow({
   label: string;
   isActive: boolean;
   paddingLeft: number;
+  /** Optional matched-substring span (in `label` coordinates) to highlight. */
+  highlight?: { start: number; length: number };
   onOpenFile: (path: string) => void;
   onCopyPath: (path: string) => void;
   onDeleteFile: (path: string) => void;
@@ -201,7 +349,13 @@ function FileRow({
         title={path}
       >
         <FileIcon name={name} />
-        <span className="truncate">{label}</span>
+        <span className="truncate">
+          {highlight ? (
+            <HighlightedLabel text={label} start={highlight.start} length={highlight.length} />
+          ) : (
+            label
+          )}
+        </span>
       </button>
 
       <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
@@ -317,7 +471,12 @@ export function FileTree({
     });
   }
 
-  const trimmedFilter = filter.trim().toLowerCase();
+  const parsedQuery = useMemo(() => parseQuery(filter), [filter]);
+
+  const matches = useMemo(() => {
+    if (!parsedQuery) return null;
+    return searchFiles(blobPaths, parsedQuery).slice(0, 500);
+  }, [blobPaths, parsedQuery]);
 
   if (loading) {
     return (
@@ -329,36 +488,38 @@ export function FileTree({
 
   // While searching, show a flat, ranked list of matches instead of the
   // nested tree — it's faster to scan and doesn't require expanding folders.
-  if (trimmedFilter) {
-    const matches = blobPaths.filter((p) => p.toLowerCase().includes(trimmedFilter)).slice(0, 500);
-    if (matches.length === 0) {
+  // Matches can come from a file name, a folder name anywhere in the path,
+  // or (with a leading ".", e.g. ".tsx") an exact file extension.
+  if (parsedQuery) {
+    if (!matches || matches.length === 0) {
       return (
         <EmptyState
           size="compact"
           icon={FileSearch}
           title="No files found."
-          description={`Nothing matches “${filter.trim()}”.`}
+          description={"Nothing matches \u201c" + filter.trim() + "\u201d. Search matches file names, folder names, or an extension like \u201c.tsx\u201d."}
         />
       );
     }
     return (
       <div className="flex flex-col py-1">
-        {matches.map((matchPath) => {
-          const name = matchPath.split("/").pop() ?? matchPath;
-          return (
-            <FileRow
-              key={matchPath}
-              path={matchPath}
-              name={name}
-              label={matchPath}
-              isActive={matchPath === activePath}
-              paddingLeft={8}
-              onOpenFile={onOpenFile}
-              onCopyPath={onCopyPath}
-              onDeleteFile={onDeleteFile}
-            />
-          );
-        })}
+        <p className="px-2 pb-1 pt-0.5 font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
+          {matches.length} {matches.length === 1 ? "result" : "results"}
+        </p>
+        {matches.map((match) => (
+          <FileRow
+            key={match.path}
+            path={match.path}
+            name={match.name}
+            label={match.path}
+            isActive={match.path === activePath}
+            paddingLeft={8}
+            highlight={{ start: match.highlightStart, length: match.highlightLength }}
+            onOpenFile={onOpenFile}
+            onCopyPath={onCopyPath}
+            onDeleteFile={onDeleteFile}
+          />
+        ))}
       </div>
     );
   }
