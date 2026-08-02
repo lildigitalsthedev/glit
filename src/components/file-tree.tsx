@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronRight,
   Copy,
@@ -79,6 +79,20 @@ function ancestorPaths(path: string): string[] {
   const out: string[] = [];
   for (let i = 1; i < parts.length; i++) out.push(parts.slice(0, i).join("/"));
   return out;
+}
+
+/** Returns `prev` unchanged (same reference) if every item is already present,
+ * so callers can skip a re-render when nothing actually changed. */
+function addAll(prev: Set<string>, items: string[]): Set<string> {
+  let changed = false;
+  const next = new Set(prev);
+  for (const item of items) {
+    if (!next.has(item)) {
+      next.add(item);
+      changed = true;
+    }
+  }
+  return changed ? next : prev;
 }
 
 const CODE_EXTENSIONS = new Set([
@@ -424,22 +438,21 @@ export function FileTree({
   const tree = useMemo(() => buildTree(blobPaths), [blobPaths]);
 
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set(ancestorPaths(activePath)));
+  // Folders whose contents have been rendered at least once. Collapsed
+  // folders that were never opened stay out of the DOM entirely — the main
+  // win for large repositories, where most of the tree is usually collapsed.
+  // Once a folder is opened it stays mounted (even after collapsing again)
+  // so the existing collapse/expand animation keeps working exactly as
+  // before; only the very first render of a subtree is deferred.
+  const [mounted, setMounted] = useState<Set<string>>(() => new Set(ancestorPaths(activePath)));
 
   // Whenever a different file becomes active (e.g. via search), make sure
   // its folder chain is expanded so the selection is actually visible.
   useEffect(() => {
     if (!activePath) return;
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      let changed = false;
-      for (const ancestor of ancestorPaths(activePath)) {
-        if (!next.has(ancestor)) {
-          next.add(ancestor);
-          changed = true;
-        }
-      }
-      return changed ? next : prev;
-    });
+    const ancestors = ancestorPaths(activePath);
+    setExpanded((prev) => addAll(prev, ancestors));
+    setMounted((prev) => addAll(prev, ancestors));
   }, [activePath]);
 
   // Whenever the active folder changes (e.g. the user clicks a breadcrumb),
@@ -447,19 +460,10 @@ export function FileTree({
   // destination is actually visible in the tree.
   useEffect(() => {
     if (!activeFolder) return;
-    setExpanded((prev) => {
-      const next = new Set(prev);
-      let changed = false;
-      const parts = activeFolder.split("/").filter(Boolean);
-      for (let i = 1; i <= parts.length; i++) {
-        const ancestor = parts.slice(0, i).join("/");
-        if (!next.has(ancestor)) {
-          next.add(ancestor);
-          changed = true;
-        }
-      }
-      return changed ? next : prev;
-    });
+    const parts = activeFolder.split("/").filter(Boolean);
+    const ancestors = parts.map((_, i) => parts.slice(0, i + 1).join("/"));
+    setExpanded((prev) => addAll(prev, ancestors));
+    setMounted((prev) => addAll(prev, ancestors));
   }, [activeFolder]);
 
   function toggleFolder(path: string) {
@@ -469,9 +473,15 @@ export function FileTree({
       else next.add(path);
       return next;
     });
+    setMounted((prev) => (prev.has(path) ? prev : addAll(prev, [path])));
   }
 
-  const parsedQuery = useMemo(() => parseQuery(filter), [filter]);
+  // Defer the expensive part (matching + rendering results) so the input
+  // itself never feels laggy while typing, even against a very large file
+  // list — React keeps the text box responsive and catches the tree up a
+  // moment later.
+  const deferredFilter = useDeferredValue(filter);
+  const parsedQuery = useMemo(() => parseQuery(deferredFilter), [deferredFilter]);
 
   const matches = useMemo(() => {
     if (!parsedQuery) return null;
@@ -541,6 +551,7 @@ export function FileTree({
       const indent = 8 + depth * 14;
       if (entry.type === "dir") {
         const isOpen = expanded.has(entry.path);
+        const isMounted = mounted.has(entry.path);
         const isActiveFolder = entry.path === activeFolder;
         return (
           <div key={entry.path}>
@@ -577,7 +588,11 @@ export function FileTree({
                 isOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
               )}
             >
-              <div className="overflow-hidden">{renderDir(entry, depth + 1)}</div>
+              {/* Never-opened folders render nothing here at all — the big
+                  win for large repos, where most subtrees stay collapsed. */}
+              <div className="overflow-hidden">
+                {isMounted ? renderDir(entry, depth + 1) : null}
+              </div>
             </div>
           </div>
         );

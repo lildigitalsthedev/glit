@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useDeferredValue, useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { GitBranch, Lock, Search, SearchX, Star, Unlock, Loader2, Github } from "lucide-react";
@@ -127,6 +127,7 @@ function Dashboard() {
     queryKey: ["repos", accountId],
     queryFn: () => reposFn({ data: { accountId: accountId! } }),
     enabled: Boolean(accountId),
+    placeholderData: keepPreviousData,
   });
 
   const favorites = useMemo(
@@ -158,7 +159,12 @@ function Dashboard() {
       });
     },
     onSuccess: () => {
-      void queryClient.invalidateQueries();
+      // Only "prefs" actually changed here (active repo/account/branch).
+      // The workspace route's queries are keyed by accountId/fullName, so
+      // they fetch fresh data on their own — invalidating everything else
+      // just re-triggers requests (the repo list, other accounts' data,
+      // favorites, etc.) that are still perfectly valid.
+      void queryClient.invalidateQueries({ queryKey: ["prefs"] });
       void navigate({ to: "/workspace" });
     },
     onError: (error: Error) => toast.error(error.message),
@@ -169,9 +175,10 @@ function Dashboard() {
     openRepo.mutate({ fullName: repo.fullName, defaultBranch: repo.defaultBranch });
   }
 
+  const deferredQuery = useDeferredValue(query);
   const filtered = (repos.data ?? [])
     .filter((repo) => (onlyFavorites ? favorites.has(repo.fullName) : true))
-    .filter((repo) => repo.fullName.toLowerCase().includes(query.toLowerCase()));
+    .filter((repo) => repo.fullName.toLowerCase().includes(deferredQuery.toLowerCase()));
 
   // Pinned (favorited) repositories always float to the top of the grid,
   // in their own labeled section, regardless of the search term or the
@@ -244,7 +251,7 @@ function Dashboard() {
                 key={account.id}
                 onClick={() =>
                   void updatePrefsFn({ data: { activeAccountId: account.id } }).then(() =>
-                    queryClient.invalidateQueries(),
+                    queryClient.invalidateQueries({ queryKey: ["prefs"] }),
                   )
                 }
                 className={cn(

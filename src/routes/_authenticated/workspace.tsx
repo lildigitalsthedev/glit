@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import Editor from "@monaco-editor/react";
@@ -180,6 +180,10 @@ function Workspace() {
     queryKey: ["tree", accountId, fullName, branch],
     queryFn: () => treeFn({ data: { accountId: accountId!, fullName: fullName!, branch } }),
     enabled: Boolean(accountId && fullName && branch),
+    // Switching branches (or repos) keeps the previous tree on screen while
+    // the new one loads, instead of blanking the whole file panel back to a
+    // spinner every time.
+    placeholderData: keepPreviousData,
   });
 
   const latestCommit = useQuery({
@@ -187,6 +191,7 @@ function Workspace() {
     queryFn: () => commitsFn({ data: { accountId: accountId!, fullName: fullName!, branch } }),
     enabled: Boolean(accountId && fullName && branch),
     select: (commits) => commits[0] ?? null,
+    placeholderData: keepPreviousData,
   });
 
   // Only fetched while the "Repository info" dialog is actually open —
@@ -202,6 +207,7 @@ function Workspace() {
     queryKey: ["recent-files", fullName, branch],
     queryFn: () => recentFilesFn({ data: { fullName: fullName!, branch } }),
     enabled: Boolean(accountId && fullName && branch),
+    placeholderData: keepPreviousData,
   });
 
   const favoritePaths = useQuery({
