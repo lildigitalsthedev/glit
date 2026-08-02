@@ -179,7 +179,7 @@ export function BulkUploadDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => !submitting && onOpenChange(next)}>
-      <DialogContent className="flex max-h-[85vh] flex-col sm:max-w-xl">
+      <DialogContent className="flex max-h-[85vh] flex-col overflow-hidden sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>Bulk file upload</DialogTitle>
           <DialogDescription>
@@ -195,7 +195,7 @@ export function BulkUploadDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1">
+        <div className="flex min-h-0 flex-1 flex-col gap-3">
           <div
             onDragOver={(e) => {
               e.preventDefault();
@@ -249,7 +249,7 @@ export function BulkUploadDialog({
                 folders={totals.folders}
               />
 
-              <div className="max-h-56 overflow-y-auto rounded-md border border-border overscroll-contain">
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain rounded-md border border-border">
                 <div className="divide-y divide-border">
                   {pending.map((item) => {
                     const trimmedPath = item.path.trim();
