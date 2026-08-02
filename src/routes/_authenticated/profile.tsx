@@ -16,9 +16,11 @@ import {
   PanelRight,
   RotateCcw,
   Lightbulb,
+  Crown,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { usePlan } from "@/hooks/usePlan";
+import { useRole } from "@/hooks/useRole";
 import { useNavPrefs, type NavPosition, type NavSize } from "@/hooks/useNavPrefs";
 import { AccountRow, ConnectGithubDialog, useAccounts } from "@/components/connect-github";
 import { RequestFeatureDialog } from "@/components/request-feature-dialog";
@@ -71,6 +73,7 @@ function Profile() {
   const queryClient = useQueryClient();
   const accounts = useAccounts();
   const { plan, isPro } = usePlan();
+  const { isOwner } = useRole();
   const navPrefs = useNavPrefs();
 
   const prefsFn = useServerFn(getPreferences);
@@ -134,6 +137,25 @@ function Profile() {
           <Link to="/pricing">{isPro ? "Manage plan" : "Upgrade"}</Link>
         </Button>
       </section>
+
+      {/* Hidden Owner Dashboard — only ever rendered for the account holding
+          the "owner" role, which is itself only ever assigned server-side. */}
+      {isOwner && (
+        <section className="mt-8 flex items-center justify-between gap-3 rounded-md border border-primary/30 bg-primary/5 p-4">
+          <div className="flex items-center gap-3">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <Crown className="size-4" />
+            </div>
+            <div>
+              <p className="text-sm font-medium">Owner Dashboard</p>
+              <p className="text-xs text-muted-foreground">Manage user roles across GitPush.</p>
+            </div>
+          </div>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/owner">Open</Link>
+          </Button>
+        </section>
+      )}
 
       {/* Connected GitHub accounts */}
       <section className="mt-8">
