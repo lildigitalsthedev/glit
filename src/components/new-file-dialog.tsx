@@ -102,9 +102,13 @@ export function NewFileDialog({
             autoComplete="off"
             autoFocus
           />
-          {touched && error && <p className="text-xs text-destructive">{error}</p>}
+          {touched && error && (
+            <p className="animate-in fade-in slide-in-from-top-1 text-xs text-destructive duration-150">
+              {error}
+            </p>
+          )}
           {!error && fullPath && (
-            <p className="truncate text-xs text-muted-foreground">
+            <p className="animate-in fade-in truncate text-xs text-muted-foreground duration-150">
               Will create <span className="font-mono text-foreground">{fullPath}</span>
               {willOverwrite && (
                 <span className="text-destructive"> — a file already exists here</span>
