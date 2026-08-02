@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getPreferences } from "@/lib/workspace.functions";
+import { getMyRole } from "@/lib/roles.functions";
 
 /**
  * The shared "is this user on GitPush Pro?" check.
@@ -13,15 +14,24 @@ import { getPreferences } from "@/lib/workspace.functions";
  * Every Pro-gated feature (multiple accounts, AI tools, prompt library,
  * etc.) should check `isPro` here rather than re-deriving plan state on
  * its own, so plan logic stays in one place.
+ *
+ * The Owner is always Pro — see the Owner & Admin role system — regardless
+ * of whatever `plan` happens to say, since the Owner is never restricted by
+ * billing.
  */
 export function usePlan() {
   const prefsFn = useServerFn(getPreferences);
   const prefs = useQuery({ queryKey: ["prefs"], queryFn: () => prefsFn() });
+
+  const roleFn = useServerFn(getMyRole);
+  const roleQuery = useQuery({ queryKey: ["role"], queryFn: () => roleFn() });
+
   const plan = prefs.data?.plan ?? "free";
+  const isOwner = roleQuery.data?.isOwner ?? false;
 
   return {
     plan,
-    isPro: plan === "pro",
+    isPro: plan === "pro" || isOwner,
     isLoading: prefs.isLoading,
   };
 }
