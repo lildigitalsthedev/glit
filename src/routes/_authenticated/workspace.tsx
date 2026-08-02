@@ -168,6 +168,7 @@ function Workspace() {
   const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
   const [bulkUploadUpgradeOpen, setBulkUploadUpgradeOpen] = useState(false);
   const [uploadFolderOpen, setUploadFolderOpen] = useState(false);
+  const [uploadFolderUpgradeOpen, setUploadFolderUpgradeOpen] = useState(false);
   const [uploadZipOpen, setUploadZipOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -369,6 +370,15 @@ function Workspace() {
       setBulkUploadOpen(true);
     } else {
       setBulkUploadUpgradeOpen(true);
+    }
+  }
+
+  // Folder uploads are also a GitPush Pro feature.
+  function openUploadFolder() {
+    if (isPro) {
+      setUploadFolderOpen(true);
+    } else {
+      setUploadFolderUpgradeOpen(true);
     }
   }
 
@@ -810,9 +820,16 @@ function Workspace() {
                   <span className="ml-auto text-[10px] text-muted-foreground">Pro</span>
                 )}
               </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setUploadFolderOpen(true)}>
-                <FolderUp className="size-3.5" />
+              <DropdownMenuItem onSelect={openUploadFolder}>
+                {isPro ? (
+                  <FolderUp className="size-3.5" />
+                ) : (
+                  <Lock className="size-3.5" />
+                )}
                 Upload folder
+                {!isPro && (
+                  <span className="ml-auto text-[10px] text-muted-foreground">Pro</span>
+                )}
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => setUploadZipOpen(true)}>
                 <FileArchive className="size-3.5" />
@@ -858,9 +875,13 @@ function Workspace() {
             variant="outline"
             size="sm"
             className="hidden sm:inline-flex"
-            onClick={() => setUploadFolderOpen(true)}
+            onClick={openUploadFolder}
           >
-            <FolderUp className="size-3.5" />
+            {isPro ? (
+              <FolderUp className="size-3.5" />
+            ) : (
+              <Lock className="size-3.5" />
+            )}
             <span className="hidden sm:inline">Upload folder</span>
           </Button>
           <Button
@@ -929,6 +950,18 @@ function Workspace() {
         activeFolder={activeFolder}
         existingPaths={filePaths}
         onCommit={handleBulkCommit}
+      />
+
+      <ProUpgradeDialog
+        open={uploadFolderUpgradeOpen}
+        onOpenChange={setUploadFolderUpgradeOpen}
+        title="Folder uploads are a Pro feature"
+        description="Free accounts upload files one at a time. Upgrade to GitPush Pro to drop in a whole folder and push it as a single commit."
+        features={[
+          "Drag & drop or pick an entire folder",
+          "Full folder hierarchy recreated automatically",
+          "Preview the tree before it's pushed, in one commit",
+        ]}
       />
 
       <UploadZipDialog
