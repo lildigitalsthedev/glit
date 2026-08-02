@@ -41,7 +41,9 @@ export const listAccounts = createServerFn({ method: "GET" })
 
 export const connectWithToken = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { token: string; label?: string; accountId?: string }) => data)
+  .inputValidator(
+    (data: { token: string; label?: string | undefined; accountId?: string | undefined }) => data,
+  )
   .handler(async ({ data, context }) => {
     const { saveConnection } = await import("./github/connections.server");
     return saveConnection(context.supabase, context.userId, {
