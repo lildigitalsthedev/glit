@@ -9,7 +9,12 @@ type Client = SupabaseClient<any, any, any>;
 export async function saveConnection(
   supabase: Client,
   userId: string,
-  args: { token: string; label?: string; accountId?: string; connectionType: "pat" | "oauth" },
+  args: {
+    token: string;
+    label?: string | undefined;
+    accountId?: string | undefined;
+    connectionType: "pat" | "oauth";
+  },
 ) {
   if (!args.token) throw new Error("A token is required.");
   const viewer = await getViewer(args.token);
