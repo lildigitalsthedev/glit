@@ -125,7 +125,11 @@ export function RenameRepositoryDialog({
               autoComplete="off"
               autoFocus
             />
-            {showError && <p className="text-xs text-destructive">{showError}</p>}
+            {showError && (
+              <p className="animate-in fade-in slide-in-from-top-1 text-xs text-destructive duration-150">
+                {showError}
+              </p>
+            )}
           </div>
         </div>
 
