@@ -12,6 +12,7 @@ import {
   GitBranch,
   Loader2,
   Upload,
+  UploadCloud,
   GitCommitHorizontal,
   MoreVertical,
   Download,
@@ -25,6 +26,7 @@ import {
   listRepoTree,
   readRepoFile,
   pushFile,
+  pushFiles,
   downloadRepoZip,
   listRepoCommits,
 } from "@/lib/github.functions";
@@ -48,6 +50,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { RenameRepositoryDialog } from "@/components/rename-repository-dialog";
 import { NewFileDialog } from "@/components/new-file-dialog";
+import { BulkUploadDialog } from "@/components/bulk-upload-dialog";
 import { FileTree } from "@/components/file-tree";
 import { EmptyState } from "@/components/empty-state";
 import { cn } from "@/lib/utils";
@@ -97,6 +100,7 @@ function Workspace() {
   const treeFn = useServerFn(listRepoTree);
   const readFn = useServerFn(readRepoFile);
   const pushFn = useServerFn(pushFile);
+  const pushFilesFn = useServerFn(pushFiles);
   const zipFn = useServerFn(downloadRepoZip);
   const commitsFn = useServerFn(listRepoCommits);
 
@@ -116,6 +120,7 @@ function Workspace() {
   const [renameOpen, setRenameOpen] = useState(false);
   const [activeFolder, setActiveFolder] = useState<string | null>(null);
   const [newFileOpen, setNewFileOpen] = useState(false);
+  const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
 
   useEffect(() => {
     if (!branch && prefs.data?.defaultBranch) setBranch(prefs.data.defaultBranch);
@@ -240,6 +245,37 @@ function Workspace() {
     setShowDiff(false);
     const lastSlash = fullPath.lastIndexOf("/");
     setActiveFolder(lastSlash === -1 ? null : fullPath.slice(0, lastSlash));
+  }
+
+  async function handleBulkCommit(args: {
+    message: string;
+    description: string;
+    files: { path: string; content: string }[];
+  }) {
+    if (!accountId || !fullName) throw new Error("Choose a repository first.");
+    if (!branch) throw new Error("Pick a branch before pushing.");
+    try {
+      const result = await pushFilesFn({
+        data: {
+          accountId,
+          fullName,
+          branch,
+          message: args.message,
+          description: args.description || undefined,
+          files: args.files,
+        },
+      });
+      toast.success(
+        `Pushed ${result.filesPushed} file${result.filesPushed === 1 ? "" : "s"} (${result.commitSha})`,
+      );
+      void queryClient.invalidateQueries({ queryKey: ["tree"] });
+      void queryClient.invalidateQueries({ queryKey: ["commits"] });
+      void queryClient.invalidateQueries({ queryKey: ["pushes"] });
+      return result;
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Couldn't push those files.");
+      throw error;
+    }
   }
 
   function handleRefreshRepository() {
@@ -380,6 +416,10 @@ function Workspace() {
             Upload
             <input type="file" className="hidden" onChange={(e) => onUpload(e.target.files)} />
           </label>
+          <Button variant="outline" size="sm" onClick={() => setBulkUploadOpen(true)}>
+            <UploadCloud className="size-3.5" />
+            Bulk upload
+          </Button>
           <Button variant="outline" size="sm" onClick={() => setNewFileOpen(true)}>
             <FilePlus className="size-3.5" />
             New file
@@ -395,6 +435,16 @@ function Workspace() {
           .filter((n) => n.type === "blob")
           .map((n) => n.path)}
         onCreate={handleCreateFile}
+      />
+
+      <BulkUploadDialog
+        open={bulkUploadOpen}
+        onOpenChange={setBulkUploadOpen}
+        activeFolder={activeFolder}
+        existingPaths={(tree.data?.nodes ?? [])
+          .filter((n) => n.type === "blob")
+          .map((n) => n.path)}
+        onCommit={handleBulkCommit}
       />
 
       <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[260px_1fr_320px]">
