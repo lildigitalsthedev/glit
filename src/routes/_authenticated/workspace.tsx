@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import Editor from "@monaco-editor/react";
 import { diffLines } from "diff";
 import {
-  File,
   FilePlus,
   GitBranch,
   Loader2,
@@ -46,6 +45,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { RenameRepositoryDialog } from "@/components/rename-repository-dialog";
+import { FileTree } from "@/components/file-tree";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/workspace")({
@@ -110,6 +110,7 @@ function Workspace() {
   const [showDiff, setShowDiff] = useState(false);
   const [filter, setFilter] = useState("");
   const [renameOpen, setRenameOpen] = useState(false);
+  const [activeFolder, setActiveFolder] = useState<string | null>(null);
 
   useEffect(() => {
     if (!branch && prefs.data?.defaultBranch) setBranch(prefs.data.defaultBranch);
@@ -134,15 +135,6 @@ function Workspace() {
     select: (commits) => commits[0] ?? null,
   });
 
-  const files = useMemo(
-    () =>
-      (tree.data?.nodes ?? [])
-        .filter((node) => node.type === "blob")
-        .filter((node) => node.path.toLowerCase().includes(filter.toLowerCase()))
-        .slice(0, 500),
-    [tree.data, filter],
-  );
-
   const openFile = useMutation({
     mutationFn: (target: string) =>
       readFn({ data: { accountId: accountId!, fullName: fullName!, branch, path: target } }),
@@ -152,6 +144,8 @@ function Workspace() {
       setOriginal(file.content);
       setBaseSha(file.sha);
       setShowDiff(false);
+      const lastSlash = target.lastIndexOf("/");
+      setActiveFolder(lastSlash === -1 ? null : target.slice(0, lastSlash));
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -395,26 +389,15 @@ function Workspace() {
             />
           </div>
           <div className="min-h-0 flex-1 overflow-auto p-1">
-            {tree.isLoading && (
-              <div className="flex h-24 items-center justify-center">
-                <Loader2 className="size-4 animate-spin text-primary" />
-              </div>
-            )}
-            {files.map((node) => (
-              <button
-                key={node.path}
-                onClick={() => openFile.mutate(node.path)}
-                className={cn(
-                  "flex w-full items-center gap-2 truncate rounded px-2 py-1 text-left font-mono text-[11px] transition-colors",
-                  node.path === path
-                    ? "bg-secondary text-foreground"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                <File className="size-3 shrink-0" />
-                <span className="truncate">{node.path}</span>
-              </button>
-            ))}
+            <FileTree
+              nodes={tree.data?.nodes ?? []}
+              loading={tree.isLoading}
+              filter={filter}
+              activePath={path}
+              activeFolder={activeFolder}
+              onOpenFile={(target) => openFile.mutate(target)}
+              onSelectFolder={(target) => setActiveFolder(target)}
+            />
           </div>
         </aside>
 
