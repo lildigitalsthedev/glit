@@ -181,3 +181,27 @@ export function listCommits(token: string, fullName: string, branch: string, pat
   if (path) q.set("path", path);
   return ghFetch<GhCommit[]>(token, `/repos/${fullName}/commits?${q.toString()}`);
 }
+
+export async function downloadZipball(
+  token: string,
+  fullName: string,
+  branch: string,
+): Promise<{ buffer: Buffer; contentType: string }> {
+  const res = await fetch(`${GH}/repos/${fullName}/zipball/${encodeURIComponent(branch)}`, {
+    headers: {
+      Accept: "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28",
+      "User-Agent": "GitPush",
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new GithubError(res.status, explain(res.status, text));
+  }
+  const arrayBuffer = await res.arrayBuffer();
+  return {
+    buffer: Buffer.from(arrayBuffer),
+    contentType: res.headers.get("content-type") ?? "application/zip",
+  };
+}
