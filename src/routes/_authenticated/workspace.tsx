@@ -11,6 +11,7 @@ import {
   FolderGit2,
   GitBranch,
   Loader2,
+  Menu,
   Upload,
   UploadCloud,
   GitCommitHorizontal,
@@ -48,6 +49,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
 import { RenameRepositoryDialog } from "@/components/rename-repository-dialog";
 import { NewFileDialog } from "@/components/new-file-dialog";
 import { BulkUploadDialog } from "@/components/bulk-upload-dialog";
@@ -121,6 +129,8 @@ function Workspace() {
   const [activeFolder, setActiveFolder] = useState<string | null>(null);
   const [newFileOpen, setNewFileOpen] = useState(false);
   const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [mobileCommitOpen, setMobileCommitOpen] = useState(false);
 
   useEffect(() => {
     if (!branch && prefs.data?.defaultBranch) setBranch(prefs.data.defaultBranch);
@@ -156,6 +166,7 @@ function Workspace() {
       setShowDiff(false);
       const lastSlash = target.lastIndexOf("/");
       setActiveFolder(lastSlash === -1 ? null : target.slice(0, lastSlash));
+      setMobileSidebarOpen(false);
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -179,6 +190,7 @@ function Workspace() {
       setBaseSha(result.sha);
       setMessage("");
       setDescription("");
+      setMobileCommitOpen(false);
       void queryClient.invalidateQueries({ queryKey: ["tree"] });
       void queryClient.invalidateQueries({ queryKey: ["pushes"] });
     },
@@ -343,16 +355,150 @@ function Workspace() {
     );
   }
 
+  const filePaths = (tree.data?.nodes ?? []).filter((n) => n.type === "blob").map((n) => n.path);
+
+  const fileTreePanel = (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="border-b border-border p-2">
+        <Input
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          placeholder="Find file…"
+          className="h-8 font-mono text-xs"
+        />
+      </div>
+      <div className="min-h-0 flex-1 overflow-auto p-1">
+        <FileTree
+          nodes={tree.data?.nodes ?? []}
+          loading={tree.isLoading}
+          filter={filter}
+          activePath={path}
+          activeFolder={activeFolder}
+          onOpenFile={(target) => openFile.mutate(target)}
+          onSelectFolder={(target) => setActiveFolder(target)}
+        />
+      </div>
+    </div>
+  );
+
+  const commitPanel = (
+    <div className="flex min-h-0 flex-1 flex-col gap-3 p-3">
+      <p className="label-caps">Commit</p>
+      <Input
+        value={message}
+        onChange={(e) => setMessage(e.target.value)}
+        placeholder="Add Button component"
+        className="h-8 text-xs"
+      />
+      <Textarea
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+        placeholder="Extended description (optional)"
+        className="min-h-24 text-xs"
+      />
+      <div className="rounded-md border border-border bg-card p-3 font-mono text-[11px] text-muted-foreground">
+        <p className="truncate">{path || "no file selected"}</p>
+        <p className="mt-1">
+          {baseSha ? "updates existing file" : "creates new file"} · {branch || "no branch"}
+        </p>
+        <p className="mt-1">{dirty ? "unsaved changes" : "no changes"}</p>
+      </div>
+      <Button
+        className="mt-auto"
+        disabled={!path || !message.trim() || !branch || commit.isPending}
+        onClick={() => commit.mutate()}
+      >
+        {commit.isPending ? (
+          <Loader2 className="size-4 animate-spin" />
+        ) : (
+          <GitCommitHorizontal className="size-4" />
+        )}
+        Commit &amp; push
+      </Button>
+    </div>
+  );
+
+  const editorPanel = (
+    <section className="flex min-h-0 flex-1 flex-col">
+      <div className="border-b border-border p-2">
+        <Input
+          value={path}
+          onChange={(e) => setPath(e.target.value)}
+          placeholder="src/components/Button.tsx"
+          className="h-8 font-mono text-xs"
+        />
+      </div>
+      <div className="min-h-0 flex-1 overflow-auto">
+        {!path ? (
+          <div className="flex h-full items-center justify-center">
+            <EmptyState
+              icon={FilePlus2}
+              title="Select a file or create a new one."
+              description="Browse the tree on the left, search for a file, or use “New file” to start writing."
+              action={
+                <Button variant="outline" size="sm" onClick={() => setNewFileOpen(true)}>
+                  <FilePlus className="size-3.5" />
+                  New file
+                </Button>
+              }
+            />
+          </div>
+        ) : showDiff ? (
+          <pre className="p-3 font-mono text-[11px] leading-5">
+            {diff.map((part, index) => (
+              <div
+                key={index}
+                className={cn(
+                  part.added && "bg-success/15 text-success",
+                  part.removed && "bg-destructive/15 text-destructive",
+                  !part.added && !part.removed && "text-muted-foreground",
+                )}
+              >
+                {part.value.replace(/\n$/, "")}
+              </div>
+            ))}
+          </pre>
+        ) : (
+          <Editor
+            theme="vs-dark"
+            language={languageFor(path)}
+            value={content}
+            onChange={(value) => setContent(value ?? "")}
+            options={{
+              fontFamily: "JetBrains Mono, ui-monospace, monospace",
+              fontSize: prefs.data?.editorFontSize ?? 13,
+              tabSize: prefs.data?.tabWidth ?? 2,
+              wordWrap: prefs.data?.wordWrap ? "on" : "off",
+              minimap: { enabled: false },
+              scrollBeyondLastLine: false,
+              padding: { top: 12 },
+            }}
+            height="100%"
+          />
+        )}
+      </div>
+    </section>
+  );
+
   return (
     <main className="flex h-[calc(100vh-3rem)] flex-col">
-      <div className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-2">
-        <span className="font-mono text-sm">{fullName}</span>
+      <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2 sm:gap-3 sm:px-4">
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-8 w-8 shrink-0 md:hidden"
+          aria-label={mobileSidebarOpen ? "Close file tree" : "Open file tree"}
+          onClick={() => setMobileSidebarOpen((v) => !v)}
+        >
+          <Menu className="size-4" />
+        </Button>
+        <span className="min-w-0 truncate font-mono text-sm">{fullName}</span>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+              className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
               aria-label="Repository actions"
             >
               <MoreVertical className="size-4" />
@@ -387,7 +533,7 @@ function Workspace() {
           onRenamed={handleRepositoryRenamed}
         />
         <Select value={branch} onValueChange={setBranch}>
-          <SelectTrigger className="h-8 w-48 font-mono text-xs">
+          <SelectTrigger className="h-8 w-28 font-mono text-xs sm:w-48">
             <GitBranch className="size-3.5" />
             <SelectValue placeholder="branch" />
           </SelectTrigger>
@@ -401,28 +547,40 @@ function Workspace() {
           </SelectContent>
         </Select>
         {latestCommit.data && (
-          <span className="hidden max-w-[280px] items-center gap-1.5 truncate text-xs text-muted-foreground md:inline-flex">
+          <span className="hidden max-w-[280px] items-center gap-1.5 truncate text-xs text-muted-foreground lg:inline-flex">
             <History className="size-3 shrink-0" />
             <span className="shrink-0 font-mono">{latestCommit.data.sha}</span>
             <span className="truncate">{latestCommit.data.message}</span>
           </span>
         )}
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
           <Button variant="outline" size="sm" onClick={() => setShowDiff((v) => !v)} disabled={!dirty}>
-            {showDiff ? "Hide diff" : "View diff"}
+            <span className="hidden sm:inline">{showDiff ? "Hide diff" : "View diff"}</span>
+            <span className="sm:hidden">{showDiff ? "Hide" : "Diff"}</span>
           </Button>
-          <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-border px-3 py-1.5 text-xs">
+          <label className="inline-flex h-8 cursor-pointer items-center gap-2 rounded-md border border-border px-2 text-xs sm:px-3">
             <Upload className="size-3.5" />
-            Upload
+            <span className="hidden sm:inline">Upload</span>
             <input type="file" className="hidden" onChange={(e) => onUpload(e.target.files)} />
           </label>
           <Button variant="outline" size="sm" onClick={() => setBulkUploadOpen(true)}>
             <UploadCloud className="size-3.5" />
-            Bulk upload
+            <span className="hidden sm:inline">Bulk upload</span>
           </Button>
           <Button variant="outline" size="sm" onClick={() => setNewFileOpen(true)}>
             <FilePlus className="size-3.5" />
-            New file
+            <span className="hidden sm:inline">New file</span>
+          </Button>
+          <Button
+            size="sm"
+            className="relative md:hidden"
+            onClick={() => setMobileCommitOpen((v) => !v)}
+          >
+            <GitCommitHorizontal className="size-3.5" />
+            <span className="hidden sm:inline">Commit</span>
+            {dirty && (
+              <span className="absolute -right-0.5 -top-0.5 size-2 rounded-full bg-success" />
+            )}
           </Button>
         </div>
       </div>
@@ -431,9 +589,7 @@ function Workspace() {
         open={newFileOpen}
         onOpenChange={setNewFileOpen}
         activeFolder={activeFolder}
-        existingPaths={(tree.data?.nodes ?? [])
-          .filter((n) => n.type === "blob")
-          .map((n) => n.path)}
+        existingPaths={filePaths}
         onCreate={handleCreateFile}
       />
 
@@ -441,130 +597,58 @@ function Workspace() {
         open={bulkUploadOpen}
         onOpenChange={setBulkUploadOpen}
         activeFolder={activeFolder}
-        existingPaths={(tree.data?.nodes ?? [])
-          .filter((n) => n.type === "blob")
-          .map((n) => n.path)}
+        existingPaths={filePaths}
         onCommit={handleBulkCommit}
       />
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[260px_1fr_320px]">
-        <aside className="flex min-h-0 flex-col border-r border-border">
-          <div className="border-b border-border p-2">
-            <Input
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-              placeholder="Find file…"
-              className="h-8 font-mono text-xs"
-            />
-          </div>
-          <div className="min-h-0 flex-1 overflow-auto p-1">
-            <FileTree
-              nodes={tree.data?.nodes ?? []}
-              loading={tree.isLoading}
-              filter={filter}
-              activePath={path}
-              activeFolder={activeFolder}
-              onOpenFile={(target) => openFile.mutate(target)}
-              onSelectFolder={(target) => setActiveFolder(target)}
-            />
-          </div>
-        </aside>
-
-        <section className="flex min-h-0 flex-col">
-          <div className="border-b border-border p-2">
-            <Input
-              value={path}
-              onChange={(e) => setPath(e.target.value)}
-              placeholder="src/components/Button.tsx"
-              className="h-8 font-mono text-xs"
-            />
-          </div>
-          <div className="min-h-0 flex-1 overflow-auto">
-            {!path ? (
-              <div className="flex h-full items-center justify-center">
-                <EmptyState
-                  icon={FilePlus2}
-                  title="Select a file or create a new one."
-                  description="Browse the tree on the left, search for a file, or use “New file” to start writing."
-                  action={
-                    <Button variant="outline" size="sm" onClick={() => setNewFileOpen(true)}>
-                      <FilePlus className="size-3.5" />
-                      New file
-                    </Button>
-                  }
-                />
-              </div>
-            ) : showDiff ? (
-              <pre className="p-3 font-mono text-[11px] leading-5">
-                {diff.map((part, index) => (
-                  <div
-                    key={index}
-                    className={cn(
-                      part.added && "bg-success/15 text-success",
-                      part.removed && "bg-destructive/15 text-destructive",
-                      !part.added && !part.removed && "text-muted-foreground",
-                    )}
-                  >
-                    {part.value.replace(/\n$/, "")}
-                  </div>
-                ))}
-              </pre>
-            ) : (
-              <Editor
-                theme="vs-dark"
-                language={languageFor(path)}
-                value={content}
-                onChange={(value) => setContent(value ?? "")}
-                options={{
-                  fontFamily: "JetBrains Mono, ui-monospace, monospace",
-                  fontSize: prefs.data?.editorFontSize ?? 13,
-                  tabSize: prefs.data?.tabWidth ?? 2,
-                  wordWrap: prefs.data?.wordWrap ? "on" : "off",
-                  minimap: { enabled: false },
-                  scrollBeyondLastLine: false,
-                  padding: { top: 12 },
-                }}
-                height="100%"
-              />
-            )}
-          </div>
-        </section>
-
-        <aside className="flex min-h-0 flex-col gap-3 border-l border-border p-3">
-          <p className="label-caps">Commit</p>
-          <Input
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder="Add Button component"
-            className="h-8 text-xs"
-          />
-          <Textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Extended description (optional)"
-            className="min-h-24 text-xs"
-          />
-          <div className="rounded-md border border-border bg-card p-3 font-mono text-[11px] text-muted-foreground">
-            <p className="truncate">{path || "no file selected"}</p>
-            <p className="mt-1">
-              {baseSha ? "updates existing file" : "creates new file"} · {branch || "no branch"}
-            </p>
-            <p className="mt-1">{dirty ? "unsaved changes" : "no changes"}</p>
-          </div>
-          <Button
-            className="mt-auto"
-            disabled={!path || !message.trim() || !branch || commit.isPending}
-            onClick={() => commit.mutate()}
-          >
-            {commit.isPending ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <GitCommitHorizontal className="size-4" />
-            )}
-            Commit &amp; push
-          </Button>
-        </aside>
+      {/* Desktop & tablet: persistent three-pane layout, like a WhatsApp-style
+          side pane (files) + main content (editor) + right pane (commit). */}
+      <div className="hidden min-h-0 flex-1 md:grid md:grid-cols-[220px_1fr_280px] lg:grid-cols-[260px_1fr_320px] xl:grid-cols-[280px_1fr_360px]">
+        <aside className="flex min-h-0 flex-col border-r border-border">{fileTreePanel}</aside>
+        {editorPanel}
+        <aside className="flex min-h-0 flex-col border-l border-border">{commitPanel}</aside>
       </div>
+
+      {/* Mobile: editor takes the full screen; the file tree and commit
+          panel become collapsible slide-in panes triggered from the toolbar
+          and the sticky bar below. */}
+      <div className="flex min-h-0 flex-1 flex-col md:hidden">{editorPanel}</div>
+
+      <div className="flex items-center justify-between gap-2 border-t border-border bg-background px-3 py-2 md:hidden">
+        <Button variant="outline" size="sm" className="flex-1" onClick={() => setMobileSidebarOpen(true)}>
+          <Menu className="size-3.5" />
+          Files
+        </Button>
+        <Button size="sm" className="relative flex-1" onClick={() => setMobileCommitOpen(true)}>
+          <GitCommitHorizontal className="size-3.5" />
+          Commit
+          {dirty && <span className="absolute right-3 top-1.5 size-2 rounded-full bg-success" />}
+        </Button>
+      </div>
+
+      <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
+        <SheetContent side="left" className="flex w-[85vw] max-w-xs flex-col gap-0 p-0 sm:max-w-sm">
+          <SheetHeader className="border-b border-border p-3 text-left">
+            <SheetTitle className="font-mono text-sm">Files</SheetTitle>
+            <SheetDescription className="sr-only">
+              Browse and open files in {fullName}.
+            </SheetDescription>
+          </SheetHeader>
+          {fileTreePanel}
+        </SheetContent>
+      </Sheet>
+
+      <Sheet open={mobileCommitOpen} onOpenChange={setMobileCommitOpen}>
+        <SheetContent side="right" className="flex w-[85vw] max-w-sm flex-col gap-0 p-0">
+          <SheetHeader className="border-b border-border p-3 text-left">
+            <SheetTitle className="font-mono text-sm">Commit</SheetTitle>
+            <SheetDescription className="sr-only">
+              Write a commit message and push your changes to {branch || "the branch"}.
+            </SheetDescription>
+          </SheetHeader>
+          {commitPanel}
+        </SheetContent>
+      </Sheet>
     </main>
   );
 }
