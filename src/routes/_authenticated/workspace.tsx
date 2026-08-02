@@ -24,6 +24,7 @@ import {
   Copy,
   History,
   Star,
+  Info,
 } from "lucide-react";
 import {
   listRepoBranches,
@@ -34,6 +35,7 @@ import {
   deleteFile,
   downloadRepoZip,
   listRepoCommits,
+  getRepoDetails,
 } from "@/lib/github.functions";
 import {
   getPreferences,
@@ -69,6 +71,7 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { RenameRepositoryDialog } from "@/components/rename-repository-dialog";
+import { RepositoryInfoDialog } from "@/components/repository-info-dialog";
 import { DeleteFileDialog } from "@/components/delete-file-dialog";
 import { NewFileDialog } from "@/components/new-file-dialog";
 import { BulkUploadDialog } from "@/components/bulk-upload-dialog";
@@ -130,6 +133,7 @@ function Workspace() {
   const deleteFileFn = useServerFn(deleteFile);
   const zipFn = useServerFn(downloadRepoZip);
   const commitsFn = useServerFn(listRepoCommits);
+  const repoDetailsFn = useServerFn(getRepoDetails);
   const recentFilesFn = useServerFn(listRecentFiles);
   const touchRecentFileFn = useServerFn(touchRecentFile);
   const clearRecentFilesFn = useServerFn(clearRecentFiles);
@@ -150,6 +154,7 @@ function Workspace() {
   const [showDiff, setShowDiff] = useState(false);
   const [filter, setFilter] = useState("");
   const [renameOpen, setRenameOpen] = useState(false);
+  const [repoInfoOpen, setRepoInfoOpen] = useState(false);
   const [activeFolder, setActiveFolder] = useState<string | null>(null);
   const [newFileOpen, setNewFileOpen] = useState(false);
   const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
@@ -180,6 +185,15 @@ function Workspace() {
     queryFn: () => commitsFn({ data: { accountId: accountId!, fullName: fullName!, branch } }),
     enabled: Boolean(accountId && fullName && branch),
     select: (commits) => commits[0] ?? null,
+  });
+
+  // Only fetched while the "Repository info" dialog is actually open —
+  // owner/size/visibility rarely change, so there's no need to pull them on
+  // every workspace load.
+  const repoDetails = useQuery({
+    queryKey: ["repo-details", accountId, fullName],
+    queryFn: () => repoDetailsFn({ data: { accountId: accountId!, fullName: fullName! } }),
+    enabled: Boolean(accountId && fullName && repoInfoOpen),
   });
 
   const recentFiles = useQuery({
@@ -658,6 +672,10 @@ function Workspace() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-56">
+            <DropdownMenuItem onSelect={() => setRepoInfoOpen(true)}>
+              <Info className="size-3.5" />
+              Repository info
+            </DropdownMenuItem>
             <DropdownMenuItem onSelect={handleDownloadZip}>
               <Download className="size-3.5" />
               Download ZIP
@@ -684,6 +702,15 @@ function Workspace() {
           accountId={accountId}
           fullName={fullName}
           onRenamed={handleRepositoryRenamed}
+        />
+        <RepositoryInfoDialog
+          open={repoInfoOpen}
+          onOpenChange={setRepoInfoOpen}
+          fullName={fullName}
+          totalFiles={tree.data ? filePaths.length : null}
+          latestCommit={latestCommit.data ?? null}
+          details={repoDetails.data}
+          loading={repoDetails.isLoading}
         />
         <Select value={branch} onValueChange={setBranch}>
           <SelectTrigger className="h-8 w-28 font-mono text-xs sm:w-48">

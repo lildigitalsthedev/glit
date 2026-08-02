@@ -66,6 +66,9 @@ export interface GhRepo {
   default_branch: string;
   updated_at: string;
   pushed_at: string | null;
+  size?: number;
+  visibility?: string;
+  html_url?: string;
   owner: { login: string; avatar_url: string };
   permissions?: { push?: boolean; admin?: boolean };
 }
@@ -85,6 +88,10 @@ export async function listAllRepos(token: string): Promise<GhRepo[]> {
     if (batch.length < 100) break;
   }
   return out;
+}
+
+export function getRepo(token: string, fullName: string) {
+  return ghFetch<GhRepo>(token, `/repos/${fullName}`);
 }
 
 export interface GhBranch {

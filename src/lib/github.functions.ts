@@ -195,6 +195,47 @@ export const createRepository = createServerFn({ method: "POST" })
     };
   });
 
+export interface RepoDetails {
+  fullName: string;
+  owner: string;
+  ownerAvatar: string;
+  defaultBranch: string;
+  isPrivate: boolean;
+  visibility: string;
+  sizeKb: number;
+  updatedAt: string;
+  pushedAt: string | null;
+  htmlUrl: string;
+}
+
+/**
+ * Full repository metadata straight from GitHub's single-repo endpoint —
+ * owner, visibility, size, timestamps — that the list endpoint used for the
+ * dashboard grid doesn't bother returning. Powers the "Repository info"
+ * panel in the workspace.
+ */
+export const getRepoDetails = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { accountId: string; fullName: string }) => data)
+  .handler(async ({ data, context }): Promise<RepoDetails> => {
+    const { loadAccountToken } = await import("./github/tokens.server");
+    const { getRepo } = await import("./github/api.server");
+    const { token } = await loadAccountToken(context.supabase, data.accountId);
+    const repo = await getRepo(token, data.fullName);
+    return {
+      fullName: repo.full_name,
+      owner: repo.owner.login,
+      ownerAvatar: repo.owner.avatar_url,
+      defaultBranch: repo.default_branch,
+      isPrivate: repo.private,
+      visibility: repo.visibility ?? (repo.private ? "private" : "public"),
+      sizeKb: repo.size ?? 0,
+      updatedAt: repo.pushed_at ?? repo.updated_at,
+      pushedAt: repo.pushed_at,
+      htmlUrl: repo.html_url ?? `https://github.com/${repo.full_name}`,
+    };
+  });
+
 export interface RenamedRepo {
   id: number;
   name: string;
