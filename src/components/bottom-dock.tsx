@@ -22,9 +22,9 @@ const BOTTOM_SPACE: Record<NavSize, { expanded: string; collapsed: string }> = {
   lg: { expanded: "8rem", collapsed: "4rem" },
 };
 const RAIL_WIDTH: Record<NavSize, string> = {
-  sm: "4.5rem",
-  md: "5.5rem",
-  lg: "6.5rem",
+  sm: "5rem",
+  md: "6rem",
+  lg: "7rem",
 };
 
 // Pixel margin kept between the floating pill and the edge of the viewport
@@ -33,34 +33,22 @@ const RAIL_WIDTH: Record<NavSize, string> = {
 const DRAG_MARGIN = 16;
 const DRAG_THRESHOLD = 5;
 
-const PILL_SIZE: Record<NavSize, { icon: string; padX: string; padY: string; text: string; minTouch: string }> = {
-  sm: {
-    icon: "size-3.5",
-    padX: "px-3 sm:px-3.5",
-    padY: "py-2",
-    text: "text-[9px]",
-    minTouch: "min-h-[2.5rem] min-w-[2.5rem]",
-  },
-  md: {
-    icon: "size-4",
-    padX: "px-3.5 sm:px-4",
-    padY: "py-2.5 sm:py-2",
-    text: "text-[10px]",
-    minTouch: "min-h-[2.75rem] min-w-[2.75rem]",
-  },
-  lg: {
-    icon: "size-5",
-    padX: "px-4 sm:px-5",
-    padY: "py-3",
-    text: "text-[11px]",
-    minTouch: "min-h-[3.25rem] min-w-[3.25rem]",
-  },
+// The pill lays its items out in a 4-column grid (one column per nav item)
+// so every item gets an exactly equal-width, equal-shape cell no matter how
+// long its label is — "Workspace" and "Repos" now occupy identical boxes.
+const PILL_SIZE: Record<NavSize, { icon: string; padY: string; text: string; minTouch: string }> = {
+  sm: { icon: "size-3.5", padY: "py-2", text: "text-[9px]", minTouch: "min-h-[2.5rem]" },
+  md: { icon: "size-4", padY: "py-2.5 sm:py-2", text: "text-[10px]", minTouch: "min-h-[2.75rem]" },
+  lg: { icon: "size-5", padY: "py-3", text: "text-[11px]", minTouch: "min-h-[3.25rem]" },
 };
 
-const RAIL_SIZE: Record<NavSize, { icon: string; pad: string; text: string; minTouch: string }> = {
-  sm: { icon: "size-4", pad: "px-2.5 py-2", text: "text-[9px]", minTouch: "min-h-[2.5rem] min-w-[2.5rem]" },
-  md: { icon: "size-[1.15rem]", pad: "px-3 py-2.5", text: "text-[10px]", minTouch: "min-h-[2.75rem] min-w-[2.75rem]" },
-  lg: { icon: "size-5", pad: "px-3.5 py-3", text: "text-[11px]", minTouch: "min-h-[3.25rem] min-w-[3.25rem]" },
+// The rail gives every item the same fixed width (rather than min-width) so
+// all four buttons render as identical, equally-sized shapes stacked
+// vertically.
+const RAIL_SIZE: Record<NavSize, { icon: string; width: string; padY: string; text: string; minTouch: string }> = {
+  sm: { icon: "size-4", width: "w-16", padY: "py-2", text: "text-[9px]", minTouch: "min-h-[2.5rem]" },
+  md: { icon: "size-[1.15rem]", width: "w-20", padY: "py-2.5", text: "text-[10px]", minTouch: "min-h-[2.75rem]" },
+  lg: { icon: "size-5", width: "w-24", padY: "py-3", text: "text-[11px]", minTouch: "min-h-[3.25rem]" },
 };
 
 function clampFloatingOffset(offset: FloatingOffset, width: number, height: number): FloatingOffset {
@@ -217,7 +205,7 @@ export function BottomDock() {
         <nav
           aria-label="Primary"
           className={cn(
-            "pointer-events-auto flex flex-col items-center gap-1 rounded-2xl border border-border bg-card/95 p-1.5 shadow-2xl shadow-black/30 backdrop-blur-xl transition-all duration-300",
+            "pointer-events-auto flex flex-col items-center gap-1 rounded-2xl border border-white/10 bg-card/30 p-1.5 shadow-2xl shadow-black/40 ring-1 ring-white/5 backdrop-blur-2xl transition-all duration-300",
             mounted ? `${opacityClass} translate-x-0` : "translate-x-4 opacity-0",
           )}
         >
@@ -230,12 +218,13 @@ export function BottomDock() {
                 aria-current={active ? "page" : undefined}
                 className={cn(
                   "group flex flex-col items-center justify-center gap-0.5 rounded-xl font-mono transition-all duration-200",
-                  sizing.pad,
+                  sizing.width,
+                  sizing.padY,
                   sizing.text,
                   sizing.minTouch,
                   active
                     ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+                    : "text-muted-foreground hover:bg-white/10 hover:text-foreground",
                 )}
               >
                 <item.icon
@@ -245,7 +234,7 @@ export function BottomDock() {
                     active ? "scale-110" : "group-hover:scale-105",
                   )}
                 />
-                <span>{item.label}</span>
+                <span className="max-w-full truncate">{item.label}</span>
               </Link>
             );
           })}
@@ -260,8 +249,8 @@ export function BottomDock() {
     <nav
       aria-label="Primary"
       className={cn(
-        "flex items-center gap-1 rounded-full border border-border bg-card/95 p-1.5 shadow-2xl shadow-black/30 backdrop-blur-xl sm:gap-1.5 sm:p-2",
-        isFloating && "shadow-black/40 ring-1 ring-border/50",
+        "grid grid-cols-4 items-stretch gap-1 rounded-full border border-white/10 bg-card/30 p-1.5 shadow-2xl shadow-black/40 ring-1 ring-white/5 backdrop-blur-2xl sm:gap-1.5 sm:p-2",
+        isFloating && "shadow-black/50 ring-white/10",
       )}
     >
       {NAV.map((item) => {
@@ -272,14 +261,13 @@ export function BottomDock() {
             to={item.to}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "group flex min-w-14 flex-col items-center gap-0.5 rounded-full font-mono transition-all duration-200 sm:min-w-16",
-              sizing.padX,
+              "group flex w-full flex-col items-center justify-center gap-0.5 rounded-full font-mono transition-all duration-200",
               sizing.padY,
               sizing.text,
               sizing.minTouch,
               active
                 ? "bg-primary text-primary-foreground shadow-sm"
-                : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+                : "text-muted-foreground hover:bg-white/10 hover:text-foreground",
             )}
           >
             <item.icon
@@ -289,7 +277,7 @@ export function BottomDock() {
                 active ? "scale-110" : "group-hover:scale-105",
               )}
             />
-            <span>{item.label}</span>
+            <span className="max-w-full truncate">{item.label}</span>
           </Link>
         );
       })}
@@ -322,7 +310,7 @@ export function BottomDock() {
               type="button"
               onClick={() => setCollapsed(false)}
               aria-label="Show navigation"
-              className="flex size-10 animate-in items-center justify-center rounded-full border border-border bg-card/95 text-foreground shadow-lg shadow-black/20 backdrop-blur-xl duration-200 fade-in zoom-in-95 hover:scale-105 hover:bg-secondary active:scale-95"
+              className="flex size-10 animate-in items-center justify-center rounded-full border border-white/10 bg-card/30 text-foreground shadow-lg shadow-black/40 ring-1 ring-white/5 backdrop-blur-2xl duration-200 fade-in zoom-in-95 hover:scale-105 hover:bg-white/10 active:scale-95"
             >
               <ChevronUp className="size-4" />
             </button>
@@ -332,7 +320,7 @@ export function BottomDock() {
                 type="button"
                 onClick={() => setCollapsed(true)}
                 aria-label="Collapse navigation"
-                className="absolute -top-3.5 left-1/2 flex size-8 -translate-x-1/2 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-md transition-all duration-200 hover:bg-secondary hover:text-foreground active:scale-90"
+                className="absolute -top-3.5 left-1/2 flex size-8 -translate-x-1/2 items-center justify-center rounded-full border border-white/10 bg-card/40 text-muted-foreground shadow-md backdrop-blur-xl transition-all duration-200 hover:bg-white/10 hover:text-foreground active:scale-90"
               >
                 <ChevronDown className="size-3.5" />
               </button>
@@ -360,7 +348,7 @@ export function BottomDock() {
             type="button"
             onClick={() => setCollapsed(false)}
             aria-label="Show navigation"
-            className="flex size-10 animate-in items-center justify-center rounded-full border border-border bg-card/95 text-foreground shadow-lg shadow-black/20 backdrop-blur-xl duration-200 fade-in zoom-in-95 hover:scale-105 hover:bg-secondary active:scale-95"
+            className="flex size-10 animate-in items-center justify-center rounded-full border border-white/10 bg-card/30 text-foreground shadow-lg shadow-black/40 ring-1 ring-white/5 backdrop-blur-2xl duration-200 fade-in zoom-in-95 hover:scale-105 hover:bg-white/10 active:scale-95"
           >
             <ChevronUp className="size-4" />
           </button>
@@ -370,7 +358,7 @@ export function BottomDock() {
               type="button"
               onClick={() => setCollapsed(true)}
               aria-label="Collapse navigation"
-              className="absolute -top-3.5 left-1/2 flex size-8 -translate-x-1/2 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-md transition-all duration-200 hover:bg-secondary hover:text-foreground active:scale-90"
+              className="absolute -top-3.5 left-1/2 flex size-8 -translate-x-1/2 items-center justify-center rounded-full border border-white/10 bg-card/40 text-muted-foreground shadow-md backdrop-blur-xl transition-all duration-200 hover:bg-white/10 hover:text-foreground active:scale-90"
             >
               <ChevronDown className="size-3.5" />
             </button>
