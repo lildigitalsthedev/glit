@@ -38,6 +38,70 @@ function timeAgo(iso: string) {
   return `${Math.round(hours / 24)}d ago`;
 }
 
+/** A single repository card, used in both the "Pinned" and main grid sections. */
+function RepoTile({
+  repo,
+  index,
+  isFavorite,
+  onToggleFavorite,
+  onOpen,
+  opening,
+}: {
+  repo: RepoCard;
+  index: number;
+  isFavorite: boolean;
+  onToggleFavorite: () => void;
+  onOpen: () => void;
+  opening: boolean;
+}) {
+  return (
+    <article
+      style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
+      className={cn(
+        "group flex animate-in fade-in flex-col rounded-md border bg-card p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md",
+        isFavorite ? "border-primary/30" : "border-border",
+      )}
+    >
+      <div className="flex items-start gap-2">
+        <h2 className="min-w-0 flex-1 truncate font-mono text-sm">
+          <span className="text-muted-foreground">{repo.owner}/</span>
+          {repo.name}
+        </h2>
+        <button
+          onClick={onToggleFavorite}
+          aria-label={isFavorite ? "Remove Favorite" : "Favorite"}
+          title={isFavorite ? "Remove Favorite" : "Favorite"}
+          className="transition-transform duration-150 hover:scale-110 active:scale-95"
+        >
+          <Star
+            className={cn(
+              "size-3.5 transition-colors duration-150",
+              isFavorite ? "fill-primary text-primary" : "text-muted-foreground group-hover:text-foreground",
+            )}
+          />
+        </button>
+      </div>
+      <p className="mt-2 line-clamp-2 min-h-8 text-xs text-muted-foreground">
+        {repo.description ?? "No description"}
+      </p>
+      <div className="mt-3 flex items-center gap-3 font-mono text-[11px] text-muted-foreground">
+        <span className="flex items-center gap-1">
+          {repo.isPrivate ? <Lock className="size-3" /> : <Unlock className="size-3" />}
+          {repo.isPrivate ? "private" : "public"}
+        </span>
+        <span className="flex items-center gap-1">
+          <GitBranch className="size-3" />
+          {repo.defaultBranch}
+        </span>
+        <span className="ml-auto">{timeAgo(repo.updatedAt)}</span>
+      </div>
+      <Button size="sm" className="mt-4" disabled={!repo.canPush || opening} onClick={onOpen}>
+        {repo.canPush ? "Open in workspace" : "Read-only"}
+      </Button>
+    </article>
+  );
+}
+
 function Dashboard() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -108,6 +172,12 @@ function Dashboard() {
   const filtered = (repos.data ?? [])
     .filter((repo) => (onlyFavorites ? favorites.has(repo.fullName) : true))
     .filter((repo) => repo.fullName.toLowerCase().includes(query.toLowerCase()));
+
+  // Pinned (favorited) repositories always float to the top of the grid,
+  // in their own labeled section, regardless of the search term or the
+  // "Favorites" filter toggle.
+  const pinned = filtered.filter((repo) => favorites.has(repo.fullName));
+  const unpinned = filtered.filter((repo) => !favorites.has(repo.fullName));
 
   if (accounts.isLoading) {
     return (
@@ -217,60 +287,46 @@ function Dashboard() {
         </p>
       )}
 
-      <section className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {filtered.map((repo, index) => (
-          <article
-            key={repo.id}
-            style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
-            className="group flex animate-in fade-in flex-col rounded-md border border-border bg-card p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md"
-          >
-            <div className="flex items-start gap-2">
-              <h2 className="min-w-0 flex-1 truncate font-mono text-sm">
-                <span className="text-muted-foreground">{repo.owner}/</span>
-                {repo.name}
-              </h2>
-              <button
-                onClick={() => toggleFavorite.mutate(repo.fullName)}
-                aria-label="Toggle favorite"
-                className="transition-transform duration-150 hover:scale-110 active:scale-95"
-              >
-                <Star
-                  className={cn(
-                    "size-3.5 transition-colors duration-150",
-                    favorites.has(repo.fullName)
-                      ? "fill-primary text-primary"
-                      : "text-muted-foreground group-hover:text-foreground",
-                  )}
-                />
-              </button>
-            </div>
-            <p className="mt-2 line-clamp-2 min-h-8 text-xs text-muted-foreground">
-              {repo.description ?? "No description"}
-            </p>
-            <div className="mt-3 flex items-center gap-3 font-mono text-[11px] text-muted-foreground">
-              <span className="flex items-center gap-1">
-                {repo.isPrivate ? <Lock className="size-3" /> : <Unlock className="size-3" />}
-                {repo.isPrivate ? "private" : "public"}
-              </span>
-              <span className="flex items-center gap-1">
-                <GitBranch className="size-3" />
-                {repo.defaultBranch}
-              </span>
-              <span className="ml-auto">{timeAgo(repo.updatedAt)}</span>
-            </div>
-            <Button
-              size="sm"
-              className="mt-4"
-              disabled={!repo.canPush || openRepo.isPending}
-              onClick={() =>
-                openRepo.mutate({ fullName: repo.fullName, defaultBranch: repo.defaultBranch })
-              }
-            >
-              {repo.canPush ? "Open in workspace" : "Read-only"}
-            </Button>
-          </article>
-        ))}
-      </section>
+      {pinned.length > 0 && (
+        <section className="mt-4">
+          <p className="label-caps flex items-center gap-1.5 text-muted-foreground">
+            <Star className="size-3 fill-primary text-primary" />
+            Pinned
+          </p>
+          <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {pinned.map((repo, index) => (
+              <RepoTile
+                key={repo.id}
+                repo={repo}
+                index={index}
+                isFavorite
+                onToggleFavorite={() => toggleFavorite.mutate(repo.fullName)}
+                onOpen={() => openRepo.mutate({ fullName: repo.fullName, defaultBranch: repo.defaultBranch })}
+                opening={openRepo.isPending}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {unpinned.length > 0 && (
+        <section className="mt-6">
+          {pinned.length > 0 && <p className="label-caps text-muted-foreground">All repositories</p>}
+          <div className={cn("grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3", pinned.length > 0 && "mt-2")}>
+            {unpinned.map((repo, index) => (
+              <RepoTile
+                key={repo.id}
+                repo={repo}
+                index={index}
+                isFavorite={false}
+                onToggleFavorite={() => toggleFavorite.mutate(repo.fullName)}
+                onOpen={() => openRepo.mutate({ fullName: repo.fullName, defaultBranch: repo.defaultBranch })}
+                opening={openRepo.isPending}
+              />
+            ))}
+          </div>
+        </section>
+      )}
 
       {!repos.isLoading && filtered.length === 0 && (
         <EmptyState
@@ -278,7 +334,11 @@ function Dashboard() {
           size="compact"
           icon={SearchX}
           title="No repositories match."
-          description="Try a different search term or clear the favorites filter."
+          description={
+            onlyFavorites
+              ? "You haven't favorited any repositories yet. Tap the star on a repo to pin it here."
+              : "Try a different search term or clear the favorites filter."
+          }
         />
       )}
     </main>
