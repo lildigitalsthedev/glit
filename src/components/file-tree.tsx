@@ -157,6 +157,26 @@ export function FileTree({
     });
   }, [activePath]);
 
+  // Whenever the active folder changes (e.g. the user clicks a breadcrumb),
+  // make sure that folder and all of its ancestors are expanded so the
+  // destination is actually visible in the tree.
+  useEffect(() => {
+    if (!activeFolder) return;
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      let changed = false;
+      const parts = activeFolder.split("/").filter(Boolean);
+      for (let i = 1; i <= parts.length; i++) {
+        const ancestor = parts.slice(0, i).join("/");
+        if (!next.has(ancestor)) {
+          next.add(ancestor);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [activeFolder]);
+
   function toggleFolder(path: string) {
     setExpanded((prev) => {
       const next = new Set(prev);

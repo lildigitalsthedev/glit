@@ -64,6 +64,7 @@ import { BulkUploadDialog } from "@/components/bulk-upload-dialog";
 import { UploadFolderDialog } from "@/components/upload-folder-dialog";
 import { UploadZipDialog } from "@/components/upload-zip-dialog";
 import { FileTree } from "@/components/file-tree";
+import { FileBreadcrumbs } from "@/components/breadcrumb-nav";
 import { EmptyState } from "@/components/empty-state";
 import { cn } from "@/lib/utils";
 
@@ -366,6 +367,7 @@ function Workspace() {
   const fileTreePanel = (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="border-b border-border p-2">
+        <FileBreadcrumbs path={activeFolder} onNavigate={setActiveFolder} className="mb-2" />
         <Input
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
