@@ -143,7 +143,7 @@ function Dashboard() {
         </div>
       </div>
 
-      <section className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <section className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {(accounts.data ?? []).map((account) => (
           <AccountRow key={account.id} {...account} />
         ))}
@@ -192,7 +192,7 @@ function Dashboard() {
       </div>
 
       {repos.isLoading && (
-        <section className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <section className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="flex flex-col rounded-md border border-border bg-card p-4">
               <div className="flex items-start gap-2">
@@ -217,7 +217,7 @@ function Dashboard() {
         </p>
       )}
 
-      <section className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <section className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {filtered.map((repo, index) => (
           <article
             key={repo.id}

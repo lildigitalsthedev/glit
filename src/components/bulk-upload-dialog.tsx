@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Dialog,
   DialogContent,
@@ -232,7 +231,7 @@ export function BulkUploadDialog({
                 <span>{formatBytes(totalSize)} total</span>
               </div>
 
-              <ScrollArea className="max-h-56 rounded-md border border-border">
+              <div className="max-h-56 overflow-y-auto rounded-md border border-border overscroll-contain">
                 <div className="divide-y divide-border">
                   {pending.map((item) => {
                     const overwrites = existingPaths.includes(item.path);
@@ -270,7 +269,7 @@ export function BulkUploadDialog({
                     );
                   })}
                 </div>
-              </ScrollArea>
+              </div>
 
               <Button
                 variant="ghost"
