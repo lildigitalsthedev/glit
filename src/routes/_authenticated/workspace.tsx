@@ -45,6 +45,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { RenameRepositoryDialog } from "@/components/rename-repository-dialog";
+import { NewFileDialog } from "@/components/new-file-dialog";
 import { FileTree } from "@/components/file-tree";
 import { cn } from "@/lib/utils";
 
@@ -111,6 +112,7 @@ function Workspace() {
   const [filter, setFilter] = useState("");
   const [renameOpen, setRenameOpen] = useState(false);
   const [activeFolder, setActiveFolder] = useState<string | null>(null);
+  const [newFileOpen, setNewFileOpen] = useState(false);
 
   useEffect(() => {
     if (!branch && prefs.data?.defaultBranch) setBranch(prefs.data.defaultBranch);
@@ -225,6 +227,16 @@ function Workspace() {
     void queryClient.invalidateQueries({ queryKey: ["prefs"] });
     void queryClient.invalidateQueries({ queryKey: ["branches"] });
     void queryClient.invalidateQueries({ queryKey: ["tree"] });
+  }
+
+  function handleCreateFile(fullPath: string) {
+    setPath(fullPath);
+    setContent("");
+    setOriginal("");
+    setBaseSha(null);
+    setShowDiff(false);
+    const lastSlash = fullPath.lastIndexOf("/");
+    setActiveFolder(lastSlash === -1 ? null : fullPath.slice(0, lastSlash));
   }
 
   function handleRefreshRepository() {
@@ -362,21 +374,22 @@ function Workspace() {
             Upload
             <input type="file" className="hidden" onChange={(e) => onUpload(e.target.files)} />
           </label>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setPath("");
-              setContent("");
-              setOriginal("");
-              setBaseSha(null);
-            }}
-          >
+          <Button variant="outline" size="sm" onClick={() => setNewFileOpen(true)}>
             <FilePlus className="size-3.5" />
             New file
           </Button>
         </div>
       </div>
+
+      <NewFileDialog
+        open={newFileOpen}
+        onOpenChange={setNewFileOpen}
+        activeFolder={activeFolder}
+        existingPaths={(tree.data?.nodes ?? [])
+          .filter((n) => n.type === "blob")
+          .map((n) => n.path)}
+        onCreate={handleCreateFile}
+      />
 
       <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[260px_1fr_320px]">
         <aside className="flex min-h-0 flex-col border-r border-border">
