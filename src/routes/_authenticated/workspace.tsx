@@ -481,7 +481,7 @@ function Workspace() {
   );
 
   return (
-    <main className="flex h-[calc(100vh-3rem)] flex-col">
+    <main className="flex h-[calc(100vh-3rem-var(--dock-space,7rem))] flex-col">
       <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2 sm:gap-3 sm:px-4">
         <Button
           variant="outline"
