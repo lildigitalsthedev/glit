@@ -115,3 +115,24 @@ export const pushFile = createServerFn({ method: "POST" })
     const { pushSingleFile } = await import("./github/push.server");
     return pushSingleFile(context.supabase, context.userId, data);
   });
+
+export interface RepoZipResult {
+  filename: string;
+  base64: string;
+}
+
+export const downloadRepoZip = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { accountId: string; fullName: string; branch: string }) => data)
+  .handler(async ({ data, context }): Promise<RepoZipResult> => {
+    const { loadAccountToken } = await import("./github/tokens.server");
+    const { downloadZipball } = await import("./github/api.server");
+    const { token } = await loadAccountToken(context.supabase, data.accountId);
+    const { buffer } = await downloadZipball(token, data.fullName, data.branch);
+    const repoName = data.fullName.split("/").pop() ?? data.fullName;
+    const safeBranch = data.branch.replace(/[^a-zA-Z0-9._-]+/g, "-");
+    return {
+      filename: `${repoName}-${safeBranch}.zip`,
+      base64: buffer.toString("base64"),
+    };
+  });
