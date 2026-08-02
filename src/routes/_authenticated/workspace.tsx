@@ -23,6 +23,7 @@ import {
   listRepoTree,
   readRepoFile,
   pushFile,
+  downloadRepoZip,
 } from "@/lib/github.functions";
 import { getPreferences } from "@/lib/workspace.functions";
 import { Button } from "@/components/ui/button";
@@ -88,6 +89,7 @@ function Workspace() {
   const treeFn = useServerFn(listRepoTree);
   const readFn = useServerFn(readRepoFile);
   const pushFn = useServerFn(pushFile);
+  const zipFn = useServerFn(downloadRepoZip);
 
   const prefs = useQuery({ queryKey: ["prefs"], queryFn: () => prefsFn() });
   const accountId = prefs.data?.activeAccountId ?? null;
@@ -170,11 +172,38 @@ function Workspace() {
   const dirty = content !== original;
 
   // --- Repository actions menu handlers -------------------------------
-  // Download ZIP, Rename Repository and Refresh Repository are wired up
-  // as separate features; they're stubbed here so the menu is fully
-  // functional and extensible while those land.
+  // Rename Repository and Refresh Repository are wired up as separate
+  // features; they're stubbed here so the menu stays fully functional
+  // and extensible while those land.
   function handleDownloadZip() {
-    toast.info("Download ZIP is coming in the next update.");
+    if (!accountId || !fullName) return;
+    if (!branch) {
+      toast.error("Pick a branch before downloading.");
+      return;
+    }
+    toast.promise(
+      zipFn({ data: { accountId, fullName, branch } }).then((result) => {
+        const byteChars = atob(result.base64);
+        const bytes = new Uint8Array(byteChars.length);
+        for (let i = 0; i < byteChars.length; i++) bytes[i] = byteChars.charCodeAt(i);
+        const blob = new Blob([bytes], { type: "application/zip" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = result.filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+        return result.filename;
+      }),
+      {
+        loading: "Preparing ZIP download…",
+        success: (filename) => `Downloaded ${filename}`,
+        error: (error: Error) =>
+          error?.message || "Couldn't download the repository ZIP. Try again.",
+      },
+    );
   }
 
   function handleRenameRepository() {
