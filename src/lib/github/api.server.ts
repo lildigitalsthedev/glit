@@ -97,6 +97,13 @@ export function listBranches(token: string, fullName: string) {
   return ghFetch<GhBranch[]>(token, `/repos/${fullName}/branches?per_page=100`);
 }
 
+export function renameRepo(token: string, fullName: string, newName: string) {
+  return ghFetch<GhRepo>(token, `/repos/${fullName}`, {
+    method: "PATCH",
+    body: JSON.stringify({ name: newName }),
+  });
+}
+
 export interface GhTreeEntry {
   path: string;
   type: "blob" | "tree" | "commit";
