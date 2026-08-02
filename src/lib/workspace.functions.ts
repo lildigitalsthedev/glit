@@ -184,6 +184,96 @@ export const savePath = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export interface RecentFile {
+  id: string;
+  fullName: string;
+  branch: string;
+  path: string;
+  openCount: number;
+  lastOpenedAt: string;
+}
+
+/**
+ * The last files the user opened or pushed in this repository/branch,
+ * newest first. Backs the "Recent Files" panel so people can jump straight
+ * back into what they were just working on — including across sessions.
+ */
+export const listRecentFiles = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { fullName: string; branch: string }) => data)
+  .handler(async ({ data, context }): Promise<RecentFile[]> => {
+    const { data: rows, error } = await context.supabase
+      .from("recent_files")
+      .select("id, full_name, branch, path, open_count, last_opened_at")
+      .eq("full_name", data.fullName)
+      .eq("branch", data.branch)
+      .order("last_opened_at", { ascending: false })
+      .limit(8);
+    if (error) throw new Error(error.message);
+    return (rows ?? []).map((row) => ({
+      id: row.id as string,
+      fullName: row.full_name as string,
+      branch: row.branch as string,
+      path: row.path as string,
+      openCount: row.open_count as number,
+      lastOpenedAt: row.last_opened_at as string,
+    }));
+  });
+
+/**
+ * Records that a file was just opened or edited. Upserts so repeatedly
+ * touching the same file just bumps its timestamp and open count instead of
+ * growing the table, keeping the most-relevant files at the top.
+ */
+export const touchRecentFile = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    (data: { accountId?: string | null; fullName: string; branch: string; path: string }) => data,
+  )
+  .handler(async ({ data, context }) => {
+    const { data: existing } = await context.supabase
+      .from("recent_files")
+      .select("id, open_count")
+      .eq("full_name", data.fullName)
+      .eq("branch", data.branch)
+      .eq("path", data.path)
+      .maybeSingle();
+    if (existing) {
+      const { error } = await context.supabase
+        .from("recent_files")
+        .update({
+          open_count: (existing.open_count as number) + 1,
+          last_opened_at: new Date().toISOString(),
+        })
+        .eq("id", existing.id as string);
+      if (error) throw new Error(error.message);
+      return { ok: true };
+    }
+    const { error } = await context.supabase.from("recent_files").insert({
+      user_id: context.userId,
+      account_id: data.accountId ?? null,
+      full_name: data.fullName,
+      branch: data.branch,
+      path: data.path,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+/** Clears the recent files list for the current repository/branch. */
+export const clearRecentFiles = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { fullName: string; branch: string }) => data)
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("recent_files")
+      .delete()
+      .eq("full_name", data.fullName)
+      .eq("branch", data.branch);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 export interface PushRecord {
   id: string;
   fullName: string;

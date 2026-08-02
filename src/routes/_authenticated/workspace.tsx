@@ -34,7 +34,13 @@ import {
   downloadRepoZip,
   listRepoCommits,
 } from "@/lib/github.functions";
-import { getPreferences, updatePreferences } from "@/lib/workspace.functions";
+import {
+  getPreferences,
+  updatePreferences,
+  listRecentFiles,
+  touchRecentFile,
+  clearRecentFiles,
+} from "@/lib/workspace.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -67,6 +73,7 @@ import { UploadFolderDialog } from "@/components/upload-folder-dialog";
 import { UploadZipDialog } from "@/components/upload-zip-dialog";
 import { FileTree } from "@/components/file-tree";
 import { FileBreadcrumbs } from "@/components/breadcrumb-nav";
+import { RecentFiles } from "@/components/recent-files";
 import { EmptyState } from "@/components/empty-state";
 import { cn } from "@/lib/utils";
 
@@ -119,6 +126,9 @@ function Workspace() {
   const deleteFileFn = useServerFn(deleteFile);
   const zipFn = useServerFn(downloadRepoZip);
   const commitsFn = useServerFn(listRepoCommits);
+  const recentFilesFn = useServerFn(listRecentFiles);
+  const touchRecentFileFn = useServerFn(touchRecentFile);
+  const clearRecentFilesFn = useServerFn(clearRecentFiles);
 
   const prefs = useQuery({ queryKey: ["prefs"], queryFn: () => prefsFn() });
   const accountId = prefs.data?.activeAccountId ?? null;
@@ -166,6 +176,33 @@ function Workspace() {
     select: (commits) => commits[0] ?? null,
   });
 
+  const recentFiles = useQuery({
+    queryKey: ["recent-files", fullName, branch],
+    queryFn: () => recentFilesFn({ data: { fullName: fullName!, branch } }),
+    enabled: Boolean(accountId && fullName && branch),
+  });
+
+  // Fire-and-forget: records that a file was just opened or edited so it
+  // shows up (and stays sorted) in the Recent Files panel. Failures here
+  // shouldn't interrupt the user's actual work, so they're swallowed.
+  function recordRecentFile(target: string) {
+    if (!fullName || !branch) return;
+    touchRecentFileFn({
+      data: { accountId: accountId ?? undefined, fullName, branch, path: target },
+    })
+      .then(() => void queryClient.invalidateQueries({ queryKey: ["recent-files", fullName, branch] }))
+      .catch(() => {
+        /* non-critical — recent files is a convenience feature */
+      });
+  }
+
+  function handleClearRecentFiles() {
+    if (!fullName || !branch) return;
+    clearRecentFilesFn({ data: { fullName, branch } })
+      .then(() => void queryClient.invalidateQueries({ queryKey: ["recent-files", fullName, branch] }))
+      .catch((error: Error) => toast.error(error.message || "Couldn't clear recent files."));
+  }
+
   const openFile = useMutation({
     mutationFn: (target: string) =>
       readFn({ data: { accountId: accountId!, fullName: fullName!, branch, path: target } }),
@@ -178,6 +215,7 @@ function Workspace() {
       const lastSlash = target.lastIndexOf("/");
       setActiveFolder(lastSlash === -1 ? null : target.slice(0, lastSlash));
       setMobileSidebarOpen(false);
+      recordRecentFile(target);
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -202,6 +240,7 @@ function Workspace() {
       setMessage("");
       setDescription("");
       setMobileCommitOpen(false);
+      recordRecentFile(path);
       void queryClient.invalidateQueries({ queryKey: ["tree"] });
       void queryClient.invalidateQueries({ queryKey: ["pushes"] });
     },
@@ -291,6 +330,7 @@ function Workspace() {
       toast.success(
         `Pushed ${result.filesPushed} file${result.filesPushed === 1 ? "" : "s"} (${result.commitSha})`,
       );
+      for (const uploaded of args.files) recordRecentFile(uploaded.path);
       void queryClient.invalidateQueries({ queryKey: ["tree"] });
       void queryClient.invalidateQueries({ queryKey: ["commits"] });
       void queryClient.invalidateQueries({ queryKey: ["pushes"] });
@@ -428,6 +468,13 @@ function Workspace() {
           className="h-8 font-mono text-xs"
         />
       </div>
+      <RecentFiles
+        files={recentFiles.data ?? []}
+        loading={recentFiles.isLoading}
+        activePath={path}
+        onOpenFile={(target) => openFile.mutate(target)}
+        onClear={handleClearRecentFiles}
+      />
       <div className="min-h-0 flex-1 overflow-auto p-1">
         <FileTree
           nodes={tree.data?.nodes ?? []}

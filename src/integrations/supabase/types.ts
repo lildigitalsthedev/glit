@@ -182,6 +182,50 @@ export type Database = {
         }
         Relationships: []
       }
+      recent_files: {
+        Row: {
+          account_id: string | null
+          branch: string
+          created_at: string
+          full_name: string
+          id: string
+          last_opened_at: string
+          open_count: number
+          path: string
+          user_id: string
+        }
+        Insert: {
+          account_id?: string | null
+          branch: string
+          created_at?: string
+          full_name: string
+          id?: string
+          last_opened_at?: string
+          open_count?: number
+          path: string
+          user_id: string
+        }
+        Update: {
+          account_id?: string | null
+          branch?: string
+          created_at?: string
+          full_name?: string
+          id?: string
+          last_opened_at?: string
+          open_count?: number
+          path?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recent_files_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "github_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recent_pushes: {
         Row: {
           account_id: string | null
