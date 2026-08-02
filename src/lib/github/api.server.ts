@@ -189,6 +189,90 @@ export function listCommits(token: string, fullName: string, branch: string, pat
   return ghFetch<GhCommit[]>(token, `/repos/${fullName}/commits?${q.toString()}`);
 }
 
+export interface GhRef {
+  ref: string;
+  object: { sha: string; type: string };
+}
+
+export function getRef(token: string, fullName: string, branch: string) {
+  return ghFetch<GhRef>(
+    token,
+    `/repos/${fullName}/git/ref/heads/${branch.split("/").map(encodeURIComponent).join("/")}`,
+  );
+}
+
+export interface GhBlob {
+  sha: string;
+  url: string;
+}
+
+export function createBlob(
+  token: string,
+  fullName: string,
+  args: { content: string; encoding: "utf-8" | "base64" },
+) {
+  return ghFetch<GhBlob>(token, `/repos/${fullName}/git/blobs`, {
+    method: "POST",
+    body: JSON.stringify(args),
+  });
+}
+
+export interface GhNewTreeEntry {
+  path: string;
+  mode: "100644" | "100755" | "040000" | "160000" | "120000";
+  type: "blob" | "tree" | "commit";
+  sha: string | null;
+}
+
+export interface GhNewTree {
+  sha: string;
+  tree: GhTreeEntry[];
+}
+
+export function createTree(
+  token: string,
+  fullName: string,
+  args: { tree: GhNewTreeEntry[]; base_tree?: string },
+) {
+  return ghFetch<GhNewTree>(token, `/repos/${fullName}/git/trees`, {
+    method: "POST",
+    body: JSON.stringify(args),
+  });
+}
+
+export interface GhNewCommit {
+  sha: string;
+  html_url: string;
+  message: string;
+}
+
+export function createCommit(
+  token: string,
+  fullName: string,
+  args: { message: string; tree: string; parents: string[] },
+) {
+  return ghFetch<GhNewCommit>(token, `/repos/${fullName}/git/commits`, {
+    method: "POST",
+    body: JSON.stringify(args),
+  });
+}
+
+export function updateRef(
+  token: string,
+  fullName: string,
+  branch: string,
+  args: { sha: string; force?: boolean },
+) {
+  return ghFetch<GhRef>(
+    token,
+    `/repos/${fullName}/git/refs/heads/${branch.split("/").map(encodeURIComponent).join("/")}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(args),
+    },
+  );
+}
+
 export async function downloadZipball(
   token: string,
   fullName: string,
