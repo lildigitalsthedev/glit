@@ -25,7 +25,7 @@ const FREE_FEATURES = [
   "1 connected GitHub account",
   "Unlimited public & private repositories",
   "Full file editor with diff view",
-  "Bulk, folder & ZIP uploads",
+  "Folder & ZIP uploads",
   "Smart path prediction",
   "Recent files & favorite paths",
   "Fast search across files, folders & extensions",
@@ -34,6 +34,7 @@ const FREE_FEATURES = [
 const PRO_FEATURES = [
   "Everything in Free",
   "Unlimited connected GitHub accounts",
+  "Batch file uploads — many files, one commit",
   "Bring your own AI (OpenAI, Claude, Gemini, and more)",
   "AI code generation directly in the editor",
   "AI file editing from natural language",

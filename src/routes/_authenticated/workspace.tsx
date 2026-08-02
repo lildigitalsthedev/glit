@@ -11,6 +11,7 @@ import {
   FolderGit2,
   GitBranch,
   Loader2,
+  Lock,
   Menu,
   Upload,
   UploadCloud,
@@ -78,11 +79,13 @@ import { NewFileDialog } from "@/components/new-file-dialog";
 import { BulkUploadDialog } from "@/components/bulk-upload-dialog";
 import { UploadFolderDialog } from "@/components/upload-folder-dialog";
 import { UploadZipDialog } from "@/components/upload-zip-dialog";
+import { ProUpgradeDialog } from "@/components/pro-upgrade-dialog";
 import { FileTree } from "@/components/file-tree";
 import { FileBreadcrumbs } from "@/components/breadcrumb-nav";
 import { RecentFiles } from "@/components/recent-files";
 import { FavoritePaths } from "@/components/favorite-paths";
 import { EmptyState } from "@/components/empty-state";
+import { usePlan } from "@/hooks/usePlan";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/workspace")({
@@ -145,6 +148,10 @@ function Workspace() {
   const accountId = prefs.data?.activeAccountId ?? null;
   const fullName = prefs.data?.activeRepo ?? null;
 
+  // Reads off the same ["prefs"] cache already populated above, so this
+  // doesn't trigger an extra fetch — see usePlan for the shared plan logic.
+  const { isPro } = usePlan();
+
   const [branch, setBranch] = useState<string>("");
   const [path, setPath] = useState("");
   const [content, setContent] = useState("");
@@ -159,6 +166,7 @@ function Workspace() {
   const [activeFolder, setActiveFolder] = useState<string | null>(null);
   const [newFileOpen, setNewFileOpen] = useState(false);
   const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
+  const [bulkUploadUpgradeOpen, setBulkUploadUpgradeOpen] = useState(false);
   const [uploadFolderOpen, setUploadFolderOpen] = useState(false);
   const [uploadZipOpen, setUploadZipOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
@@ -352,6 +360,16 @@ function Workspace() {
     setShowDiff(false);
     const lastSlash = fullPath.lastIndexOf("/");
     setActiveFolder(lastSlash === -1 ? null : fullPath.slice(0, lastSlash));
+  }
+
+  // Batch file uploads are a GitPush Pro feature — free accounts see the
+  // upgrade dialog instead of the picker.
+  function openBulkUpload() {
+    if (isPro) {
+      setBulkUploadOpen(true);
+    } else {
+      setBulkUploadUpgradeOpen(true);
+    }
   }
 
   async function handleBulkCommit(args: {
@@ -781,9 +799,16 @@ function Workspace() {
                 <Upload className="size-3.5" />
                 Upload
               </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setBulkUploadOpen(true)}>
-                <UploadCloud className="size-3.5" />
+              <DropdownMenuItem onSelect={openBulkUpload}>
+                {isPro ? (
+                  <UploadCloud className="size-3.5" />
+                ) : (
+                  <Lock className="size-3.5" />
+                )}
                 Bulk upload
+                {!isPro && (
+                  <span className="ml-auto text-[10px] text-muted-foreground">Pro</span>
+                )}
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => setUploadFolderOpen(true)}>
                 <FolderUp className="size-3.5" />
@@ -820,9 +845,13 @@ function Workspace() {
             variant="outline"
             size="sm"
             className="hidden sm:inline-flex"
-            onClick={() => setBulkUploadOpen(true)}
+            onClick={openBulkUpload}
           >
-            <UploadCloud className="size-3.5" />
+            {isPro ? (
+              <UploadCloud className="size-3.5" />
+            ) : (
+              <Lock className="size-3.5" />
+            )}
             <span className="hidden sm:inline">Bulk upload</span>
           </Button>
           <Button
@@ -880,6 +909,18 @@ function Workspace() {
         activeFolder={activeFolder}
         existingPaths={filePaths}
         onCommit={handleBulkCommit}
+      />
+
+      <ProUpgradeDialog
+        open={bulkUploadUpgradeOpen}
+        onOpenChange={setBulkUploadUpgradeOpen}
+        title="Batch uploads are a Pro feature"
+        description="Free accounts upload one file at a time. Upgrade to GitPush Pro to drag, drop, and push multiple files in a single commit."
+        features={[
+          "Upload any number of files in one go",
+          "Drag & drop or browse, with previews before you push",
+          "Everything lands in a single commit",
+        ]}
       />
 
       <UploadFolderDialog

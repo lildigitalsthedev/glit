@@ -1,9 +1,8 @@
 import { useState } from "react";
-import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Github, KeyRound, Loader2, Lock, RefreshCw, Sparkles, Trash2 } from "lucide-react";
+import { Github, KeyRound, Loader2, Lock, RefreshCw, Trash2 } from "lucide-react";
 import {
   connectWithToken,
   deleteAccount,
@@ -23,8 +22,8 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
+import { ProUpgradeDialog } from "@/components/pro-upgrade-dialog";
 import { cn } from "@/lib/utils";
 
 /** Free plan tops out at a single connected GitHub account (see pricing). */
@@ -37,6 +36,7 @@ export function useAccounts() {
 
 export function ConnectGithubDialog({ trigger }: { trigger?: React.ReactNode }) {
   const [open, setOpen] = useState(false);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [token, setToken] = useState("");
   const [label, setLabel] = useState("");
   const queryClient = useQueryClient();
@@ -91,126 +91,108 @@ export function ConnectGithubDialog({ trigger }: { trigger?: React.ReactNode }) 
   });
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger ?? (
-          <Button size="sm" variant={atLimit ? "outline" : "default"}>
-            {atLimit ? <Lock className="size-4" /> : <Github className="size-4" />}
-            {atLimit ? "Add account" : "Connect GitHub"}
-          </Button>
-        )}
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
-        {atLimit ? (
-          <>
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Sparkles className="size-4 text-primary" />
-                Unlock more accounts with Pro
-              </DialogTitle>
-              <DialogDescription>
-                Free is limited to {FREE_ACCOUNT_LIMIT} connected GitHub account. Upgrade to GitPush
-                Pro to connect unlimited accounts and switch between them instantly.
-              </DialogDescription>
-            </DialogHeader>
+    <>
+      {trigger ? (
+        <span onClick={() => (atLimit ? setUpgradeOpen(true) : setOpen(true))}>{trigger}</span>
+      ) : (
+        <Button
+          size="sm"
+          variant={atLimit ? "outline" : "default"}
+          onClick={() => (atLimit ? setUpgradeOpen(true) : setOpen(true))}
+        >
+          {atLimit ? <Lock className="size-4" /> : <Github className="size-4" />}
+          {atLimit ? "Add account" : "Connect GitHub"}
+        </Button>
+      )}
 
-            <div className="space-y-4">
-              <ul className="space-y-2.5">
-                {[
-                  "Unlimited connected GitHub accounts",
-                  "Instant switching, right where you work",
-                  "AI tools, prompt library & more"].map((feature) => (
-                  <li key={feature} className="flex items-start gap-2 text-sm">
-                    <Sparkles className="mt-0.5 size-3.5 shrink-0 text-primary" />
-                    <span className="text-foreground">{feature}</span>
-                  </li>
-                ))}
-              </ul>
-              <Button asChild className="w-full" onClick={() => setOpen(false)}>
-                <Link to="/pricing">
-                  <Sparkles className="size-4" />
-                  Upgrade to GitPush Pro — $12/mo
-                </Link>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Connect a GitHub account</DialogTitle>
+            <DialogDescription>
+              Tokens are encrypted before storage and every GitHub call happens server-side.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6">
+            <div className="space-y-3">
+              <p className="label-caps">Recommended</p>
+              <Button
+                className="w-full"
+                onClick={() => oauthMutation.mutate()}
+                disabled={oauthMutation.isPending || oauth?.available === false}
+              >
+                {oauthMutation.isPending ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Github className="size-4" />
+                )}
+                Authorize with GitHub
+              </Button>
+              {oauth?.available === false && (
+                <p className="text-xs text-muted-foreground">
+                  GitHub OAuth credentials aren&apos;t configured for this app yet — use a
+                  personal access token below in the meantime.
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-3 border-t border-border pt-5">
+              <p className="label-caps">Personal access token</p>
+              <div className="space-y-2">
+                <Label htmlFor="pat">Token</Label>
+                <Input
+                  id="pat"
+                  value={token}
+                  onChange={(e) => setToken(e.target.value)}
+                  placeholder="ghp_… or github_pat_…"
+                  className="font-mono text-xs"
+                  autoComplete="off"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Needs the <span className="font-mono text-code-string">repo</span> scope.
+                  Fine-grained tokens need Contents: read &amp; write.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="label">Label (optional)</Label>
+                <Input
+                  id="label"
+                  value={label}
+                  onChange={(e) => setLabel(e.target.value)}
+                  placeholder="Work account"
+                />
+              </div>
+              <Button
+                variant="outline"
+                className="w-full"
+                disabled={!token.trim() || patMutation.isPending}
+                onClick={() => patMutation.mutate()}
+              >
+                {patMutation.isPending ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <KeyRound className="size-4" />
+                )}
+                Connect with token
               </Button>
             </div>
-          </>
-        ) : (
-          <>
-            <DialogHeader>
-              <DialogTitle>Connect a GitHub account</DialogTitle>
-              <DialogDescription>
-                Tokens are encrypted before storage and every GitHub call happens server-side.
-              </DialogDescription>
-            </DialogHeader>
+          </div>
+        </DialogContent>
+      </Dialog>
 
-            <div className="space-y-6">
-              <div className="space-y-3">
-                <p className="label-caps">Recommended</p>
-                <Button
-                  className="w-full"
-                  onClick={() => oauthMutation.mutate()}
-                  disabled={oauthMutation.isPending || oauth?.available === false}
-                >
-                  {oauthMutation.isPending ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    <Github className="size-4" />
-                  )}
-                  Authorize with GitHub
-                </Button>
-                {oauth?.available === false && (
-                  <p className="text-xs text-muted-foreground">
-                    GitHub OAuth credentials aren&apos;t configured for this app yet — use a
-                    personal access token below in the meantime.
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-3 border-t border-border pt-5">
-                <p className="label-caps">Personal access token</p>
-                <div className="space-y-2">
-                  <Label htmlFor="pat">Token</Label>
-                  <Input
-                    id="pat"
-                    value={token}
-                    onChange={(e) => setToken(e.target.value)}
-                    placeholder="ghp_… or github_pat_…"
-                    className="font-mono text-xs"
-                    autoComplete="off"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Needs the <span className="font-mono text-code-string">repo</span> scope.
-                    Fine-grained tokens need Contents: read &amp; write.
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="label">Label (optional)</Label>
-                  <Input
-                    id="label"
-                    value={label}
-                    onChange={(e) => setLabel(e.target.value)}
-                    placeholder="Work account"
-                  />
-                </div>
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  disabled={!token.trim() || patMutation.isPending}
-                  onClick={() => patMutation.mutate()}
-                >
-                  {patMutation.isPending ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    <KeyRound className="size-4" />
-                  )}
-                  Connect with token
-                </Button>
-              </div>
-            </div>
-          </>
-        )}
-      </DialogContent>
-    </Dialog>
+      <ProUpgradeDialog
+        open={upgradeOpen}
+        onOpenChange={setUpgradeOpen}
+        title="Unlock more accounts with Pro"
+        description={`Free is limited to ${FREE_ACCOUNT_LIMIT} connected GitHub account. Upgrade to GitPush Pro to connect unlimited accounts and switch between them instantly.`}
+        features={[
+          "Unlimited connected GitHub accounts",
+          "Instant switching, right where you work",
+          "AI tools, prompt library & more",
+        ]}
+      />
+    </>
   );
 }
 
