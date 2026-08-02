@@ -18,9 +18,12 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur">
+      <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur transition-shadow">
         <div className="flex h-12 items-center gap-6 px-4">
-          <Link to="/app" className="flex items-center gap-2 font-mono text-sm font-semibold">
+          <Link
+            to="/app"
+            className="flex items-center gap-2 font-mono text-sm font-semibold transition-opacity hover:opacity-80"
+          >
             <Terminal className="size-4 text-primary" />
             gitpush
           </Link>
@@ -30,10 +33,10 @@ export function AppShell({ children }: { children: ReactNode }) {
                 key={item.to}
                 to={item.to}
                 className={cn(
-                  "flex items-center gap-2 rounded-md px-2.5 py-1.5 font-mono text-xs transition-colors",
+                  "relative flex items-center gap-2 rounded-md px-2.5 py-1.5 font-mono text-xs transition-all duration-150",
                   pathname === item.to
                     ? "bg-secondary text-foreground"
-                    : "text-muted-foreground hover:text-foreground",
+                    : "text-muted-foreground hover:bg-secondary/40 hover:text-foreground",
                 )}
               >
                 <item.icon className="size-3.5" />
