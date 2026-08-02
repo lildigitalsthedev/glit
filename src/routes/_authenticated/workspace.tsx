@@ -30,6 +30,7 @@ import {
   readRepoFile,
   pushFile,
   pushFiles,
+  deleteFile,
   downloadRepoZip,
   listRepoCommits,
 } from "@/lib/github.functions";
@@ -59,6 +60,7 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { RenameRepositoryDialog } from "@/components/rename-repository-dialog";
+import { DeleteFileDialog } from "@/components/delete-file-dialog";
 import { NewFileDialog } from "@/components/new-file-dialog";
 import { BulkUploadDialog } from "@/components/bulk-upload-dialog";
 import { UploadFolderDialog } from "@/components/upload-folder-dialog";
@@ -114,6 +116,7 @@ function Workspace() {
   const readFn = useServerFn(readRepoFile);
   const pushFn = useServerFn(pushFile);
   const pushFilesFn = useServerFn(pushFiles);
+  const deleteFileFn = useServerFn(deleteFile);
   const zipFn = useServerFn(downloadRepoZip);
   const commitsFn = useServerFn(listRepoCommits);
 
@@ -136,6 +139,7 @@ function Workspace() {
   const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
   const [uploadFolderOpen, setUploadFolderOpen] = useState(false);
   const [uploadZipOpen, setUploadZipOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [mobileCommitOpen, setMobileCommitOpen] = useState(false);
 
@@ -297,6 +301,55 @@ function Workspace() {
     }
   }
 
+  const deleteMutation = useMutation({
+    mutationFn: (args: { targetPath: string; message: string }) => {
+      if (!accountId || !fullName) throw new Error("Choose a repository first.");
+      if (!branch) throw new Error("Pick a branch before deleting.");
+      return deleteFileFn({
+        data: {
+          accountId,
+          fullName,
+          branch,
+          path: args.targetPath,
+          message: args.message,
+        },
+      });
+    },
+    onSuccess: (_result, args) => {
+      toast.success(`${args.targetPath.split("/").pop() ?? args.targetPath} deleted successfully.`);
+      // If the file that was just deleted is open in the editor, clear it out
+      // so the user isn't left editing content that no longer exists on GitHub.
+      if (args.targetPath === path) {
+        setPath("");
+        setContent("");
+        setOriginal("");
+        setBaseSha(null);
+        setShowDiff(false);
+      }
+      setDeleteTarget(null);
+      void queryClient.invalidateQueries({ queryKey: ["tree"] });
+      void queryClient.invalidateQueries({ queryKey: ["commits"] });
+      void queryClient.invalidateQueries({ queryKey: ["pushes"] });
+    },
+    onError: (error: Error) => {
+      // Leave the dialog open and the file in the tree so the user can retry.
+      toast.error(error.message || "Couldn't delete that file. Try again.");
+    },
+  });
+
+  function handleDeleteFile(target: string) {
+    setDeleteTarget(target);
+  }
+
+  async function handleCopyPath(target: string) {
+    try {
+      await navigator.clipboard.writeText(target);
+      toast.success("Path copied to clipboard");
+    } catch {
+      toast.error("Couldn't copy the file path.");
+    }
+  }
+
   function handleRefreshRepository() {
     if (!accountId || !fullName) return;
     const promise = Promise.all([
@@ -384,6 +437,8 @@ function Workspace() {
           activeFolder={activeFolder}
           onOpenFile={(target) => openFile.mutate(target)}
           onSelectFolder={(target) => setActiveFolder(target)}
+          onCopyPath={handleCopyPath}
+          onDeleteFile={handleDeleteFile}
         />
       </div>
     </div>
@@ -631,6 +686,20 @@ function Workspace() {
         activeFolder={activeFolder}
         existingPaths={filePaths}
         onCommit={handleBulkCommit}
+      />
+
+      <DeleteFileDialog
+        open={deleteTarget !== null}
+        onOpenChange={(next) => {
+          if (!next) setDeleteTarget(null);
+        }}
+        path={deleteTarget}
+        branch={branch}
+        isDeleting={deleteMutation.isPending}
+        onConfirm={(commitMessage) => {
+          if (!deleteTarget) return;
+          deleteMutation.mutate({ targetPath: deleteTarget, message: commitMessage });
+        }}
       />
 
       {/* Desktop & tablet: persistent three-pane layout, like a WhatsApp-style

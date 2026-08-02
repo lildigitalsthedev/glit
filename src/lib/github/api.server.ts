@@ -203,6 +203,29 @@ export function putFile(
   );
 }
 
+export interface DeleteFileResult {
+  commit: { sha: string; html_url: string; message: string };
+}
+
+export function deleteFile(
+  token: string,
+  fullName: string,
+  args: { path: string; branch: string; message: string; sha: string },
+) {
+  return ghFetch<DeleteFileResult>(
+    token,
+    `/repos/${fullName}/contents/${args.path.split("/").map(encodeURIComponent).join("/")}`,
+    {
+      method: "DELETE",
+      body: JSON.stringify({
+        message: args.message,
+        sha: args.sha,
+        branch: args.branch,
+      }),
+    },
+  );
+}
+
 export interface GhCommit {
   sha: string;
   html_url: string;

@@ -133,6 +133,22 @@ export const pushFiles = createServerFn({ method: "POST" })
     return pushMultipleFiles(context.supabase, context.userId, data);
   });
 
+export const deleteFile = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    (data: {
+      accountId: string;
+      fullName: string;
+      branch: string;
+      path: string;
+      message: string;
+    }) => data,
+  )
+  .handler(async ({ data, context }) => {
+    const { deleteSingleFile } = await import("./github/push.server");
+    return deleteSingleFile(context.supabase, context.userId, data);
+  });
+
 export const createRepository = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(

@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronRight,
+  Copy,
   File,
   FileCode2,
   FileJson2,
@@ -13,7 +14,17 @@ import {
   Folder,
   Home,
   Loader2,
+  MoreVertical,
+  Pencil,
+  Trash2,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { EmptyState } from "@/components/empty-state";
 import type { TreeNode } from "@/lib/github.functions";
@@ -114,6 +125,122 @@ function FileIcon({ name }: { name: string }) {
   return <File className="size-3.5 shrink-0 text-muted-foreground" />;
 }
 
+const LONG_PRESS_MS = 500;
+
+/**
+ * A single selectable file row used both in the nested tree and the flat
+ * search-results list. Every file gets a ⋮ actions menu (Edit / Copy Path /
+ * Delete) that can be opened by tapping the menu button, right-clicking, or
+ * long-pressing the row on touch devices.
+ */
+function FileRow({
+  path,
+  name,
+  label,
+  isActive,
+  paddingLeft,
+  onOpenFile,
+  onCopyPath,
+  onDeleteFile,
+}: {
+  path: string;
+  name: string;
+  /** Text shown in the row — usually the file name, or the full path in search results. */
+  label: string;
+  isActive: boolean;
+  paddingLeft: number;
+  onOpenFile: (path: string) => void;
+  onCopyPath: (path: string) => void;
+  onDeleteFile: (path: string) => void;
+}) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressFired = useRef(false);
+
+  function startLongPress() {
+    longPressFired.current = false;
+    longPressTimer.current = setTimeout(() => {
+      longPressFired.current = true;
+      setMenuOpen(true);
+    }, LONG_PRESS_MS);
+  }
+
+  function cancelLongPress() {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  }
+
+  return (
+    <div className="group relative flex items-center">
+      <button
+        onClick={() => {
+          // A long-press already opened the actions menu — don't also open
+          // the file on the touchend-triggered click that follows it.
+          if (longPressFired.current) {
+            longPressFired.current = false;
+            return;
+          }
+          onOpenFile(path);
+        }}
+        onTouchStart={startLongPress}
+        onTouchEnd={cancelLongPress}
+        onTouchMove={cancelLongPress}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          setMenuOpen(true);
+        }}
+        style={{ paddingLeft }}
+        className={cn(
+          "flex w-full min-w-0 items-center gap-2 truncate rounded py-1.5 pr-7 text-left font-mono text-[11px] transition-colors duration-150",
+          isActive
+            ? "bg-secondary text-foreground"
+            : "text-muted-foreground hover:bg-secondary/40 hover:text-foreground",
+        )}
+        title={path}
+      >
+        <FileIcon name={name} />
+        <span className="truncate">{label}</span>
+      </button>
+
+      <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            onClick={(e) => e.stopPropagation()}
+            aria-label={`Actions for ${name}`}
+            className={cn(
+              "absolute right-1 flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground opacity-100 transition-opacity duration-150 hover:bg-secondary hover:text-foreground sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100",
+              menuOpen && "sm:opacity-100",
+            )}
+          >
+            <MoreVertical className="size-3.5" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-40">
+          <DropdownMenuItem onSelect={() => onOpenFile(path)}>
+            <Pencil className="size-3.5" />
+            Edit
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => onCopyPath(path)}>
+            <Copy className="size-3.5" />
+            Copy Path
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onSelect={() => onDeleteFile(path)}
+            className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+          >
+            <Trash2 className="size-3.5" />
+            Delete
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+}
+
 export function FileTree({
   nodes,
   loading,
@@ -122,6 +249,8 @@ export function FileTree({
   activeFolder,
   onOpenFile,
   onSelectFolder,
+  onCopyPath,
+  onDeleteFile,
 }: {
   nodes: TreeNode[];
   loading?: boolean;
@@ -130,6 +259,8 @@ export function FileTree({
   activeFolder: string | null;
   onOpenFile: (path: string) => void;
   onSelectFolder: (path: string | null) => void;
+  onCopyPath: (path: string) => void;
+  onDeleteFile: (path: string) => void;
 }) {
   const blobPaths = useMemo(
     () => nodes.filter((n) => n.type === "blob").map((n) => n.path),
@@ -212,23 +343,20 @@ export function FileTree({
     }
     return (
       <div className="flex flex-col py-1">
-        {matches.map((path) => {
-          const name = path.split("/").pop() ?? path;
+        {matches.map((matchPath) => {
+          const name = matchPath.split("/").pop() ?? matchPath;
           return (
-            <button
-              key={path}
-              onClick={() => onOpenFile(path)}
-              className={cn(
-                "flex w-full items-center gap-2 truncate rounded px-2 py-1.5 text-left font-mono text-[11px] transition-colors duration-150",
-                path === activePath
-                  ? "bg-secondary text-foreground"
-                  : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground",
-              )}
-              title={path}
-            >
-              <FileIcon name={name} />
-              <span className="truncate">{path}</span>
-            </button>
+            <FileRow
+              key={matchPath}
+              path={matchPath}
+              name={name}
+              label={matchPath}
+              isActive={matchPath === activePath}
+              paddingLeft={8}
+              onOpenFile={onOpenFile}
+              onCopyPath={onCopyPath}
+              onDeleteFile={onDeleteFile}
+            />
           );
         })}
       </div>
@@ -296,21 +424,17 @@ export function FileTree({
 
       const isActiveFile = entry.path === activePath;
       return (
-        <button
+        <FileRow
           key={entry.path}
-          onClick={() => onOpenFile(entry.path)}
-          style={{ paddingLeft: indent + 16 }}
-          className={cn(
-            "flex w-full items-center gap-2 truncate rounded py-1.5 pr-2 text-left font-mono text-[11px] transition-colors duration-150",
-            isActiveFile
-              ? "bg-secondary text-foreground"
-              : "text-muted-foreground hover:bg-secondary/40 hover:text-foreground",
-          )}
-          title={entry.path}
-        >
-          <FileIcon name={entry.name} />
-          <span className="truncate">{entry.name}</span>
-        </button>
+          path={entry.path}
+          name={entry.name}
+          label={entry.name}
+          isActive={isActiveFile}
+          paddingLeft={indent + 16}
+          onOpenFile={onOpenFile}
+          onCopyPath={onCopyPath}
+          onDeleteFile={onDeleteFile}
+        />
       );
     });
   }

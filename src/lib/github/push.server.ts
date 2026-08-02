@@ -3,6 +3,7 @@ import {
   GithubError,
   getFileSha,
   putFile,
+  deleteFile,
   getRef,
   createBlob,
   createTree,
@@ -83,6 +84,73 @@ export async function pushSingleFile(supabase: Client, userId: string, args: Pus
       path,
       commit_message: args.message.trim(),
       action: "update",
+      status: "failed",
+      error_message: messageText.slice(0, 500),
+    });
+    throw new Error(error instanceof GithubError ? messageText : messageText);
+  }
+}
+
+export interface DeleteArgs {
+  accountId: string;
+  fullName: string;
+  branch: string;
+  path: string;
+  message: string;
+}
+
+export async function deleteSingleFile(supabase: Client, userId: string, args: DeleteArgs) {
+  const path = normalizePath("", args.path);
+  if (!path) throw new Error("A file path is required.");
+  if (path.includes("..")) throw new Error("File paths cannot contain '..'.");
+  if (!args.message.trim()) throw new Error("A commit message is required.");
+  if (!args.branch.trim()) throw new Error("A branch is required.");
+
+  const { token } = await loadAccountToken(supabase, args.accountId);
+  const commitMessage = args.message.trim();
+
+  try {
+    const existingSha = await getFileSha(token, args.fullName, args.branch, path);
+    if (!existingSha) {
+      throw new Error("That file no longer exists on this branch — it may have already been deleted.");
+    }
+
+    const result = await deleteFile(token, args.fullName, {
+      path,
+      branch: args.branch,
+      message: commitMessage,
+      sha: existingSha,
+    });
+
+    await supabase.from("recent_pushes").insert({
+      user_id: userId,
+      account_id: args.accountId,
+      full_name: args.fullName,
+      branch: args.branch,
+      path,
+      commit_message: commitMessage,
+      commit_sha: result.commit.sha,
+      commit_url: result.commit.html_url,
+      action: "delete",
+      status: "success",
+    });
+
+    return {
+      ok: true as const,
+      path,
+      commitSha: result.commit.sha.slice(0, 7),
+      commitUrl: result.commit.html_url,
+    };
+  } catch (error) {
+    const messageText = error instanceof Error ? error.message : String(error);
+    await supabase.from("recent_pushes").insert({
+      user_id: userId,
+      account_id: args.accountId,
+      full_name: args.fullName,
+      branch: args.branch,
+      path,
+      commit_message: commitMessage,
+      action: "delete",
       status: "failed",
       error_message: messageText.slice(0, 500),
     });
