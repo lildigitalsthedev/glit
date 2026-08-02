@@ -17,6 +17,7 @@ import {
   Pencil,
   RefreshCw,
   Copy,
+  History,
 } from "lucide-react";
 import {
   listRepoBranches,
@@ -24,6 +25,7 @@ import {
   readRepoFile,
   pushFile,
   downloadRepoZip,
+  listRepoCommits,
 } from "@/lib/github.functions";
 import { getPreferences, updatePreferences } from "@/lib/workspace.functions";
 import { Button } from "@/components/ui/button";
@@ -92,6 +94,7 @@ function Workspace() {
   const readFn = useServerFn(readRepoFile);
   const pushFn = useServerFn(pushFile);
   const zipFn = useServerFn(downloadRepoZip);
+  const commitsFn = useServerFn(listRepoCommits);
 
   const prefs = useQuery({ queryKey: ["prefs"], queryFn: () => prefsFn() });
   const accountId = prefs.data?.activeAccountId ?? null;
@@ -122,6 +125,13 @@ function Workspace() {
     queryKey: ["tree", accountId, fullName, branch],
     queryFn: () => treeFn({ data: { accountId: accountId!, fullName: fullName!, branch } }),
     enabled: Boolean(accountId && fullName && branch),
+  });
+
+  const latestCommit = useQuery({
+    queryKey: ["commits", accountId, fullName, branch],
+    queryFn: () => commitsFn({ data: { accountId: accountId!, fullName: fullName!, branch } }),
+    enabled: Boolean(accountId && fullName && branch),
+    select: (commits) => commits[0] ?? null,
   });
 
   const files = useMemo(
@@ -175,9 +185,6 @@ function Workspace() {
   const dirty = content !== original;
 
   // --- Repository actions menu handlers -------------------------------
-  // Rename Repository and Refresh Repository are wired up as separate
-  // features; they're stubbed here so the menu stays fully functional
-  // and extensible while those land.
   function handleDownloadZip() {
     if (!accountId || !fullName) return;
     if (!branch) {
@@ -227,7 +234,18 @@ function Workspace() {
   }
 
   function handleRefreshRepository() {
-    toast.info("Refresh Repository is coming in the next update.");
+    if (!accountId || !fullName) return;
+    const promise = Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["prefs"] }),
+      queryClient.invalidateQueries({ queryKey: ["branches", accountId, fullName] }),
+      queryClient.invalidateQueries({ queryKey: ["tree", accountId, fullName, branch] }),
+      queryClient.invalidateQueries({ queryKey: ["commits", accountId, fullName, branch] }),
+    ]);
+    toast.promise(promise, {
+      loading: "Refreshing repository…",
+      success: "Repository refreshed",
+      error: (error: Error) => error?.message || "Couldn't refresh the repository. Try again.",
+    });
   }
 
   async function handleCopyRepositoryUrl() {
@@ -334,6 +352,13 @@ function Workspace() {
             ))}
           </SelectContent>
         </Select>
+        {latestCommit.data && (
+          <span className="hidden max-w-[280px] items-center gap-1.5 truncate text-xs text-muted-foreground md:inline-flex">
+            <History className="size-3 shrink-0" />
+            <span className="shrink-0 font-mono">{latestCommit.data.sha}</span>
+            <span className="truncate">{latestCommit.data.message}</span>
+          </span>
+        )}
         <div className="ml-auto flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => setShowDiff((v) => !v)} disabled={!dirty}>
             {showDiff ? "Hide diff" : "View diff"}
