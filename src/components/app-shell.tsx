@@ -1,10 +1,21 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { Terminal } from "lucide-react";
 import { BottomDock } from "@/components/bottom-dock";
 import { NavPrefsProvider } from "@/hooks/useNavPrefs";
 
 export function AppShell({ children }: { children: ReactNode }) {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  // The workspace route sizes its own layout to exactly fill the space
+  // between the header and the nav dock (`h-[calc(100dvh-3rem-var(--dock-space))]`)
+  // so it can host a fixed-height editor instead of scrolling. Adding this
+  // wrapper's own dock-space padding on top of that double-reserves the
+  // same space, which shows up as a large empty gap — most noticeably when
+  // the mobile keyboard is open and eats into the visible viewport. Every
+  // other route flows normally and still needs the padding so its content
+  // never ends up hidden behind the nav.
+  const isWorkspace = pathname === "/workspace";
+
   return (
     <NavPrefsProvider>
       <div className="flex min-h-screen flex-col">
@@ -31,7 +42,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div
           className="flex-1"
           style={{
-            paddingBottom: "var(--dock-space, 7rem)",
+            paddingBottom: isWorkspace ? undefined : "var(--dock-space, 7rem)",
             paddingLeft: "var(--dock-inset-left, 0px)",
             paddingRight: "var(--dock-inset-right, 0px)",
           }}

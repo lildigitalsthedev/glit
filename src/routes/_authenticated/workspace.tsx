@@ -921,21 +921,10 @@ function Workspace() {
       </div>
 
       {/* Mobile: editor takes the full screen; the file tree and commit
-          panel become collapsible slide-in panes triggered from the toolbar
-          and the sticky bar below. */}
+          panel are collapsible slide-in panes triggered from the Menu icon
+          and the commit icon already in the toolbar above — no need to
+          repeat those actions in a second bar down here. */}
       <div className="flex min-h-0 flex-1 flex-col md:hidden">{editorPanel}</div>
-
-      <div className="flex items-center justify-between gap-2 border-t border-border bg-background px-3 py-2 md:hidden">
-        <Button variant="outline" size="sm" className="flex-1" onClick={() => setMobileSidebarOpen(true)}>
-          <Menu className="size-3.5" />
-          Files
-        </Button>
-        <Button size="sm" className="relative flex-1" onClick={() => setMobileCommitOpen(true)}>
-          <GitCommitHorizontal className="size-3.5" />
-          Commit
-          {dirty && <span className="absolute right-3 top-1.5 size-2 rounded-full bg-success" />}
-        </Button>
-      </div>
 
       <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
         <SheetContent side="left" className="flex w-[85vw] max-w-xs flex-col gap-0 p-0 sm:max-w-sm">
