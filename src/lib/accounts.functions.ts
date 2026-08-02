@@ -99,6 +99,11 @@ export const startGithubOAuth = createServerFn({ method: "POST" })
         "GitHub OAuth is not configured yet. Add your GitHub OAuth App credentials, or connect with a personal access token.",
       );
     }
+    // Check the free-plan account cap before sending the user through the
+    // GitHub authorize flow, so we don't bounce them back with a failure
+    // after they've already approved access on GitHub's side.
+    const { assertAccountQuota } = await import("./github/connections.server");
+    await assertAccountQuota(context.supabase, context.userId);
     const request = getRequest();
     if (!request) throw new Error("OAuth must start from an app request.");
     const origin = new URL(request.url).origin;

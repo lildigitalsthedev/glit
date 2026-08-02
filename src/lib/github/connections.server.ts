@@ -6,6 +6,37 @@ import { getViewer, listAllRepos } from "./api.server";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Client = SupabaseClient<any, any, any>;
 
+/**
+ * Free plan is capped at a single connected GitHub account — GitPush Pro
+ * unlocks unlimited accounts (see FEATURE 2 in the Phase 3 spec). This is
+ * enforced here, server-side, so it can't be bypassed by calling the PAT
+ * or OAuth connect paths directly.
+ *
+ * Only new connections are capped — updating an existing account (reauth,
+ * refresh) is always allowed regardless of plan.
+ */
+export async function assertAccountQuota(supabase: Client, userId: string) {
+  const { count, error: countError } = await supabase
+    .from("github_accounts")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId);
+  if (countError) throw new Error(countError.message);
+
+  const { data: prefs, error: prefsError } = await supabase
+    .from("user_preferences")
+    .select("plan")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (prefsError) throw new Error(prefsError.message);
+
+  const plan = (prefs?.plan as string | undefined) ?? "free";
+  if (plan !== "pro" && (count ?? 0) >= 1) {
+    throw new Error(
+      "Free plan is limited to 1 connected GitHub account. Upgrade to GitPush Pro for unlimited accounts.",
+    );
+  }
+}
+
 export async function saveConnection(
   supabase: Client,
   userId: string,
@@ -17,6 +48,7 @@ export async function saveConnection(
   },
 ) {
   if (!args.token) throw new Error("A token is required.");
+  if (!args.accountId) await assertAccountQuota(supabase, userId);
   const viewer = await getViewer(args.token);
   const repos = await listAllRepos(args.token).catch(() => []);
 

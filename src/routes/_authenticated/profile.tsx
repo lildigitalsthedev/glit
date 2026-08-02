@@ -139,6 +139,9 @@ function Profile() {
           <div className="flex items-center gap-2">
             <Github className="size-4 text-muted-foreground" />
             <h2 className="text-sm font-semibold">Connected accounts</h2>
+            <Badge variant="secondary" className="font-mono text-[10px]">
+              {isPro ? "Unlimited" : `${(accounts.data ?? []).length} of 1`}
+            </Badge>
           </div>
           <ConnectGithubDialog />
         </div>
