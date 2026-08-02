@@ -1,23 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { unzipSync } from "fflate";
-import {
-  AlertTriangle,
-  ChevronRight,
-  File,
-  FileArchive,
-  Folder,
-  FolderOpen,
-  Loader2,
-  Trash2,
-  UploadCloud,
-  X,
-} from "lucide-react";
+import { AlertTriangle, FileArchive, Loader2, Trash2, UploadCloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Dialog,
   DialogContent,
@@ -37,6 +25,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
+import {
+  buildCommitTree,
+  computeCommitTotals,
+  type PreviewSource,
+} from "@/lib/commit-preview";
+import { CommitFileTree } from "@/components/commit-file-tree";
+import { CommitTotalsBar } from "@/components/commit-totals-bar";
 
 export interface PendingZipFile {
   id: string;
@@ -44,20 +39,6 @@ export interface PendingZipFile {
   path: string;
   size: number;
   bytes: Uint8Array;
-}
-
-interface FileTreeEntry {
-  type: "file";
-  name: string;
-  path: string;
-  item: PendingZipFile;
-}
-
-interface DirTreeEntry {
-  type: "dir";
-  name: string;
-  path: string;
-  children: Map<string, DirTreeEntry | FileTreeEntry>;
 }
 
 // Noise that ships inside a lot of real-world archives and should never be
@@ -97,142 +78,6 @@ let idCounter = 0;
 function nextId(): string {
   idCounter += 1;
   return `pending-zip-${idCounter}-${Date.now()}`;
-}
-
-function buildTree(items: PendingZipFile[]): DirTreeEntry {
-  const root: DirTreeEntry = { type: "dir", name: "", path: "", children: new Map() };
-  for (const item of items) {
-    const parts = item.path.split("/").filter(Boolean);
-    let cursor = root;
-    for (let i = 0; i < parts.length; i++) {
-      const segment = parts[i]!;
-      const isFile = i === parts.length - 1;
-      const path = parts.slice(0, i + 1).join("/");
-      if (isFile) {
-        cursor.children.set(`f:${segment}`, { type: "file", name: segment, path, item });
-      } else {
-        const key = `d:${segment}`;
-        let next = cursor.children.get(key);
-        if (!next || next.type !== "dir") {
-          next = { type: "dir", name: segment, path, children: new Map() };
-          cursor.children.set(key, next);
-        }
-        cursor = next;
-      }
-    }
-  }
-  return root;
-}
-
-function sortedEntries(dir: DirTreeEntry): (DirTreeEntry | FileTreeEntry)[] {
-  return [...dir.children.values()].sort((a, b) => {
-    if (a.type !== b.type) return a.type === "dir" ? -1 : 1;
-    return a.name.localeCompare(b.name);
-  });
-}
-
-function countFolders(dir: DirTreeEntry): number {
-  let count = 0;
-  for (const entry of dir.children.values()) {
-    if (entry.type === "dir") count += 1 + countFolders(entry);
-  }
-  return count;
-}
-
-function ZipTreePreview({
-  root,
-  activeFolder,
-  existingPaths,
-  onRemove,
-  disabled,
-}: {
-  root: DirTreeEntry;
-  activeFolder: string | null;
-  existingPaths: string[];
-  onRemove: (id: string) => void;
-  disabled: boolean;
-}) {
-  const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
-
-  function toggle(path: string) {
-    setCollapsed((prev) => {
-      const next = new Set(prev);
-      if (next.has(path)) next.delete(path);
-      else next.add(path);
-      return next;
-    });
-  }
-
-  function renderDir(dir: DirTreeEntry, depth: number) {
-    return sortedEntries(dir).map((entry) => {
-      const indent = 8 + depth * 14;
-      if (entry.type === "dir") {
-        const isOpen = !collapsed.has(entry.path);
-        return (
-          <div key={entry.path}>
-            <button
-              type="button"
-              onClick={() => toggle(entry.path)}
-              style={{ paddingLeft: indent }}
-              className="flex w-full items-center gap-1.5 truncate rounded py-1.5 pr-2 text-left font-mono text-[11px] text-muted-foreground transition-colors duration-150 hover:bg-secondary/40 hover:text-foreground"
-              title={entry.path}
-            >
-              <ChevronRight
-                className={cn(
-                  "size-3 shrink-0 transition-transform duration-200",
-                  isOpen && "rotate-90",
-                )}
-              />
-              {isOpen ? (
-                <FolderOpen className="size-3.5 shrink-0 text-primary" />
-              ) : (
-                <Folder className="size-3.5 shrink-0 text-primary" />
-              )}
-              <span className="truncate">{entry.name}</span>
-            </button>
-            <div
-              className={cn(
-                "grid transition-[grid-template-rows] duration-200 ease-out",
-                isOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
-              )}
-            >
-              <div className="overflow-hidden">{renderDir(entry, depth + 1)}</div>
-            </div>
-          </div>
-        );
-      }
-
-      const fullPath = joinFolder(activeFolder, entry.item.path);
-      const overwrites = existingPaths.includes(fullPath);
-      return (
-        <div
-          key={entry.item.id}
-          style={{ paddingLeft: indent + 16 }}
-          className="group flex items-center gap-2 truncate rounded py-1.5 pr-2 font-mono text-[11px] text-muted-foreground transition-colors duration-150 hover:bg-secondary/30"
-          title={fullPath}
-        >
-          <File className="size-3.5 shrink-0" />
-          <span className="min-w-0 flex-1 truncate">
-            {entry.name}
-            {overwrites && <span className="text-destructive"> · overwrites</span>}
-          </span>
-          <span className="shrink-0 text-[10px] opacity-70">{formatBytes(entry.item.size)}</span>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-5 shrink-0 opacity-0 group-hover:opacity-100 hover:text-destructive"
-            onClick={() => onRemove(entry.item.id)}
-            disabled={disabled}
-            aria-label={`Remove ${entry.item.path}`}
-          >
-            <X className="size-3" />
-          </Button>
-        </div>
-      );
-    });
-  }
-
-  return <div className="flex flex-col py-1">{renderDir(root, 0)}</div>;
 }
 
 export function UploadZipDialog({
@@ -330,8 +175,19 @@ export function UploadZipDialog({
     setPending((prev) => prev.filter((item) => item.id !== id));
   }
 
-  const tree = useMemo(() => buildTree(pending), [pending]);
-  const folderCount = useMemo(() => countFolders(tree), [tree]);
+  const existingPathsSet = useMemo(() => new Set(existingPaths), [existingPaths]);
+  const tree = useMemo(() => {
+    const sources: PreviewSource<PendingZipFile>[] = pending.map((item) => ({
+      item,
+      relativePath: item.path,
+      fullPath: joinFolder(activeFolder, item.path),
+    }));
+    return buildCommitTree(sources);
+  }, [pending, activeFolder]);
+  const totals = useMemo(
+    () => computeCommitTotals(tree, existingPathsSet),
+    [tree, existingPathsSet],
+  );
   const totalSize = pending.reduce((sum, item) => sum + item.size, 0);
   const overwritePaths = useMemo(
     () =>
@@ -449,32 +305,31 @@ export function UploadZipDialog({
               <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span>
                   {pending.length} file{pending.length === 1 ? "" : "s"}
-                  {folderCount > 0 && (
+                  {totals.folders > 0 && (
                     <>
                       {" "}
-                      in {folderCount} folder{folderCount === 1 ? "" : "s"}
+                      in {totals.folders} folder{totals.folders === 1 ? "" : "s"}
                     </>
                   )}{" "}
                   ready to push
-                  {overwritePaths.length > 0 && (
-                    <span className="text-destructive">
-                      {" "}
-                      · {overwritePaths.length} will overwrite
-                    </span>
-                  )}
                 </span>
                 <span>{formatBytes(totalSize)} total</span>
               </div>
 
-              <ScrollArea className="max-h-56 rounded-md border border-border">
-                <ZipTreePreview
+              <CommitTotalsBar
+                added={totals.added}
+                modified={totals.modified}
+                folders={totals.folders}
+              />
+
+              <div className="max-h-56 overflow-y-auto overscroll-contain rounded-md border border-border">
+                <CommitFileTree
                   root={tree}
-                  activeFolder={activeFolder}
-                  existingPaths={existingPaths}
+                  existingPaths={existingPathsSet}
                   onRemove={removeFile}
                   disabled={submitting}
                 />
-              </ScrollArea>
+              </div>
 
               <Button
                 variant="ghost"
@@ -550,7 +405,7 @@ export function UploadZipDialog({
               will be replaced with the extracted version. This can't be undone from here.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <ScrollArea className="max-h-32 rounded-md border border-border">
+          <div className="max-h-32 overflow-y-auto overscroll-contain rounded-md border border-border">
             <ul className="divide-y divide-border">
               {overwritePaths.map((path) => (
                 <li key={path} className="truncate px-3 py-1.5 font-mono text-[11px]">
@@ -558,7 +413,7 @@ export function UploadZipDialog({
                 </li>
               ))}
             </ul>
-          </ScrollArea>
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction

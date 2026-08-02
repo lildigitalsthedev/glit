@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { FileUp, Loader2, Trash2, UploadCloud, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { buildCommitTree, computeCommitTotals, type PreviewSource } from "@/lib/commit-preview";
+import { CommitTotalsBar } from "@/components/commit-totals-bar";
 
 export interface PendingFile {
   id: string;
@@ -136,8 +138,14 @@ export function BulkUploadDialog({
     if (e.dataTransfer.files?.length) addFiles(e.dataTransfer.files);
   }
 
+  const existingPathsSet = useMemo(() => new Set(existingPaths), [existingPaths]);
+  const totals = useMemo(() => {
+    const sources: PreviewSource<PendingFile>[] = pending
+      .filter((item) => item.path.trim())
+      .map((item) => ({ item, relativePath: item.path, fullPath: item.path }));
+    return computeCommitTotals(buildCommitTree(sources), existingPathsSet);
+  }, [pending, existingPathsSet]);
   const totalSize = pending.reduce((sum, item) => sum + item.size, 0);
-  const overwriteCount = pending.filter((item) => existingPaths.includes(item.path)).length;
   const hasEmptyPath = pending.some((item) => !item.path.trim());
   const canSubmit = pending.length > 0 && message.trim().length > 0 && !hasEmptyPath && !submitting;
 
@@ -223,18 +231,29 @@ export function BulkUploadDialog({
             <>
               <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span>
-                  {pending.length} file{pending.length === 1 ? "" : "s"} ready to push
-                  {overwriteCount > 0 && (
-                    <span className="text-destructive"> · {overwriteCount} will overwrite</span>
-                  )}
+                  {pending.length} file{pending.length === 1 ? "" : "s"}
+                  {totals.folders > 0 && (
+                    <>
+                      {" "}
+                      in {totals.folders} folder{totals.folders === 1 ? "" : "s"}
+                    </>
+                  )}{" "}
+                  ready to push
                 </span>
                 <span>{formatBytes(totalSize)} total</span>
               </div>
 
+              <CommitTotalsBar
+                added={totals.added}
+                modified={totals.modified}
+                folders={totals.folders}
+              />
+
               <div className="max-h-56 overflow-y-auto rounded-md border border-border overscroll-contain">
                 <div className="divide-y divide-border">
                   {pending.map((item) => {
-                    const overwrites = existingPaths.includes(item.path);
+                    const trimmedPath = item.path.trim();
+                    const overwrites = trimmedPath.length > 0 && existingPaths.includes(trimmedPath);
                     return (
                       <div key={item.id} className="flex items-center gap-2 p-2">
                         <FileUp className="size-3.5 shrink-0 text-muted-foreground" />
@@ -247,11 +266,12 @@ export function BulkUploadDialog({
                           />
                           <span className="text-[10px] text-muted-foreground">
                             {formatBytes(item.size)}
-                            {overwrites && (
-                              <span className="text-destructive"> · overwrites existing file</span>
-                            )}
-                            {!item.path.trim() && (
+                            {!trimmedPath ? (
                               <span className="text-destructive"> · path required</span>
+                            ) : overwrites ? (
+                              <span className="text-amber-500"> · modified</span>
+                            ) : (
+                              <span className="text-primary"> · new</span>
                             )}
                           </span>
                         </div>
