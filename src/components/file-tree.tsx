@@ -7,12 +7,15 @@ import {
   FileText,
   FileImage,
   FileCog,
-  Folder,
+  FileSearch,
   FolderOpen,
+  FolderX,
+  Folder,
   Home,
   Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { EmptyState } from "@/components/empty-state";
 import type { TreeNode } from "@/lib/github.functions";
 
 interface FileEntry {
@@ -179,9 +182,12 @@ export function FileTree({
     const matches = blobPaths.filter((p) => p.toLowerCase().includes(trimmedFilter)).slice(0, 500);
     if (matches.length === 0) {
       return (
-        <div className="flex h-24 flex-col items-center justify-center gap-1 px-4 text-center">
-          <p className="text-xs text-muted-foreground">No files found.</p>
-        </div>
+        <EmptyState
+          size="compact"
+          icon={FileSearch}
+          title="No files found."
+          description={`Nothing matches “${filter.trim()}”.`}
+        />
       );
     }
     return (
@@ -211,9 +217,12 @@ export function FileTree({
 
   if (blobPaths.length === 0) {
     return (
-      <div className="flex h-24 flex-col items-center justify-center gap-1 px-4 text-center">
-        <p className="text-xs text-muted-foreground">No files found.</p>
-      </div>
+      <EmptyState
+        size="compact"
+        icon={FolderX}
+        title="No files found."
+        description="This branch doesn't have any files yet."
+      />
     );
   }
 
