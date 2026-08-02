@@ -116,6 +116,29 @@ export const pushFile = createServerFn({ method: "POST" })
     return pushSingleFile(context.supabase, context.userId, data);
   });
 
+export interface RenamedRepo {
+  id: number;
+  name: string;
+  fullName: string;
+  defaultBranch: string;
+}
+
+export const renameRepository = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { accountId: string; fullName: string; newName: string }) => data)
+  .handler(async ({ data, context }): Promise<RenamedRepo> => {
+    const { loadAccountToken } = await import("./github/tokens.server");
+    const { renameRepo } = await import("./github/api.server");
+    const { token } = await loadAccountToken(context.supabase, data.accountId);
+    const repo = await renameRepo(token, data.fullName, data.newName);
+    return {
+      id: repo.id,
+      name: repo.name,
+      fullName: repo.full_name,
+      defaultBranch: repo.default_branch,
+    };
+  });
+
 export interface RepoZipResult {
   filename: string;
   base64: string;
