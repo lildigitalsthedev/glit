@@ -15,6 +15,7 @@ import {
   Upload,
   UploadCloud,
   FolderUp,
+  FileArchive,
   GitCommitHorizontal,
   MoreVertical,
   Download,
@@ -61,6 +62,7 @@ import { RenameRepositoryDialog } from "@/components/rename-repository-dialog";
 import { NewFileDialog } from "@/components/new-file-dialog";
 import { BulkUploadDialog } from "@/components/bulk-upload-dialog";
 import { UploadFolderDialog } from "@/components/upload-folder-dialog";
+import { UploadZipDialog } from "@/components/upload-zip-dialog";
 import { FileTree } from "@/components/file-tree";
 import { EmptyState } from "@/components/empty-state";
 import { cn } from "@/lib/utils";
@@ -132,6 +134,7 @@ function Workspace() {
   const [newFileOpen, setNewFileOpen] = useState(false);
   const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
   const [uploadFolderOpen, setUploadFolderOpen] = useState(false);
+  const [uploadZipOpen, setUploadZipOpen] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [mobileCommitOpen, setMobileCommitOpen] = useState(false);
 
@@ -574,6 +577,10 @@ function Workspace() {
             <FolderUp className="size-3.5" />
             <span className="hidden sm:inline">Upload folder</span>
           </Button>
+          <Button variant="outline" size="sm" onClick={() => setUploadZipOpen(true)}>
+            <FileArchive className="size-3.5" />
+            <span className="hidden sm:inline">Upload ZIP</span>
+          </Button>
           <Button variant="outline" size="sm" onClick={() => setNewFileOpen(true)}>
             <FilePlus className="size-3.5" />
             <span className="hidden sm:inline">New file</span>
@@ -611,6 +618,14 @@ function Workspace() {
       <UploadFolderDialog
         open={uploadFolderOpen}
         onOpenChange={setUploadFolderOpen}
+        activeFolder={activeFolder}
+        existingPaths={filePaths}
+        onCommit={handleBulkCommit}
+      />
+
+      <UploadZipDialog
+        open={uploadZipOpen}
+        onOpenChange={setUploadZipOpen}
         activeFolder={activeFolder}
         existingPaths={filePaths}
         onCommit={handleBulkCommit}
