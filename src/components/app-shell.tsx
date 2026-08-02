@@ -6,7 +6,10 @@ import { BottomDock } from "@/components/bottom-dock";
 export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur transition-shadow">
+      <header
+        className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur transition-shadow"
+        style={{ paddingTop: "env(safe-area-inset-top)" }}
+      >
         <div className="flex h-12 items-center px-4">
           <Link
             to="/app"

@@ -78,7 +78,7 @@ export function BottomDock() {
               type="button"
               onClick={() => setCollapsed(true)}
               aria-label="Collapse navigation"
-              className="absolute -top-3 left-1/2 flex size-6 -translate-x-1/2 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-md transition-all duration-200 hover:bg-secondary hover:text-foreground active:scale-90"
+              className="absolute -top-3.5 left-1/2 flex size-8 -translate-x-1/2 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-md transition-all duration-200 hover:bg-secondary hover:text-foreground active:scale-90"
             >
               <ChevronDown className="size-3.5" />
             </button>
@@ -95,7 +95,7 @@ export function BottomDock() {
                     to={item.to}
                     aria-current={active ? "page" : undefined}
                     className={cn(
-                      "group flex min-w-14 flex-col items-center gap-0.5 rounded-full px-3.5 py-2 font-mono text-[10px] transition-all duration-200 sm:min-w-16 sm:px-4",
+                      "group flex min-w-14 flex-col items-center gap-0.5 rounded-full px-3.5 py-2.5 font-mono text-[10px] transition-all duration-200 sm:min-w-16 sm:px-4 sm:py-2",
                       active
                         ? "bg-primary text-primary-foreground shadow-sm"
                         : "text-muted-foreground hover:bg-secondary hover:text-foreground",

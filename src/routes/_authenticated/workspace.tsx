@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -25,6 +25,7 @@ import {
   History,
   Star,
   Info,
+  Plus,
 } from "lucide-react";
 import {
   listRepoBranches,
@@ -163,6 +164,7 @@ function Workspace() {
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [mobileCommitOpen, setMobileCommitOpen] = useState(false);
+  const uploadInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!branch && prefs.data?.defaultBranch) setBranch(prefs.data.defaultBranch);
@@ -477,7 +479,7 @@ function Workspace() {
 
   if (!accountId || !fullName) {
     return (
-      <main className="flex h-[calc(100vh-3rem)] items-center justify-center px-4">
+      <main className="flex h-[calc(100dvh-3rem)] items-center justify-center px-4">
         <EmptyState
           icon={FolderGit2}
           title="Choose a repository to begin."
@@ -549,39 +551,50 @@ function Workspace() {
   );
 
   const commitPanel = (
-    <div className="flex min-h-0 flex-1 flex-col gap-3 p-3">
-      <p className="label-caps">Commit</p>
-      <Input
-        value={message}
-        onChange={(e) => setMessage(e.target.value)}
-        placeholder="Add Button component"
-        className="h-8 text-xs"
-      />
-      <Textarea
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
-        placeholder="Extended description (optional)"
-        className="min-h-24 text-xs"
-      />
-      <div className="rounded-md border border-border bg-card p-3 font-mono text-[11px] text-muted-foreground">
-        <p className="truncate">{path || "no file selected"}</p>
-        <p className="mt-1">
-          {baseSha ? "updates existing file" : "creates new file"} · {branch || "no branch"}
-        </p>
-        <p className="mt-1">{dirty ? "unsaved changes" : "no changes"}</p>
+    <div className="flex min-h-0 flex-1 flex-col">
+      {/* Scrolls independently so a long description — or a mobile keyboard
+          eating half the viewport — can never push the submit button
+          off-screen; the button below is pinned instead of relying on
+          leftover flex space. */}
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
+        <p className="label-caps">Commit</p>
+        <Input
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          placeholder="Add Button component"
+          className="h-9 text-xs sm:h-8"
+        />
+        <Textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Extended description (optional)"
+          className="min-h-24 text-xs"
+        />
+        <div className="rounded-md border border-border bg-card p-3 font-mono text-[11px] text-muted-foreground">
+          <p className="truncate">{path || "no file selected"}</p>
+          <p className="mt-1">
+            {baseSha ? "updates existing file" : "creates new file"} · {branch || "no branch"}
+          </p>
+          <p className="mt-1">{dirty ? "unsaved changes" : "no changes"}</p>
+        </div>
       </div>
-      <Button
-        className="mt-auto"
-        disabled={!path || !message.trim() || !branch || commit.isPending}
-        onClick={() => commit.mutate()}
+      <div
+        className="shrink-0 border-t border-border bg-background p-3"
+        style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
       >
-        {commit.isPending ? (
-          <Loader2 className="size-4 animate-spin" />
-        ) : (
-          <GitCommitHorizontal className="size-4" />
-        )}
-        Commit &amp; push
-      </Button>
+        <Button
+          className="h-10 w-full sm:h-9"
+          disabled={!path || !message.trim() || !branch || commit.isPending}
+          onClick={() => commit.mutate()}
+        >
+          {commit.isPending ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <GitCommitHorizontal className="size-4" />
+          )}
+          Commit &amp; push
+        </Button>
+      </div>
     </div>
   );
 
@@ -648,12 +661,12 @@ function Workspace() {
   );
 
   return (
-    <main className="flex h-[calc(100vh-3rem-var(--dock-space,7rem))] flex-col">
+    <main className="flex h-[calc(100dvh-3rem-var(--dock-space,7rem))] flex-col">
       <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2 sm:gap-3 sm:px-4">
         <Button
           variant="outline"
           size="icon"
-          className="h-8 w-8 shrink-0 md:hidden"
+          className="h-10 w-10 shrink-0 md:hidden"
           aria-label={mobileSidebarOpen ? "Close file tree" : "Open file tree"}
           onClick={() => setMobileSidebarOpen((v) => !v)}
         >
@@ -665,7 +678,7 @@ function Workspace() {
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+              className="h-10 w-10 shrink-0 text-muted-foreground hover:text-foreground sm:h-8 sm:w-8"
               aria-label="Repository actions"
             >
               <MoreVertical className="size-4" />
@@ -734,34 +747,108 @@ function Workspace() {
           </span>
         )}
         <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
-          <Button variant="outline" size="sm" onClick={() => setShowDiff((v) => !v)} disabled={!dirty}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 sm:h-8"
+            onClick={() => setShowDiff((v) => !v)}
+            disabled={!dirty}
+          >
             <span className="hidden sm:inline">{showDiff ? "Hide diff" : "View diff"}</span>
             <span className="sm:hidden">{showDiff ? "Hide" : "Diff"}</span>
           </Button>
-          <label className="inline-flex h-8 cursor-pointer items-center gap-2 rounded-md border border-border px-2 text-xs sm:px-3">
+
+          {/* On narrow screens, five separate icon-only buttons here would
+              wrap into a cramped, hard-to-tap row. Instead, collapse Upload /
+              Bulk upload / Upload folder / Upload ZIP / New file into one
+              "Add" menu whose items get a full-width, comfortably-sized tap
+              target. The full row of individual buttons stays for sm+. */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon" className="h-9 w-9 shrink-0 sm:hidden">
+                <Plus className="size-4" />
+                <span className="sr-only">Add files</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+              <DropdownMenuItem onSelect={() => uploadInputRef.current?.click()}>
+                <Upload className="size-3.5" />
+                Upload
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setBulkUploadOpen(true)}>
+                <UploadCloud className="size-3.5" />
+                Bulk upload
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setUploadFolderOpen(true)}>
+                <FolderUp className="size-3.5" />
+                Upload folder
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setUploadZipOpen(true)}>
+                <FileArchive className="size-3.5" />
+                Upload ZIP
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => setNewFileOpen(true)}>
+                <FilePlus className="size-3.5" />
+                New file
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <input
+            ref={uploadInputRef}
+            type="file"
+            className="hidden"
+            onChange={(e) => onUpload(e.target.files)}
+          />
+
+          <Button
+            variant="outline"
+            size="sm"
+            className="hidden sm:inline-flex"
+            onClick={() => uploadInputRef.current?.click()}
+          >
             <Upload className="size-3.5" />
             <span className="hidden sm:inline">Upload</span>
-            <input type="file" className="hidden" onChange={(e) => onUpload(e.target.files)} />
-          </label>
-          <Button variant="outline" size="sm" onClick={() => setBulkUploadOpen(true)}>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="hidden sm:inline-flex"
+            onClick={() => setBulkUploadOpen(true)}
+          >
             <UploadCloud className="size-3.5" />
             <span className="hidden sm:inline">Bulk upload</span>
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setUploadFolderOpen(true)}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="hidden sm:inline-flex"
+            onClick={() => setUploadFolderOpen(true)}
+          >
             <FolderUp className="size-3.5" />
             <span className="hidden sm:inline">Upload folder</span>
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setUploadZipOpen(true)}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="hidden sm:inline-flex"
+            onClick={() => setUploadZipOpen(true)}
+          >
             <FileArchive className="size-3.5" />
             <span className="hidden sm:inline">Upload ZIP</span>
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setNewFileOpen(true)}>
+          <Button
+            variant="outline"
+            size="sm"
+            className="hidden sm:inline-flex"
+            onClick={() => setNewFileOpen(true)}
+          >
             <FilePlus className="size-3.5" />
             <span className="hidden sm:inline">New file</span>
           </Button>
           <Button
             size="sm"
-            className="relative md:hidden"
+            className="relative h-9 md:hidden"
             onClick={() => setMobileCommitOpen((v) => !v)}
           >
             <GitCommitHorizontal className="size-3.5" />
