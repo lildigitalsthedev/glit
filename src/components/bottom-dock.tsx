@@ -217,24 +217,28 @@ export function BottomDock() {
                 to={item.to}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "group flex flex-col items-center justify-center gap-0.5 rounded-xl font-mono transition-all duration-200",
+                  "group flex flex-col items-center justify-center gap-0.5 rounded-xl font-mono transition-colors duration-200",
                   sizing.width,
                   sizing.padY,
                   sizing.text,
                   sizing.minTouch,
                   active
-                    ? "bg-primary text-primary-foreground shadow-sm"
+                    ? "text-primary"
                     : "text-muted-foreground hover:bg-white/10 hover:text-foreground",
                 )}
               >
                 <item.icon
                   className={cn(
                     sizing.icon,
-                    "transition-transform duration-200",
-                    active ? "scale-110" : "group-hover:scale-105",
+                    "transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]",
+                    active
+                      ? "-translate-y-0.5 scale-110 fill-primary/25 drop-shadow-[0_0_6px_currentColor]"
+                      : "fill-transparent group-hover:scale-105",
                   )}
                 />
-                <span className="max-w-full truncate">{item.label}</span>
+                <span className={cn("max-w-full truncate", active && "font-semibold")}>
+                  {item.label}
+                </span>
               </Link>
             );
           })}
@@ -261,23 +265,27 @@ export function BottomDock() {
             to={item.to}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "group flex w-full flex-col items-center justify-center gap-0.5 rounded-full font-mono transition-all duration-200",
+              "group flex w-full flex-col items-center justify-center gap-0.5 rounded-full font-mono transition-colors duration-200",
               sizing.padY,
               sizing.text,
               sizing.minTouch,
               active
-                ? "bg-primary text-primary-foreground shadow-sm"
+                ? "text-primary"
                 : "text-muted-foreground hover:bg-white/10 hover:text-foreground",
             )}
           >
             <item.icon
               className={cn(
                 sizing.icon,
-                "transition-transform duration-200",
-                active ? "scale-110" : "group-hover:scale-105",
+                "transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]",
+                active
+                  ? "-translate-y-0.5 scale-110 fill-primary/25 drop-shadow-[0_0_6px_currentColor]"
+                  : "fill-transparent group-hover:scale-105",
               )}
             />
-            <span className="max-w-full truncate">{item.label}</span>
+            <span className={cn("max-w-full truncate", active && "font-semibold")}>
+              {item.label}
+            </span>
           </Link>
         );
       })}
