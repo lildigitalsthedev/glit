@@ -104,6 +104,32 @@ export function renameRepo(token: string, fullName: string, newName: string) {
   });
 }
 
+export interface CreateRepoArgs {
+  name: string;
+  description?: string;
+  isPrivate: boolean;
+  autoInit: boolean;
+  gitignoreTemplate?: string;
+  licenseTemplate?: string;
+}
+
+export function createRepo(token: string, args: CreateRepoArgs) {
+  // GitHub only applies a .gitignore or license template when the repo is
+  // initialized with a first commit, so force auto_init on in that case.
+  const autoInit = args.autoInit || Boolean(args.gitignoreTemplate) || Boolean(args.licenseTemplate);
+  return ghFetch<GhRepo>(token, "/user/repos", {
+    method: "POST",
+    body: JSON.stringify({
+      name: args.name,
+      description: args.description || undefined,
+      private: args.isPrivate,
+      auto_init: autoInit,
+      gitignore_template: args.gitignoreTemplate || undefined,
+      license_template: args.licenseTemplate || undefined,
+    }),
+  });
+}
+
 export interface GhTreeEntry {
   path: string;
   type: "blob" | "tree" | "commit";

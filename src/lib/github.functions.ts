@@ -133,6 +133,52 @@ export const pushFiles = createServerFn({ method: "POST" })
     return pushMultipleFiles(context.supabase, context.userId, data);
   });
 
+export const createRepository = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    (data: {
+      accountId: string;
+      name: string;
+      description?: string | undefined;
+      isPrivate: boolean;
+      autoInit: boolean;
+      gitignoreTemplate?: string | undefined;
+      licenseTemplate?: string | undefined;
+    }) => data,
+  )
+  .handler(async ({ data, context }): Promise<RepoCard> => {
+    const name = data.name.trim();
+    if (!name) throw new Error("Repository name cannot be empty.");
+    if (name.length > 100) throw new Error("Repository names can't be longer than 100 characters.");
+    if (name === "." || name === "..") throw new Error("That name isn't allowed by GitHub.");
+    if (!/^[A-Za-z0-9._-]+$/.test(name)) {
+      throw new Error("Only letters, numbers, hyphens, underscores and periods are allowed.");
+    }
+    const { loadAccountToken } = await import("./github/tokens.server");
+    const { createRepo } = await import("./github/api.server");
+    const { token } = await loadAccountToken(context.supabase, data.accountId);
+    const repo = await createRepo(token, {
+      name,
+      description: data.description?.trim() || undefined,
+      isPrivate: data.isPrivate,
+      autoInit: data.autoInit,
+      gitignoreTemplate: data.gitignoreTemplate || undefined,
+      licenseTemplate: data.licenseTemplate || undefined,
+    });
+    return {
+      id: repo.id,
+      name: repo.name,
+      fullName: repo.full_name,
+      owner: repo.owner.login,
+      ownerAvatar: repo.owner.avatar_url,
+      isPrivate: repo.private,
+      description: repo.description,
+      defaultBranch: repo.default_branch,
+      updatedAt: repo.pushed_at ?? repo.updated_at,
+      canPush: repo.permissions?.push ?? true,
+    };
+  });
+
 export interface RenamedRepo {
   id: number;
   name: string;

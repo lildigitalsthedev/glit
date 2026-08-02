@@ -5,7 +5,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { GitBranch, Lock, Search, SearchX, Star, Unlock, Loader2, Github } from "lucide-react";
 import { AccountRow, ConnectGithubDialog, useAccounts } from "@/components/connect-github";
-import { listRepos } from "@/lib/github.functions";
+import { CreateRepositoryDialog } from "@/components/create-repository-dialog";
+import { listRepos, type RepoCard } from "@/lib/github.functions";
 import { getPreferences, listRepoPrefs, saveRepoPref, updatePreferences } from "@/lib/workspace.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -99,6 +100,11 @@ function Dashboard() {
     onError: (error: Error) => toast.error(error.message),
   });
 
+  function handleRepoCreated(repo: RepoCard) {
+    void queryClient.invalidateQueries({ queryKey: ["repos", accountId] });
+    openRepo.mutate({ fullName: repo.fullName, defaultBranch: repo.defaultBranch });
+  }
+
   const filtered = (repos.data ?? [])
     .filter((repo) => (onlyFavorites ? favorites.has(repo.fullName) : true))
     .filter((repo) => repo.fullName.toLowerCase().includes(query.toLowerCase()));
@@ -131,7 +137,10 @@ function Dashboard() {
           <p className="label-caps">Dashboard</p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight">Repositories</h1>
         </div>
-        <ConnectGithubDialog />
+        <div className="flex items-center gap-2">
+          <CreateRepositoryDialog accountId={accountId} onCreated={handleRepoCreated} />
+          <ConnectGithubDialog />
+        </div>
       </div>
 
       <section className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
