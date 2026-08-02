@@ -339,6 +339,8 @@ export type Database = {
           default_folder: string | null
           editor_font_size: number
           notifications: boolean
+          plan: string
+          plan_updated_at: string | null
           tab_width: number
           theme: string
           updated_at: string
@@ -354,6 +356,8 @@ export type Database = {
           default_folder?: string | null
           editor_font_size?: number
           notifications?: boolean
+          plan?: string
+          plan_updated_at?: string | null
           tab_width?: number
           theme?: string
           updated_at?: string
@@ -369,6 +373,8 @@ export type Database = {
           default_folder?: string | null
           editor_font_size?: number
           notifications?: boolean
+          plan?: string
+          plan_updated_at?: string | null
           tab_width?: number
           theme?: string
           updated_at?: string

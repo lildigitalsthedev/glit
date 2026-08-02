@@ -1,12 +1,14 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { LogOut, UserRound, Github, SlidersHorizontal, Loader2 } from "lucide-react";
+import { LogOut, UserRound, Github, SlidersHorizontal, Loader2, Sparkles } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { usePlan } from "@/hooks/usePlan";
 import { AccountRow, ConnectGithubDialog, useAccounts } from "@/components/connect-github";
 import { getPreferences, updatePreferences, type Preferences } from "@/lib/workspace.functions";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -17,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { EmptyState } from "@/components/empty-state";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/profile")({
   head: () => ({
@@ -38,6 +41,7 @@ function Profile() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const accounts = useAccounts();
+  const { plan, isPro } = usePlan();
 
   const prefsFn = useServerFn(getPreferences);
   const updatePrefsFn = useServerFn(updatePreferences);
@@ -68,6 +72,36 @@ function Profile() {
         <Button variant="outline" size="sm" onClick={() => void signOut().then(() => void navigate({ to: "/auth" }))}>
           <LogOut className="size-3.5" />
           Log out
+        </Button>
+      </section>
+
+      {/* Plan */}
+      <section className="mt-8 flex items-center justify-between gap-3 rounded-md border border-border bg-card p-4">
+        <div className="flex items-center gap-3">
+          <div
+            className={cn(
+              "flex size-10 shrink-0 items-center justify-center rounded-full",
+              isPro ? "bg-primary/10 text-primary" : "bg-secondary text-muted-foreground",
+            )}
+          >
+            <Sparkles className="size-4" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-medium">{isPro ? "GitPush Pro" : "Free plan"}</p>
+              <Badge variant={isPro ? "default" : "secondary"} className="font-mono text-[10px]">
+                {plan}
+              </Badge>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {isPro
+                ? "Unlimited accounts and AI-assisted tools are unlocked."
+                : "Upgrade for unlimited accounts and AI-assisted tools."}
+            </p>
+          </div>
+        </div>
+        <Button asChild variant="outline" size="sm">
+          <Link to="/pricing">{isPro ? "Manage plan" : "Upgrade"}</Link>
         </Button>
       </section>
 
