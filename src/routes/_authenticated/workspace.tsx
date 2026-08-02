@@ -23,6 +23,7 @@ import {
   RefreshCw,
   Copy,
   History,
+  Star,
 } from "lucide-react";
 import {
   listRepoBranches,
@@ -40,6 +41,8 @@ import {
   listRecentFiles,
   touchRecentFile,
   clearRecentFiles,
+  listFavoritePaths,
+  setPathFavorite,
 } from "@/lib/workspace.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -74,6 +77,7 @@ import { UploadZipDialog } from "@/components/upload-zip-dialog";
 import { FileTree } from "@/components/file-tree";
 import { FileBreadcrumbs } from "@/components/breadcrumb-nav";
 import { RecentFiles } from "@/components/recent-files";
+import { FavoritePaths } from "@/components/favorite-paths";
 import { EmptyState } from "@/components/empty-state";
 import { cn } from "@/lib/utils";
 
@@ -129,6 +133,8 @@ function Workspace() {
   const recentFilesFn = useServerFn(listRecentFiles);
   const touchRecentFileFn = useServerFn(touchRecentFile);
   const clearRecentFilesFn = useServerFn(clearRecentFiles);
+  const favoritePathsFn = useServerFn(listFavoritePaths);
+  const setPathFavoriteFn = useServerFn(setPathFavorite);
 
   const prefs = useQuery({ queryKey: ["prefs"], queryFn: () => prefsFn() });
   const accountId = prefs.data?.activeAccountId ?? null;
@@ -181,6 +187,23 @@ function Workspace() {
     queryFn: () => recentFilesFn({ data: { fullName: fullName!, branch } }),
     enabled: Boolean(accountId && fullName && branch),
   });
+
+  const favoritePaths = useQuery({
+    queryKey: ["favorite-paths", fullName],
+    queryFn: () => favoritePathsFn({ data: { fullName: fullName! } }),
+    enabled: Boolean(accountId && fullName),
+  });
+
+  const isActiveFolderFavorite = Boolean(
+    activeFolder && favoritePaths.data?.some((favorite) => favorite.path === activeFolder),
+  );
+
+  function toggleFolderFavorite(target: string, next: boolean) {
+    if (!fullName) return;
+    setPathFavoriteFn({ data: { fullName, path: target, isFavorite: next } })
+      .then(() => void queryClient.invalidateQueries({ queryKey: ["favorite-paths", fullName] }))
+      .catch((error: Error) => toast.error(error.message || "Couldn't update favorite paths."));
+  }
 
   // Fire-and-forget: records that a file was just opened or edited so it
   // shows up (and stays sorted) in the Recent Files panel. Failures here
@@ -460,7 +483,20 @@ function Workspace() {
   const fileTreePanel = (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="border-b border-border p-2">
-        <FileBreadcrumbs path={activeFolder} onNavigate={setActiveFolder} className="mb-2" />
+        <div className="mb-2 flex items-center gap-1">
+          <FileBreadcrumbs path={activeFolder} onNavigate={setActiveFolder} className="min-w-0 flex-1" />
+          {activeFolder && (
+            <button
+              type="button"
+              onClick={() => toggleFolderFavorite(activeFolder, !isActiveFolderFavorite)}
+              aria-label={isActiveFolderFavorite ? "Remove Favorite" : "Favorite"}
+              title={isActiveFolderFavorite ? "Remove Favorite" : "Favorite this folder"}
+              className="flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground transition-transform duration-150 hover:scale-110 hover:text-foreground active:scale-95"
+            >
+              <Star className={cn("size-3.5", isActiveFolderFavorite && "fill-primary text-primary")} />
+            </button>
+          )}
+        </div>
         <Input
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
@@ -468,6 +504,13 @@ function Workspace() {
           className="h-8 font-mono text-xs"
         />
       </div>
+      <FavoritePaths
+        paths={favoritePaths.data ?? []}
+        loading={favoritePaths.isLoading}
+        activeFolder={activeFolder}
+        onNavigate={setActiveFolder}
+        onRemove={(target) => toggleFolderFavorite(target, false)}
+      />
       <RecentFiles
         files={recentFiles.data ?? []}
         loading={recentFiles.isLoading}

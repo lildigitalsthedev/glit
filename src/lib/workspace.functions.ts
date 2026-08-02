@@ -274,6 +274,66 @@ export const clearRecentFiles = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/**
+ * Just the starred paths for a single repository, e.g. `src/components`,
+ * `src/hooks`, `src/pages` — the shortcuts a developer jumps to constantly.
+ * Kept separate from `listPaths` (which is ordered by recency across all
+ * repos) so the favorites strip in the workspace stays small and stable.
+ */
+export const listFavoritePaths = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { fullName: string }) => data)
+  .handler(async ({ data, context }): Promise<PathPref[]> => {
+    const { data: rows, error } = await context.supabase
+      .from("favorite_paths")
+      .select("full_name, path, is_favorite, use_count")
+      .eq("full_name", data.fullName)
+      .eq("is_favorite", true)
+      .order("path", { ascending: true })
+      .limit(30);
+    if (error) throw new Error(error.message);
+    return (rows ?? []).map((row) => ({
+      fullName: row.full_name as string | null,
+      path: row.path as string,
+      isFavorite: row.is_favorite as boolean,
+      useCount: row.use_count as number,
+    }));
+  });
+
+/**
+ * Marks (or unmarks) a folder as a favorite path. Deliberately doesn't touch
+ * `use_count` — that's reserved for actual navigation frequency — so simply
+ * starring a folder you've never opened doesn't skew its usage stats.
+ */
+export const setPathFavorite = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { fullName: string; path: string; isFavorite: boolean }) => data)
+  .handler(async ({ data, context }) => {
+    const { data: existing } = await context.supabase
+      .from("favorite_paths")
+      .select("id")
+      .eq("full_name", data.fullName)
+      .eq("path", data.path)
+      .maybeSingle();
+    if (existing) {
+      const { error } = await context.supabase
+        .from("favorite_paths")
+        .update({ is_favorite: data.isFavorite })
+        .eq("id", existing.id as string);
+      if (error) throw new Error(error.message);
+      return { ok: true };
+    }
+    const { error } = await context.supabase.from("favorite_paths").insert({
+      user_id: context.userId,
+      full_name: data.fullName,
+      path: data.path,
+      is_favorite: data.isFavorite,
+      use_count: 0,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 export interface PushRecord {
   id: string;
   fullName: string;
