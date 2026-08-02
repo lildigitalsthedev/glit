@@ -25,7 +25,7 @@ import {
   pushFile,
   downloadRepoZip,
 } from "@/lib/github.functions";
-import { getPreferences } from "@/lib/workspace.functions";
+import { getPreferences, updatePreferences } from "@/lib/workspace.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -43,6 +43,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { RenameRepositoryDialog } from "@/components/rename-repository-dialog";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/workspace")({
@@ -85,6 +86,7 @@ function languageFor(path: string) {
 function Workspace() {
   const queryClient = useQueryClient();
   const prefsFn = useServerFn(getPreferences);
+  const updatePrefsFn = useServerFn(updatePreferences);
   const branchesFn = useServerFn(listRepoBranches);
   const treeFn = useServerFn(listRepoTree);
   const readFn = useServerFn(readRepoFile);
@@ -104,6 +106,7 @@ function Workspace() {
   const [description, setDescription] = useState("");
   const [showDiff, setShowDiff] = useState(false);
   const [filter, setFilter] = useState("");
+  const [renameOpen, setRenameOpen] = useState(false);
 
   useEffect(() => {
     if (!branch && prefs.data?.defaultBranch) setBranch(prefs.data.defaultBranch);
@@ -207,7 +210,20 @@ function Workspace() {
   }
 
   function handleRenameRepository() {
-    toast.info("Rename Repository is coming in the next update.");
+    setRenameOpen(true);
+  }
+
+  async function handleRepositoryRenamed(newFullName: string) {
+    // Update the stored active repo so every query keyed off `fullName`
+    // (branches, tree, etc.) re-fetches against the new name immediately.
+    try {
+      await updatePrefsFn({ data: { activeRepo: newFullName } });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Couldn't save the new repository name.");
+    }
+    void queryClient.invalidateQueries({ queryKey: ["prefs"] });
+    void queryClient.invalidateQueries({ queryKey: ["branches"] });
+    void queryClient.invalidateQueries({ queryKey: ["tree"] });
   }
 
   function handleRefreshRepository() {
@@ -297,6 +313,13 @@ function Workspace() {
             {/* Future: Delete Repository, Archive Repository — not implemented yet */}
           </DropdownMenuContent>
         </DropdownMenu>
+        <RenameRepositoryDialog
+          open={renameOpen}
+          onOpenChange={setRenameOpen}
+          accountId={accountId}
+          fullName={fullName}
+          onRenamed={handleRepositoryRenamed}
+        />
         <Select value={branch} onValueChange={setBranch}>
           <SelectTrigger className="h-8 w-48 font-mono text-xs">
             <GitBranch className="size-3.5" />
