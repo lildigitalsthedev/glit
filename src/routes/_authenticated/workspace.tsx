@@ -5,7 +5,19 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import Editor from "@monaco-editor/react";
 import { diffLines } from "diff";
-import { File, FilePlus, GitBranch, Loader2, Upload, GitCommitHorizontal } from "lucide-react";
+import {
+  File,
+  FilePlus,
+  GitBranch,
+  Loader2,
+  Upload,
+  GitCommitHorizontal,
+  MoreVertical,
+  Download,
+  Pencil,
+  RefreshCw,
+  Copy,
+} from "lucide-react";
 import {
   listRepoBranches,
   listRepoTree,
@@ -23,6 +35,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/workspace")({
@@ -150,6 +169,34 @@ function Workspace() {
   const diff = useMemo(() => (showDiff ? diffLines(original, content) : []), [showDiff, original, content]);
   const dirty = content !== original;
 
+  // --- Repository actions menu handlers -------------------------------
+  // Download ZIP, Rename Repository and Refresh Repository are wired up
+  // as separate features; they're stubbed here so the menu is fully
+  // functional and extensible while those land.
+  function handleDownloadZip() {
+    toast.info("Download ZIP is coming in the next update.");
+  }
+
+  function handleRenameRepository() {
+    toast.info("Rename Repository is coming in the next update.");
+  }
+
+  function handleRefreshRepository() {
+    toast.info("Refresh Repository is coming in the next update.");
+  }
+
+  async function handleCopyRepositoryUrl() {
+    if (!fullName) return;
+    const url = `https://github.com/${fullName}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("Copied!");
+    } catch {
+      toast.error("Couldn't copy the repository URL.");
+    }
+  }
+  // ----------------------------------------------------------------------
+
   function onUpload(fileList: FileList | null) {
     const file = fileList?.[0];
     if (!file) return;
@@ -189,6 +236,38 @@ function Workspace() {
     <main className="flex h-[calc(100vh-3rem)] flex-col">
       <div className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-2">
         <span className="font-mono text-sm">{fullName}</span>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+              aria-label="Repository actions"
+            >
+              <MoreVertical className="size-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-56">
+            <DropdownMenuItem onSelect={handleDownloadZip}>
+              <Download className="size-3.5" />
+              Download ZIP
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={handleRenameRepository}>
+              <Pencil className="size-3.5" />
+              Rename Repository
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={handleRefreshRepository}>
+              <RefreshCw className="size-3.5" />
+              Refresh Repository
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={handleCopyRepositoryUrl}>
+              <Copy className="size-3.5" />
+              Copy Repository URL
+            </DropdownMenuItem>
+            {/* Future: Delete Repository, Archive Repository — not implemented yet */}
+          </DropdownMenuContent>
+        </DropdownMenu>
         <Select value={branch} onValueChange={setBranch}>
           <SelectTrigger className="h-8 w-48 font-mono text-xs">
             <GitBranch className="size-3.5" />
