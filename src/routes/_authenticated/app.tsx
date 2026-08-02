@@ -3,12 +3,14 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { GitBranch, Lock, Search, Star, Unlock, Loader2, Github } from "lucide-react";
+import { GitBranch, Lock, Search, SearchX, Star, Unlock, Loader2, Github } from "lucide-react";
 import { AccountRow, ConnectGithubDialog, useAccounts } from "@/components/connect-github";
 import { listRepos } from "@/lib/github.functions";
 import { getPreferences, listRepoPrefs, saveRepoPref, updatePreferences } from "@/lib/workspace.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/empty-state";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/app")({
@@ -111,17 +113,13 @@ function Dashboard() {
 
   if ((accounts.data ?? []).length === 0) {
     return (
-      <main className="mx-auto max-w-lg px-4 py-24 text-center">
-        <div className="mx-auto flex size-12 items-center justify-center rounded-md border border-border bg-card">
-          <Github className="size-5 text-primary" />
-        </div>
-        <h1 className="mt-6 text-2xl font-semibold tracking-tight">Connect GitHub to start</h1>
-        <p className="mx-auto mt-3 max-w-sm text-sm text-muted-foreground">
-          Authorize GitHub once and every repository you can push to becomes editable right here.
-        </p>
-        <div className="mt-8 flex justify-center">
-          <ConnectGithubDialog />
-        </div>
+      <main className="mx-auto flex min-h-[60vh] max-w-lg items-center justify-center px-4">
+        <EmptyState
+          icon={Github}
+          title="Connect GitHub to start"
+          description="Authorize GitHub once and every repository you can push to becomes editable right here."
+          action={<ConnectGithubDialog />}
+        />
       </main>
     );
   }
@@ -185,21 +183,37 @@ function Dashboard() {
       </div>
 
       {repos.isLoading && (
-        <div className="flex h-48 items-center justify-center">
-          <Loader2 className="size-5 animate-spin text-primary" />
-        </div>
+        <section className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="flex flex-col rounded-md border border-border bg-card p-4">
+              <div className="flex items-start gap-2">
+                <Skeleton className="h-4 w-2/3" />
+                <Skeleton className="ml-auto size-3.5 shrink-0 rounded-full" />
+              </div>
+              <Skeleton className="mt-3 h-3 w-full" />
+              <Skeleton className="mt-1.5 h-3 w-4/5" />
+              <div className="mt-4 flex items-center gap-3">
+                <Skeleton className="h-3 w-14" />
+                <Skeleton className="h-3 w-14" />
+                <Skeleton className="ml-auto h-3 w-10" />
+              </div>
+              <Skeleton className="mt-4 h-8 w-full" />
+            </div>
+          ))}
+        </section>
       )}
       {repos.isError && (
-        <p className="mt-8 rounded-md border border-destructive/40 bg-destructive/10 p-4 text-sm">
+        <p className="mt-8 rounded-md border border-destructive/40 bg-destructive/10 p-4 text-sm animate-in fade-in duration-200">
           {(repos.error as Error).message}
         </p>
       )}
 
       <section className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {filtered.map((repo) => (
+        {filtered.map((repo, index) => (
           <article
             key={repo.id}
-            className="group flex flex-col rounded-md border border-border bg-card p-4 transition-colors hover:border-primary/50"
+            style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
+            className="group flex animate-in fade-in flex-col rounded-md border border-border bg-card p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md"
           >
             <div className="flex items-start gap-2">
               <h2 className="min-w-0 flex-1 truncate font-mono text-sm">
@@ -209,13 +223,14 @@ function Dashboard() {
               <button
                 onClick={() => toggleFavorite.mutate(repo.fullName)}
                 aria-label="Toggle favorite"
+                className="transition-transform duration-150 hover:scale-110 active:scale-95"
               >
                 <Star
                   className={cn(
-                    "size-3.5",
+                    "size-3.5 transition-colors duration-150",
                     favorites.has(repo.fullName)
                       ? "fill-primary text-primary"
-                      : "text-muted-foreground",
+                      : "text-muted-foreground group-hover:text-foreground",
                   )}
                 />
               </button>
@@ -249,7 +264,13 @@ function Dashboard() {
       </section>
 
       {!repos.isLoading && filtered.length === 0 && (
-        <p className="mt-10 text-center text-sm text-muted-foreground">No repositories match.</p>
+        <EmptyState
+          className="mt-6"
+          size="compact"
+          icon={SearchX}
+          title="No repositories match."
+          description="Try a different search term or clear the favorites filter."
+        />
       )}
     </main>
   );
