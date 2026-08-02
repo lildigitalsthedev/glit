@@ -203,7 +203,7 @@ export function AccountRow({
   });
 
   return (
-    <div className="flex items-center gap-3 rounded-md border border-border bg-card px-3 py-2.5">
+    <div className="flex items-center gap-3 rounded-md border border-border bg-card px-3 py-2.5 transition-colors duration-150 hover:border-primary/30">
       {avatarUrl ? (
         <img src={avatarUrl} alt="" className="size-8 rounded-full" />
       ) : (
