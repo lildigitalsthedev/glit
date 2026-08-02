@@ -9,6 +9,7 @@ import {
   FileCog,
   Folder,
   FolderOpen,
+  Home,
   Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -125,7 +126,7 @@ export function FileTree({
   activePath: string;
   activeFolder: string | null;
   onOpenFile: (path: string) => void;
-  onSelectFolder: (path: string) => void;
+  onSelectFolder: (path: string | null) => void;
 }) {
   const blobPaths = useMemo(
     () => nodes.filter((n) => n.type === "blob").map((n) => n.path),
@@ -285,5 +286,22 @@ export function FileTree({
     });
   }
 
-  return <div className="flex flex-col py-1">{renderDir(tree, 0)}</div>;
+  return (
+    <div className="flex flex-col py-1">
+      <button
+        onClick={() => onSelectFolder(null)}
+        className={cn(
+          "flex w-full items-center gap-1.5 truncate rounded py-1.5 pl-2 pr-2 text-left font-mono text-[11px] transition-colors duration-150",
+          activeFolder === null
+            ? "bg-secondary/70 text-foreground"
+            : "text-muted-foreground hover:bg-secondary/40 hover:text-foreground",
+        )}
+        title="Repository root"
+      >
+        <Home className="size-3.5 shrink-0 text-primary" />
+        <span className="truncate">Repository root</span>
+      </button>
+      {renderDir(tree, 0)}
+    </div>
+  );
 }
