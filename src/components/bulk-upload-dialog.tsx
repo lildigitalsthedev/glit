@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { buildCommitTree, computeCommitTotals, type PreviewSource } from "@/lib/commit-preview";
+import { buildPathIndex, suggestPathsForFilename } from "@/lib/path-prediction";
 import { CommitTotalsBar } from "@/components/commit-totals-bar";
 
 export interface PendingFile {
@@ -139,6 +140,16 @@ export function BulkUploadDialog({
   }
 
   const existingPathsSet = useMemo(() => new Set(existingPaths), [existingPaths]);
+  // Built once per repository/branch (existingPaths only changes when the
+  // repo, branch, or tree is refreshed) and reused for every uploaded file.
+  const pathIndex = useMemo(() => buildPathIndex(existingPaths), [existingPaths]);
+  const suggestionsByItemId = useMemo(() => {
+    const map = new Map<string, string[]>();
+    for (const item of pending) {
+      map.set(item.id, suggestPathsForFilename(pathIndex, item.file.name));
+    }
+    return map;
+  }, [pending, pathIndex]);
   const totals = useMemo(() => {
     const sources: PreviewSource<PendingFile>[] = pending
       .filter((item) => item.path.trim())
@@ -254,37 +265,66 @@ export function BulkUploadDialog({
                   {pending.map((item) => {
                     const trimmedPath = item.path.trim();
                     const overwrites = trimmedPath.length > 0 && existingPaths.includes(trimmedPath);
+                    const suggestions = suggestionsByItemId.get(item.id) ?? [];
                     return (
-                      <div key={item.id} className="flex items-center gap-2 p-2">
-                        <FileUp className="size-3.5 shrink-0 text-muted-foreground" />
-                        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                          <Input
-                            value={item.path}
-                            onChange={(e) => updatePath(item.id, e.target.value)}
-                            className="h-7 font-mono text-xs"
+                      <div key={item.id} className="flex flex-col gap-1.5 p-2">
+                        <div className="flex items-center gap-2">
+                          <FileUp className="size-3.5 shrink-0 text-muted-foreground" />
+                          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                            <Input
+                              value={item.path}
+                              onChange={(e) => updatePath(item.id, e.target.value)}
+                              className="h-7 font-mono text-xs"
+                              disabled={submitting}
+                            />
+                            <span className="text-[10px] text-muted-foreground">
+                              {formatBytes(item.size)}
+                              {!trimmedPath ? (
+                                <span className="text-destructive"> · path required</span>
+                              ) : overwrites ? (
+                                <span className="text-amber-500"> · modified</span>
+                              ) : (
+                                <span className="text-primary"> · new</span>
+                              )}
+                            </span>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-7 shrink-0 text-muted-foreground hover:text-destructive"
+                            onClick={() => removeFile(item.id)}
                             disabled={submitting}
-                          />
-                          <span className="text-[10px] text-muted-foreground">
-                            {formatBytes(item.size)}
-                            {!trimmedPath ? (
-                              <span className="text-destructive"> · path required</span>
-                            ) : overwrites ? (
-                              <span className="text-amber-500"> · modified</span>
-                            ) : (
-                              <span className="text-primary"> · new</span>
-                            )}
-                          </span>
+                            aria-label={`Remove ${item.path}`}
+                          >
+                            <X className="size-3.5" />
+                          </Button>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-7 shrink-0 text-muted-foreground hover:text-destructive"
-                          onClick={() => removeFile(item.id)}
-                          disabled={submitting}
-                          aria-label={`Remove ${item.path}`}
-                        >
-                          <X className="size-3.5" />
-                        </Button>
+
+                        {suggestions.length > 0 && (
+                          <div className="flex flex-wrap items-center gap-1 pl-6">
+                            <span className="text-[10px] text-muted-foreground">Suggested:</span>
+                            {suggestions.map((suggestion) => {
+                              const selected = trimmedPath === suggestion;
+                              return (
+                                <button
+                                  key={suggestion}
+                                  type="button"
+                                  disabled={submitting}
+                                  onClick={() => updatePath(item.id, suggestion)}
+                                  className={cn(
+                                    "rounded-full border px-2 py-0.5 font-mono text-[10px] transition-colors",
+                                    selected
+                                      ? "border-primary bg-primary/10 text-primary"
+                                      : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground",
+                                  )}
+                                  title={`Use ${suggestion}`}
+                                >
+                                  {suggestion}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
