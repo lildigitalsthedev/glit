@@ -116,6 +116,23 @@ export const pushFile = createServerFn({ method: "POST" })
     return pushSingleFile(context.supabase, context.userId, data);
   });
 
+export const pushFiles = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    (data: {
+      accountId: string;
+      fullName: string;
+      branch: string;
+      message: string;
+      description?: string | undefined;
+      files: { path: string; content: string }[];
+    }) => data,
+  )
+  .handler(async ({ data, context }) => {
+    const { pushMultipleFiles } = await import("./github/push.server");
+    return pushMultipleFiles(context.supabase, context.userId, data);
+  });
+
 export interface RenamedRepo {
   id: number;
   name: string;
