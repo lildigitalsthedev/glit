@@ -50,6 +50,39 @@ export type Database = {
         }
         Relationships: []
       }
+      favorite_paths: {
+        Row: {
+          created_at: string
+          full_name: string | null
+          id: string
+          is_favorite: boolean
+          last_used_at: string
+          path: string
+          use_count: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          is_favorite?: boolean
+          last_used_at?: string
+          path: string
+          use_count?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          is_favorite?: boolean
+          last_used_at?: string
+          path?: string
+          use_count?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       feature_flags: {
         Row: {
           created_at: string
@@ -88,6 +121,7 @@ export type Database = {
           gitpush_username: string
           id: string
           status: string
+          updated_at: string
           user_id: string
         }
         Insert: {
@@ -97,6 +131,7 @@ export type Database = {
           gitpush_username: string
           id?: string
           status?: string
+          updated_at?: string
           user_id: string
         }
         Update: {
@@ -106,39 +141,7 @@ export type Database = {
           gitpush_username?: string
           id?: string
           status?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      favorite_paths: {
-        Row: {
-          created_at: string
-          full_name: string | null
-          id: string
-          is_favorite: boolean
-          last_used_at: string
-          path: string
-          use_count: number
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          full_name?: string | null
-          id?: string
-          is_favorite?: boolean
-          last_used_at?: string
-          path: string
-          use_count?: number
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          full_name?: string | null
-          id?: string
-          is_favorite?: boolean
-          last_used_at?: string
-          path?: string
-          use_count?: number
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
@@ -252,6 +255,7 @@ export type Database = {
           last_opened_at: string
           open_count: number
           path: string
+          updated_at: string
           user_id: string
         }
         Insert: {
@@ -263,6 +267,7 @@ export type Database = {
           last_opened_at?: string
           open_count?: number
           path: string
+          updated_at?: string
           user_id: string
         }
         Update: {
@@ -274,17 +279,10 @@ export type Database = {
           last_opened_at?: string
           open_count?: number
           path?: string
+          updated_at?: string
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "recent_files_account_id_fkey"
-            columns: ["account_id"]
-            isOneToOne: false
-            referencedRelation: "github_accounts"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       recent_pushes: {
         Row: {
