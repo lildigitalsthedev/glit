@@ -113,6 +113,39 @@ export type Database = {
         }
         Relationships: []
       }
+      feature_requests: {
+        Row: {
+          created_at: string
+          email: string
+          feature: string
+          gitpush_username: string
+          id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          feature: string
+          gitpush_username: string
+          id?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          feature?: string
+          gitpush_username?: string
+          id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       github_accounts: {
         Row: {
           avatar_url: string | null
@@ -209,6 +242,45 @@ export type Database = {
           display_name?: string | null
           id?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      recent_files: {
+        Row: {
+          account_id: string | null
+          branch: string
+          created_at: string
+          full_name: string
+          id: string
+          last_opened_at: string
+          open_count: number
+          path: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_id?: string | null
+          branch: string
+          created_at?: string
+          full_name: string
+          id?: string
+          last_opened_at?: string
+          open_count?: number
+          path: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_id?: string | null
+          branch?: string
+          created_at?: string
+          full_name?: string
+          id?: string
+          last_opened_at?: string
+          open_count?: number
+          path?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -325,6 +397,8 @@ export type Database = {
           default_folder: string | null
           editor_font_size: number
           notifications: boolean
+          plan: string
+          plan_updated_at: string | null
           tab_width: number
           theme: string
           updated_at: string
@@ -340,6 +414,8 @@ export type Database = {
           default_folder?: string | null
           editor_font_size?: number
           notifications?: boolean
+          plan?: string
+          plan_updated_at?: string | null
           tab_width?: number
           theme?: string
           updated_at?: string
@@ -355,6 +431,8 @@ export type Database = {
           default_folder?: string | null
           editor_font_size?: number
           notifications?: boolean
+          plan?: string
+          plan_updated_at?: string | null
           tab_width?: number
           theme?: string
           updated_at?: string
