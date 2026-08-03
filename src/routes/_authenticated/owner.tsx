@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import {
   Loader2,
   ShieldCheck,
-  Search,
   ArrowUpCircle,
   ArrowDownCircle,
   Crown,
