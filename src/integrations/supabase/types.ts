@@ -50,66 +50,6 @@ export type Database = {
         }
         Relationships: []
       }
-      feature_flags: {
-        Row: {
-          created_at: string
-          description: string | null
-          enabled: boolean
-          key: string
-          label: string
-          updated_at: string
-          updated_by: string | null
-        }
-        Insert: {
-          created_at?: string
-          description?: string | null
-          enabled?: boolean
-          key: string
-          label: string
-          updated_at?: string
-          updated_by?: string | null
-        }
-        Update: {
-          created_at?: string
-          description?: string | null
-          enabled?: boolean
-          key?: string
-          label?: string
-          updated_at?: string
-          updated_by?: string | null
-        }
-        Relationships: []
-      }
-      feature_requests: {
-        Row: {
-          created_at: string
-          email: string
-          feature: string
-          gitpush_username: string
-          id: string
-          status: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          email: string
-          feature: string
-          gitpush_username: string
-          id?: string
-          status?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          email?: string
-          feature?: string
-          gitpush_username?: string
-          id?: string
-          status?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       favorite_paths: {
         Row: {
           created_at: string
@@ -140,6 +80,36 @@ export type Database = {
           path?: string
           use_count?: number
           user_id?: string
+        }
+        Relationships: []
+      }
+      feature_flags: {
+        Row: {
+          created_at: string
+          description: string | null
+          enabled: boolean
+          key: string
+          label: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          enabled?: boolean
+          key: string
+          label: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          enabled?: boolean
+          key?: string
+          label?: string
+          updated_at?: string
+          updated_by?: string | null
         }
         Relationships: []
       }
@@ -241,50 +211,6 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
-      }
-      recent_files: {
-        Row: {
-          account_id: string | null
-          branch: string
-          created_at: string
-          full_name: string
-          id: string
-          last_opened_at: string
-          open_count: number
-          path: string
-          user_id: string
-        }
-        Insert: {
-          account_id?: string | null
-          branch: string
-          created_at?: string
-          full_name: string
-          id?: string
-          last_opened_at?: string
-          open_count?: number
-          path: string
-          user_id: string
-        }
-        Update: {
-          account_id?: string | null
-          branch?: string
-          created_at?: string
-          full_name?: string
-          id?: string
-          last_opened_at?: string
-          open_count?: number
-          path?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "recent_files_account_id_fkey"
-            columns: ["account_id"]
-            isOneToOne: false
-            referencedRelation: "github_accounts"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       recent_pushes: {
         Row: {
@@ -399,8 +325,6 @@ export type Database = {
           default_folder: string | null
           editor_font_size: number
           notifications: boolean
-          plan: string
-          plan_updated_at: string | null
           tab_width: number
           theme: string
           updated_at: string
@@ -416,8 +340,6 @@ export type Database = {
           default_folder?: string | null
           editor_font_size?: number
           notifications?: boolean
-          plan?: string
-          plan_updated_at?: string | null
           tab_width?: number
           theme?: string
           updated_at?: string
@@ -433,8 +355,6 @@ export type Database = {
           default_folder?: string | null
           editor_font_size?: number
           notifications?: boolean
-          plan?: string
-          plan_updated_at?: string | null
           tab_width?: number
           theme?: string
           updated_at?: string
