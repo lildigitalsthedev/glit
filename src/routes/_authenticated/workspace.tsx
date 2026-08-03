@@ -50,6 +50,7 @@ import {
 } from "@/lib/workspace.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/search-input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -243,7 +244,7 @@ function Workspace() {
   function recordRecentFile(target: string) {
     if (!fullName || !branch) return;
     touchRecentFileFn({
-      data: { accountId: accountId ?? undefined, fullName, branch, path: target },
+      data: { accountId: accountId ?? null, fullName, branch, path: target },
     })
       .then(() => void queryClient.invalidateQueries({ queryKey: ["recent-files", fullName, branch] }))
       .catch(() => {
@@ -523,7 +524,7 @@ function Workspace() {
 
   if (!accountId || !fullName) {
     return (
-      <main className="flex h-[calc(100dvh-3rem)] items-center justify-center px-4">
+      <main className="flex h-[calc(100dvh-2.5rem)] items-center justify-center px-4">
         <EmptyState
           icon={FolderGit2}
           title="Choose a repository to begin."
@@ -542,8 +543,8 @@ function Workspace() {
 
   const fileTreePanel = (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="border-b border-border p-2">
-        <div className="mb-2 flex items-center gap-1">
+      <div className="border-b border-border p-1.5">
+        <div className="mb-1.5 flex items-center gap-1">
           <FileBreadcrumbs path={activeFolder} onNavigate={setActiveFolder} className="min-w-0 flex-1" />
           {activeFolder && (
             <button
@@ -557,11 +558,11 @@ function Workspace() {
             </button>
           )}
         </div>
-        <Input
+        <SearchInput
           value={filter}
-          onChange={(e) => setFilter(e.target.value)}
+          onValueChange={setFilter}
           placeholder="Find file, folder, or .ext…"
-          className="h-8 font-mono text-xs"
+          inputClassName="h-8 font-mono text-xs"
         />
       </div>
       <FavoritePaths
@@ -600,7 +601,7 @@ function Workspace() {
           eating half the viewport — can never push the submit button
           off-screen; the button below is pinned instead of relying on
           leftover flex space. */}
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
+      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-2.5">
         <p className="label-caps">Commit</p>
         <Input
           value={message}
@@ -705,12 +706,12 @@ function Workspace() {
   );
 
   return (
-    <main className="flex h-[calc(100dvh-3rem-var(--dock-space,7rem))] flex-col">
-      <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2 sm:gap-3 sm:px-4">
+    <main className="flex h-[calc(100dvh-2.5rem-var(--dock-space,7rem))] flex-col">
+      <div className="flex flex-wrap items-center gap-1.5 border-b border-border px-2 py-1.5 sm:gap-2 sm:px-3">
         <Button
           variant="outline"
           size="icon"
-          className="h-10 w-10 shrink-0 md:hidden"
+          className="size-9 shrink-0 md:hidden"
           aria-label={mobileSidebarOpen ? "Close file tree" : "Open file tree"}
           onClick={() => setMobileSidebarOpen((v) => !v)}
         >
@@ -722,7 +723,7 @@ function Workspace() {
             <Button
               variant="ghost"
               size="icon"
-              className="h-10 w-10 shrink-0 text-muted-foreground hover:text-foreground sm:h-8 sm:w-8"
+              className="size-8 shrink-0 text-muted-foreground hover:text-foreground"
               aria-label="Repository actions"
             >
               <MoreVertical className="size-4" />

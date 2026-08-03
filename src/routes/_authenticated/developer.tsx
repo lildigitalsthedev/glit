@@ -73,7 +73,7 @@ function DeveloperDashboard() {
   }
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-8">
+    <main className="mx-auto max-w-3xl px-3 py-4">
       <p className="label-caps">Developer</p>
       <h1 className="mt-1 flex items-center gap-2 text-2xl font-semibold tracking-tight">
         <Code2 className="size-5 text-primary" />

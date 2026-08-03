@@ -88,7 +88,7 @@ function Profile() {
   const initials = (user?.email ?? "?").slice(0, 2).toUpperCase();
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-8">
+    <main className="mx-auto max-w-3xl px-3 py-4">
       <p className="label-caps">Account</p>
       <h1 className="mt-1 text-2xl font-semibold tracking-tight">Profile</h1>
 

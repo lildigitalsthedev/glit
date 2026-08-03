@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import {
   Loader2,
   ShieldCheck,
-  Search,
   ArrowUpCircle,
   ArrowDownCircle,
   Crown,
@@ -16,7 +15,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useRole } from "@/hooks/useRole";
 import { listManagedUsers, setManagedUserRole } from "@/lib/roles.functions";
 import type { AppRole } from "@/lib/permissions";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/search-input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/empty-state";
@@ -105,7 +104,7 @@ function OwnerDashboard() {
   }
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-8">
+    <main className="mx-auto max-w-3xl px-3 py-4">
       <p className="label-caps">Owner</p>
       <h1 className="mt-1 flex items-center gap-2 text-2xl font-semibold tracking-tight">
         <Crown className="size-5 text-primary" />
@@ -117,15 +116,12 @@ function OwnerDashboard() {
       </p>
 
       <div className="mt-6 flex items-center gap-2">
-        <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search users by email…"
-            className="pl-9"
-          />
-        </div>
+        <SearchInput
+          value={search}
+          onValueChange={setSearch}
+          placeholder="Search users by email…"
+          className="flex-1"
+        />
         <Badge variant="secondary" className="shrink-0 font-mono text-[10px]">
           {filtered.length} of {(users.data ?? []).length}
         </Badge>
