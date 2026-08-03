@@ -50,7 +50,7 @@ import {
 } from "@/lib/workspace.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { SearchInput } from "@/components/search-input";
+import { CollapsibleSearch } from "@/components/collapsible-search";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -176,6 +176,14 @@ function Workspace() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [mobileCommitOpen, setMobileCommitOpen] = useState(false);
   const uploadInputRef = useRef<HTMLInputElement>(null);
+  // Only one of Search / Recent Files / Favorite Paths stays expanded at a
+  // time in the sidebar — opening one automatically collapses the others.
+  // Lifted up here (rather than owned by each section) so the choice
+  // persists across the desktop aside and the mobile sheet, which both
+  // render the same `fileTreePanel` from this single source of truth.
+  const [expandedSection, setExpandedSection] = useState<"search" | "recent" | "favorite" | null>(
+    null,
+  );
 
   useEffect(() => {
     if (!branch && prefs.data?.defaultBranch) setBranch(prefs.data.defaultBranch);
@@ -543,8 +551,8 @@ function Workspace() {
 
   const fileTreePanel = (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="border-b border-border p-1.5">
-        <div className="mb-1.5 flex items-center gap-1">
+      <div className="border-b border-border p-1">
+        <div className="mb-1 flex items-center gap-1">
           <FileBreadcrumbs path={activeFolder} onNavigate={setActiveFolder} className="min-w-0 flex-1" />
           {activeFolder && (
             <button
@@ -558,28 +566,38 @@ function Workspace() {
             </button>
           )}
         </div>
-        <SearchInput
+        <CollapsibleSearch
           value={filter}
           onValueChange={setFilter}
+          expanded={expandedSection === "search"}
+          onExpandedChange={(next) => setExpandedSection(next ? "search" : null)}
           placeholder="Find file, folder, or .ext…"
-          inputClassName="h-8 font-mono text-xs"
         />
       </div>
-      <FavoritePaths
-        paths={favoritePaths.data ?? []}
-        loading={favoritePaths.isLoading}
-        activeFolder={activeFolder}
-        onNavigate={setActiveFolder}
-        onRemove={(target) => toggleFolderFavorite(target, false)}
-      />
       <RecentFiles
         files={recentFiles.data ?? []}
         loading={recentFiles.isLoading}
         activePath={path}
         onOpenFile={(target) => openFile.mutate(target)}
         onClear={handleClearRecentFiles}
+        expanded={expandedSection === "recent"}
+        onToggleExpanded={() =>
+          setExpandedSection((prev) => (prev === "recent" ? null : "recent"))
+        }
       />
-      <div className="min-h-0 flex-1 overflow-auto p-1">
+      <FavoritePaths
+        paths={favoritePaths.data ?? []}
+        loading={favoritePaths.isLoading}
+        activeFolder={activeFolder}
+        onNavigate={setActiveFolder}
+        onRemove={(target) => toggleFolderFavorite(target, false)}
+        expanded={expandedSection === "favorite"}
+        onToggleExpanded={() =>
+          setExpandedSection((prev) => (prev === "favorite" ? null : "favorite"))
+        }
+      />
+      <p className="label-caps px-2 pb-1 pt-1.5">Workspace Files</p>
+      <div className="min-h-0 flex-1 overflow-auto px-0.5 pb-1">
         <FileTree
           nodes={tree.data?.nodes ?? []}
           loading={tree.isLoading}
@@ -645,7 +663,7 @@ function Workspace() {
 
   const editorPanel = (
     <section className="flex min-h-0 flex-1 flex-col">
-      <div className="border-b border-border p-2">
+      <div className="border-b border-border p-1.5">
         <Input
           value={path}
           onChange={(e) => setPath(e.target.value)}
@@ -707,7 +725,7 @@ function Workspace() {
 
   return (
     <main className="flex h-[calc(100dvh-2.5rem-var(--dock-space,7rem))] flex-col">
-      <div className="flex flex-wrap items-center gap-1.5 border-b border-border px-2 py-1.5 sm:gap-2 sm:px-3">
+      <div className="flex flex-wrap items-center gap-1.5 border-b border-border px-2 py-1 sm:gap-2 sm:px-3">
         <Button
           variant="outline"
           size="icon"

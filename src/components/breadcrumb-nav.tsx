@@ -32,7 +32,7 @@ export function FileBreadcrumbs({
   return (
     <Breadcrumb className={cn("min-w-0", className)}>
       <BreadcrumbList
-        className="flex-nowrap gap-1 overflow-x-auto text-[11px] sm:gap-1.5 sm:text-xs [&::-webkit-scrollbar]:hidden"
+        className="flex-nowrap gap-1 overflow-x-auto text-[11px] leading-tight sm:gap-1.5 sm:text-xs [&::-webkit-scrollbar]:hidden"
       >
         <BreadcrumbItem>
           {segments.length === 0 ? (

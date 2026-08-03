@@ -355,7 +355,7 @@ function FileRow({
         }}
         style={{ paddingLeft }}
         className={cn(
-          "flex w-full min-w-0 items-center gap-2 truncate rounded py-1.5 pr-7 text-left font-mono text-[11px] transition-colors duration-150",
+          "flex w-full min-w-0 items-center gap-2 truncate rounded py-1 pr-7 text-left font-mono text-[11px] transition-colors duration-150",
           isActive
             ? "bg-secondary text-foreground"
             : "text-muted-foreground hover:bg-secondary/40 hover:text-foreground",
@@ -548,7 +548,7 @@ export function FileTree({
   function renderDir(dir: DirEntry, depth: number) {
     const entries = sortedEntries(dir);
     return entries.map((entry) => {
-      const indent = 8 + depth * 14;
+      const indent = 6 + depth * 12;
       if (entry.type === "dir") {
         const isOpen = expanded.has(entry.path);
         const isMounted = mounted.has(entry.path);
@@ -562,7 +562,7 @@ export function FileTree({
               }}
               style={{ paddingLeft: indent }}
               className={cn(
-                "flex w-full items-center gap-1.5 truncate rounded py-1.5 pr-2 text-left font-mono text-[11px] transition-colors duration-150",
+                "flex w-full items-center gap-1.5 truncate rounded py-1 pr-2 text-left font-mono text-[11px] transition-colors duration-150",
                 isActiveFolder
                   ? "bg-secondary/70 text-foreground"
                   : "text-muted-foreground hover:bg-secondary/40 hover:text-foreground",
@@ -606,7 +606,7 @@ export function FileTree({
           name={entry.name}
           label={entry.name}
           isActive={isActiveFile}
-          paddingLeft={indent + 16}
+          paddingLeft={indent + 14}
           onOpenFile={onOpenFile}
           onCopyPath={onCopyPath}
           onDeleteFile={onDeleteFile}
@@ -620,7 +620,7 @@ export function FileTree({
       <button
         onClick={() => onSelectFolder(null)}
         className={cn(
-          "flex w-full items-center gap-1.5 truncate rounded py-1.5 pl-2 pr-2 text-left font-mono text-[11px] transition-colors duration-150",
+          "flex w-full items-center gap-1.5 truncate rounded py-1 pl-2 pr-2 text-left font-mono text-[11px] transition-colors duration-150",
           activeFolder === null
             ? "bg-secondary/70 text-foreground"
             : "text-muted-foreground hover:bg-secondary/40 hover:text-foreground",
