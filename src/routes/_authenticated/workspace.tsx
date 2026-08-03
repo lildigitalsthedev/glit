@@ -50,6 +50,7 @@ import {
 } from "@/lib/workspace.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/search-input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
