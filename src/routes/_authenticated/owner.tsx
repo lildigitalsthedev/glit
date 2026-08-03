@@ -117,15 +117,12 @@ function OwnerDashboard() {
       </p>
 
       <div className="mt-6 flex items-center gap-2">
-        <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search users by email…"
-            className="pl-9"
-          />
-        </div>
+        <SearchInput
+          value={search}
+          onValueChange={setSearch}
+          placeholder="Search users by email…"
+          className="flex-1"
+        />
         <Badge variant="secondary" className="shrink-0 font-mono text-[10px]">
           {filtered.length} of {(users.data ?? []).length}
         </Badge>
