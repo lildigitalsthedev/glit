@@ -72,7 +72,7 @@ function Pricing() {
   const isPro = plan === "pro";
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-8">
+    <main className="mx-auto max-w-3xl px-3 py-4">
       <p className="label-caps">Pricing</p>
       <h1 className="mt-1 text-2xl font-semibold tracking-tight">Simple, upfront pricing</h1>
       <p className="mt-2 max-w-lg text-sm text-muted-foreground">

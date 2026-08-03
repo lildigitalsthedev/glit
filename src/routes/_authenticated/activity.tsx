@@ -23,7 +23,7 @@ function Activity() {
   const pushes = useQuery({ queryKey: ["pushes"], queryFn: () => fn() });
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-8">
+    <main className="mx-auto max-w-4xl px-3 py-4">
       <p className="label-caps">History</p>
       <h1 className="mt-1 text-2xl font-semibold tracking-tight">Recent pushes</h1>
 
