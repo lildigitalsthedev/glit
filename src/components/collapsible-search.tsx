@@ -1,109 +1,78 @@
 import { useEffect, useRef } from "react";
 import { Search, X } from "lucide-react";
-import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 /**
- * Icon-only search trigger that expands into a full search field on tap.
+ * Floating search popup shown below the Tools row. Unlike the shared
+ * `SearchInput` used elsewhere in the app, this one lives inside a
+ * `ToolPopup` shell (see `workspace-tools.tsx`) — it never pushes the rest
+ * of the sidebar or the editor down, it just floats above it.
  *
- * Collapsed, it costs almost no vertical space — just a single compact row
- * with a magnifying-glass icon. Tapping it (or focusing it via keyboard)
- * smoothly expands it into the same search experience as `SearchInput`,
- * auto-focuses the field, and shows a clear (✕) button. Collapsing happens
- * by tapping the ✕, pressing Escape, or tapping anywhere outside the field.
- *
- * `expanded` / `onExpandedChange` are controlled by the parent so it can be
- * coordinated with sibling collapsible sections (Recent Files, Favorite
- * Paths) — only one of them stays open at a time.
+ * Typing filters the file tree live (the parent's `onValueChange` is the
+ * single source of truth, same as before). Pressing Enter or tapping the
+ * search icon "submits" — which simply closes the popup, since the results
+ * are already visible in the tree underneath. The ✕ clears the query and
+ * closes the popup in one tap.
  */
-export function CollapsibleSearch({
+export function SearchPopup({
   value,
   onValueChange,
-  expanded,
-  onExpandedChange,
+  onClose,
   placeholder,
   className,
 }: {
   value: string;
   onValueChange: (next: string) => void;
-  expanded: boolean;
-  onExpandedChange: (next: boolean) => void;
+  onClose: () => void;
   placeholder?: string;
   className?: string;
 }) {
-  const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Auto-focus the field the moment it expands.
+  // Autofocus (and pop the on-screen keyboard on mobile) the instant the
+  // popup mounts.
   useEffect(() => {
-    if (!expanded) return;
     const id = requestAnimationFrame(() => inputRef.current?.focus());
     return () => cancelAnimationFrame(id);
-  }, [expanded]);
-
-  // Tapping anywhere outside the expanded field collapses it back down.
-  useEffect(() => {
-    if (!expanded) return;
-    function handlePointerDown(e: PointerEvent) {
-      if (!containerRef.current?.contains(e.target as Node)) {
-        onExpandedChange(false);
-      }
-    }
-    document.addEventListener("pointerdown", handlePointerDown);
-    return () => document.removeEventListener("pointerdown", handlePointerDown);
-  }, [expanded, onExpandedChange]);
-
-  if (!expanded) {
-    return (
-      <button
-        type="button"
-        onClick={() => onExpandedChange(true)}
-        aria-label="Search"
-        title="Search"
-        className={cn(
-          "flex w-full items-center gap-1.5 rounded px-1.5 py-1.5 text-left font-mono text-[11px] text-muted-foreground transition-colors duration-200 ease-in-out hover:bg-secondary/40 hover:text-foreground",
-          className,
-        )}
-      >
-        <Search className="size-3.5 shrink-0" />
-        Search
-      </button>
-    );
-  }
+  }, []);
 
   return (
-    <div
-      ref={containerRef}
-      className={cn(
-        "relative animate-in duration-200 ease-in-out fade-in zoom-in-95",
-        className,
-      )}
-    >
-      <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-      <Input
-        ref={inputRef}
-        value={value}
-        aria-label={placeholder ?? "Search"}
-        onChange={(e) => onValueChange(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Escape") {
-            e.preventDefault();
-            onValueChange("");
-            onExpandedChange(false);
-          }
-        }}
-        placeholder={placeholder}
-        className="h-8 pl-8 pr-8 font-mono text-xs"
-      />
+    <div className={cn("flex items-center gap-1.5", className)}>
+      <div className="relative min-w-0 flex-1">
+        <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+        <input
+          ref={inputRef}
+          value={value}
+          onChange={(e) => onValueChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              onClose();
+            }
+          }}
+          placeholder={placeholder ?? "Search files…"}
+          aria-label={placeholder ?? "Search files"}
+          className="h-8 w-full rounded-md border border-input bg-transparent pl-8 pr-2 font-mono text-xs shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        />
+      </div>
       <button
         type="button"
-        aria-label="Clear search"
-        title="Clear search"
+        aria-label="Run search"
+        title="Search"
+        onClick={onClose}
+        className="flex size-8 shrink-0 items-center justify-center rounded-md border border-input text-muted-foreground transition-colors duration-150 hover:bg-secondary hover:text-foreground active:scale-95"
+      >
+        <Search className="size-3.5" />
+      </button>
+      <button
+        type="button"
+        aria-label="Close search"
+        title="Close"
         onClick={() => {
           onValueChange("");
-          onExpandedChange(false);
+          onClose();
         }}
-        className="absolute right-1.5 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded text-muted-foreground transition-colors duration-200 ease-in-out hover:bg-white/5 hover:text-foreground active:scale-90"
+        className="flex size-8 shrink-0 items-center justify-center rounded-md border border-input text-muted-foreground transition-colors duration-150 hover:bg-secondary hover:text-foreground active:scale-95"
       >
         <X className="size-3.5" />
       </button>

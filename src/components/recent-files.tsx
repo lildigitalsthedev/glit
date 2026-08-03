@@ -1,6 +1,36 @@
-import { ChevronRight, Clock, X } from "lucide-react";
+import { File, FileCode2, FileCog, FileImage, FileJson2, FileText, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { RecentFile } from "@/lib/workspace.functions";
+
+const CODE_EXTENSIONS = new Set([
+  "ts", "tsx", "js", "jsx", "mjs", "cjs", "py", "go", "rs", "rb",
+  "java", "c", "cpp", "h", "sh", "sql", "php",
+]);
+const IMAGE_EXTENSIONS = new Set(["png", "jpg", "jpeg", "gif", "svg", "webp", "ico", "bmp"]);
+const CONFIG_NAMES = new Set([
+  "package.json", "tsconfig.json", "vite.config.ts", ".gitignore", ".env",
+  ".eslintrc", "eslint.config.js",
+]);
+
+function fileExtension(name: string): string {
+  const idx = name.lastIndexOf(".");
+  if (idx <= 0) return "";
+  return name.slice(idx + 1).toLowerCase();
+}
+
+function FileIcon({ name }: { name: string }) {
+  const ext = fileExtension(name);
+  if (CONFIG_NAMES.has(name) || name.startsWith(".")) {
+    return <FileCog className="size-3.5 shrink-0 text-muted-foreground" />;
+  }
+  if (ext === "json") return <FileJson2 className="size-3.5 shrink-0 text-code-string" />;
+  if (ext === "md" || ext === "mdx" || ext === "txt") {
+    return <FileText className="size-3.5 shrink-0 text-muted-foreground" />;
+  }
+  if (IMAGE_EXTENSIONS.has(ext)) return <FileImage className="size-3.5 shrink-0 text-accent" />;
+  if (CODE_EXTENSIONS.has(ext)) return <FileCode2 className="size-3.5 shrink-0 text-primary" />;
+  return <File className="size-3.5 shrink-0 text-muted-foreground" />;
+}
 
 function relativeTime(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -21,103 +51,87 @@ function relativeTime(iso: string): string {
 }
 
 /**
- * Quick-access strip of the files the user most recently opened or pushed
- * in the current repository/branch. Clicking a row reopens that file in the
- * editor instantly. Persisted server-side, so it survives across sessions
- * and devices — not just tab reloads.
+ * Floating popup (rendered inside a `ToolPopup` shell — see
+ * `workspace-tools.tsx`) showing the files the user most recently opened or
+ * pushed, as a horizontally scrollable row of compact cards. Tapping a card
+ * opens that file immediately and closes the popup; there's no need to
+ * dig through a vertical list anymore.
  *
- * Collapsed by default (just the "Recent" icon + label) to keep the sidebar
- * compact — tapping the header smoothly expands the list, and tapping it
- * again collapses it. `expanded` / `onToggleExpanded` are controlled by the
- * parent so only one sidebar section stays open at a time.
+ * Persisted server-side, so it survives across sessions and devices — not
+ * just tab reloads. Capped to the 8 most recent files; older ones simply
+ * scroll off (the underlying data still keeps more, this is just the quick
+ * -access view).
  */
-export function RecentFiles({
+export function RecentFilesPopup({
   files,
   loading,
   activePath,
   onOpenFile,
+  onClose,
   onClear,
-  expanded,
-  onToggleExpanded,
   className,
 }: {
   files: RecentFile[];
   loading?: boolean;
   activePath: string;
   onOpenFile: (path: string) => void;
+  onClose: () => void;
   onClear?: () => void;
-  expanded: boolean;
-  onToggleExpanded: () => void;
   className?: string;
 }) {
-  if (loading || files.length === 0) return null;
+  const shown = files.slice(0, 8);
 
   return (
-    <div className={cn("border-b border-border", className)}>
-      <div className="flex items-center gap-1.5 pr-2">
-        <button
-          type="button"
-          onClick={onToggleExpanded}
-          aria-expanded={expanded}
-          className="label-caps flex min-w-0 flex-1 items-center gap-1.5 px-2 py-1.5 text-left transition-colors duration-200 ease-in-out hover:text-foreground"
-        >
-          <Clock className="size-3" />
-          Recent
-          <span className="normal-case tracking-normal text-muted-foreground/70">
-            ({files.length})
-          </span>
-          <ChevronRight
-            className={cn(
-              "size-3 shrink-0 text-muted-foreground transition-transform duration-200 ease-in-out",
-              expanded && "rotate-90",
-            )}
-          />
-        </button>
-        {expanded && onClear && (
-          <button
-            type="button"
-            onClick={onClear}
-            className="flex shrink-0 items-center gap-0.5 text-[10px] text-muted-foreground transition-colors duration-150 hover:text-foreground"
-          >
-            <X className="size-2.5" />
-            Clear
-          </button>
-        )}
-      </div>
-      <div
-        className={cn(
-          "grid transition-[grid-template-rows] duration-200 ease-in-out",
-          expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
-        )}
-      >
-        <div className="overflow-hidden">
-          <div className="flex flex-col gap-0.5 px-2 pb-2">
-            {files.map((file) => {
+    <div className={cn("min-w-0", className)}>
+      {loading ? (
+        <p className="px-1 py-2 text-[11px] text-muted-foreground">Loading…</p>
+      ) : shown.length === 0 ? (
+        <p className="px-1 py-2 text-[11px] text-muted-foreground">
+          Files you open or push will show up here.
+        </p>
+      ) : (
+        <>
+          <div className="flex gap-1.5 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden">
+            {shown.map((file) => {
               const name = file.path.split("/").pop() ?? file.path;
               const isActive = file.path === activePath;
               return (
                 <button
                   key={file.id}
                   type="button"
-                  onClick={() => onOpenFile(file.path)}
+                  onClick={() => {
+                    onOpenFile(file.path);
+                    onClose();
+                  }}
                   title={file.path}
                   className={cn(
-                    "flex w-full min-w-0 items-center justify-between gap-2 truncate rounded py-1.5 pl-2 pr-2 text-left font-mono text-[11px] transition-colors duration-150",
+                    "flex shrink-0 flex-col items-start gap-1 rounded-md border px-2.5 py-2 text-left font-mono text-[11px] transition-colors duration-150",
                     isActive
-                      ? "bg-secondary text-foreground"
-                      : "text-muted-foreground hover:bg-secondary/40 hover:text-foreground",
+                      ? "border-primary/50 bg-primary/10 text-foreground"
+                      : "border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground",
                   )}
                 >
-                  <span className="truncate">{name}</span>
-                  <span className="shrink-0 text-[10px] text-muted-foreground/70">
+                  <FileIcon name={name} />
+                  <span className="max-w-[7rem] truncate">{name}</span>
+                  <span className="text-[10px] text-muted-foreground/70">
                     {relativeTime(file.lastOpenedAt)}
                   </span>
                 </button>
               );
             })}
           </div>
-        </div>
-      </div>
+          {onClear && (
+            <button
+              type="button"
+              onClick={onClear}
+              className="mt-1 flex items-center gap-0.5 text-[10px] text-muted-foreground transition-colors duration-150 hover:text-foreground"
+            >
+              <X className="size-2.5" />
+              Clear recent files
+            </button>
+          )}
+        </>
+      )}
     </div>
   );
 }

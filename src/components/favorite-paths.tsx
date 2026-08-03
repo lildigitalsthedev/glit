@@ -1,25 +1,24 @@
-import { ChevronRight, Folder, Star, X } from "lucide-react";
+import { Folder, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { PathPref } from "@/lib/workspace.functions";
 
 /**
- * A row of pinned-folder shortcuts (e.g. `src/components`, `src/hooks`,
- * `src/pages`). Tapping a chip jumps straight to that folder; the small ×
- * unstars it without leaving the workspace.
+ * Floating popup (rendered inside a `ToolPopup` shell — see
+ * `workspace-tools.tsx`) showing pinned folder shortcuts as a horizontally
+ * scrollable row of compact cards. Tapping a card jumps straight to that
+ * folder and closes the popup; the small ✕ unstars it without leaving the
+ * workspace or closing the popup, so removing several in a row is quick.
  *
- * Collapsed by default (just the "Favorite paths" icon + label) to keep the
- * sidebar compact — tapping the header smoothly expands the chip list, and
- * tapping it again collapses it. `expanded` / `onToggleExpanded` are
- * controlled by the parent so only one sidebar section stays open at a time.
+ * GitPush currently only supports favoriting folders (via the star button
+ * next to the breadcrumb trail), so every card here is a folder.
  */
-export function FavoritePaths({
+export function FavoritePathsPopup({
   paths,
   loading,
   activeFolder,
   onNavigate,
   onRemove,
-  expanded,
-  onToggleExpanded,
+  onClose,
   className,
 }: {
   paths: PathPref[];
@@ -27,62 +26,34 @@ export function FavoritePaths({
   activeFolder: string | null;
   onNavigate: (path: string) => void;
   onRemove: (path: string) => void;
-  expanded: boolean;
-  onToggleExpanded: () => void;
+  onClose: () => void;
   className?: string;
 }) {
-  if (loading || paths.length === 0) return null;
-
   return (
-    <div className={cn("border-b border-border", className)}>
-      <button
-        type="button"
-        onClick={onToggleExpanded}
-        aria-expanded={expanded}
-        className="label-caps flex w-full items-center gap-1.5 px-2 py-1.5 text-left transition-colors duration-200 ease-in-out hover:text-foreground"
-      >
-        <Star className="size-3 fill-primary text-primary" />
-        Favorite paths
-        <span className="normal-case tracking-normal text-muted-foreground/70">
-          ({paths.length})
-        </span>
-        <ChevronRight
-          className={cn(
-            "ml-auto size-3 shrink-0 text-muted-foreground transition-transform duration-200 ease-in-out",
-            expanded && "rotate-90",
-          )}
-        />
-      </button>
-      <div
-        className={cn(
-          "grid transition-[grid-template-rows] duration-200 ease-in-out",
-          expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
-        )}
-      >
-        <div className="overflow-hidden">
-          <div className="flex flex-wrap gap-1.5 px-2 pb-2">
-            {paths.map((favorite) => {
-              const name = favorite.path.split("/").filter(Boolean).pop() ?? favorite.path;
-              const isActive = favorite.path === activeFolder;
-              return (
-                <div
-                  key={favorite.path}
-                  className={cn(
-                    "group flex items-center gap-1 rounded-full border pl-2 pr-1 py-1 font-mono text-[11px] transition-colors duration-150",
-                    isActive
-                      ? "border-primary/50 bg-primary/10 text-foreground"
-                      : "border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground",
-                  )}
-                >
-                  <button
-                    type="button"
-                    onClick={() => onNavigate(favorite.path)}
-                    title={favorite.path}
-                    className="flex min-w-0 items-center gap-1"
-                  >
-                    <Folder className="size-3 shrink-0 text-primary" />
-                    <span className="max-w-[9rem] truncate">{name}</span>
-                  </button>
+    <div className={cn("min-w-0", className)}>
+      {loading ? (
+        <p className="px-1 py-2 text-[11px] text-muted-foreground">Loading…</p>
+      ) : paths.length === 0 ? (
+        <p className="px-1 py-2 text-[11px] text-muted-foreground">
+          Star a folder from the breadcrumb bar to pin it here.
+        </p>
+      ) : (
+        <div className="flex gap-1.5 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden">
+          {paths.map((favorite) => {
+            const name = favorite.path.split("/").filter(Boolean).pop() ?? favorite.path;
+            const isActive = favorite.path === activeFolder;
+            return (
+              <div
+                key={favorite.path}
+                className={cn(
+                  "group flex shrink-0 flex-col items-start gap-1 rounded-md border px-2.5 py-2 font-mono text-[11px] transition-colors duration-150",
+                  isActive
+                    ? "border-primary/50 bg-primary/10 text-foreground"
+                    : "border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground",
+                )}
+              >
+                <div className="flex w-full items-center justify-between gap-2">
+                  <Folder className="size-3.5 shrink-0 text-primary" />
                   <button
                     type="button"
                     onClick={() => onRemove(favorite.path)}
@@ -93,11 +64,22 @@ export function FavoritePaths({
                     <X className="size-2.5" />
                   </button>
                 </div>
-              );
-            })}
-          </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onNavigate(favorite.path);
+                    onClose();
+                  }}
+                  title={favorite.path}
+                  className="max-w-[7rem] truncate text-left"
+                >
+                  {name}
+                </button>
+              </div>
+            );
+          })}
         </div>
-      </div>
+      )}
     </div>
   );
 }

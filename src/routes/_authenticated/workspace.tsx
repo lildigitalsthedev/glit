@@ -50,7 +50,7 @@ import {
 } from "@/lib/workspace.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { CollapsibleSearch } from "@/components/collapsible-search";
+import { WorkspaceTools } from "@/components/workspace-tools";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -83,8 +83,6 @@ import { UploadZipDialog } from "@/components/upload-zip-dialog";
 import { ProUpgradeDialog } from "@/components/pro-upgrade-dialog";
 import { FileTree } from "@/components/file-tree";
 import { FileBreadcrumbs } from "@/components/breadcrumb-nav";
-import { RecentFiles } from "@/components/recent-files";
-import { FavoritePaths } from "@/components/favorite-paths";
 import { EmptyState } from "@/components/empty-state";
 import { usePlan } from "@/hooks/usePlan";
 import { cn } from "@/lib/utils";
@@ -176,14 +174,6 @@ function Workspace() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [mobileCommitOpen, setMobileCommitOpen] = useState(false);
   const uploadInputRef = useRef<HTMLInputElement>(null);
-  // Only one of Search / Recent Files / Favorite Paths stays expanded at a
-  // time in the sidebar — opening one automatically collapses the others.
-  // Lifted up here (rather than owned by each section) so the choice
-  // persists across the desktop aside and the mobile sheet, which both
-  // render the same `fileTreePanel` from this single source of truth.
-  const [expandedSection, setExpandedSection] = useState<"search" | "recent" | "favorite" | null>(
-    null,
-  );
 
   useEffect(() => {
     if (!branch && prefs.data?.defaultBranch) setBranch(prefs.data.defaultBranch);
@@ -551,7 +541,7 @@ function Workspace() {
 
   const fileTreePanel = (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="border-b border-border p-1">
+      <div className="relative z-10 border-b border-border p-1">
         <div className="mb-1 flex items-center gap-1">
           <FileBreadcrumbs path={activeFolder} onNavigate={setActiveFolder} className="min-w-0 flex-1" />
           {activeFolder && (
@@ -566,36 +556,21 @@ function Workspace() {
             </button>
           )}
         </div>
-        <CollapsibleSearch
-          value={filter}
-          onValueChange={setFilter}
-          expanded={expandedSection === "search"}
-          onExpandedChange={(next) => setExpandedSection(next ? "search" : null)}
-          placeholder="Find file, folder, or .ext…"
+        <WorkspaceTools
+          filter={filter}
+          onFilterChange={setFilter}
+          recentFiles={recentFiles.data ?? []}
+          recentFilesLoading={recentFiles.isLoading}
+          activePath={path}
+          onOpenFile={(target) => openFile.mutate(target)}
+          onClearRecentFiles={handleClearRecentFiles}
+          favoritePaths={favoritePaths.data ?? []}
+          favoritePathsLoading={favoritePaths.isLoading}
+          activeFolder={activeFolder}
+          onNavigateFolder={setActiveFolder}
+          onRemoveFavorite={(target) => toggleFolderFavorite(target, false)}
         />
       </div>
-      <RecentFiles
-        files={recentFiles.data ?? []}
-        loading={recentFiles.isLoading}
-        activePath={path}
-        onOpenFile={(target) => openFile.mutate(target)}
-        onClear={handleClearRecentFiles}
-        expanded={expandedSection === "recent"}
-        onToggleExpanded={() =>
-          setExpandedSection((prev) => (prev === "recent" ? null : "recent"))
-        }
-      />
-      <FavoritePaths
-        paths={favoritePaths.data ?? []}
-        loading={favoritePaths.isLoading}
-        activeFolder={activeFolder}
-        onNavigate={setActiveFolder}
-        onRemove={(target) => toggleFolderFavorite(target, false)}
-        expanded={expandedSection === "favorite"}
-        onToggleExpanded={() =>
-          setExpandedSection((prev) => (prev === "favorite" ? null : "favorite"))
-        }
-      />
       <p className="label-caps px-2 pb-1 pt-1.5">Workspace Files</p>
       <div className="min-h-0 flex-1 overflow-auto px-0.5 pb-1">
         <FileTree
