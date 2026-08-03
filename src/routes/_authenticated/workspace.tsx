@@ -243,7 +243,7 @@ function Workspace() {
   function recordRecentFile(target: string) {
     if (!fullName || !branch) return;
     touchRecentFileFn({
-      data: { accountId: accountId ?? undefined, fullName, branch, path: target },
+      data: { accountId: accountId ?? null, fullName, branch, path: target },
     })
       .then(() => void queryClient.invalidateQueries({ queryKey: ["recent-files", fullName, branch] }))
       .catch(() => {
