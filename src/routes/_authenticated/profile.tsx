@@ -42,7 +42,7 @@ import { cn } from "@/lib/utils";
 
 const NAV_POSITIONS: { value: NavPosition; label: string; description: string; icon: typeof PanelBottom }[] = [
   { value: "bottom", label: "Bottom", description: "Docked to the bottom edge.", icon: PanelBottom },
-  { value: "floating-bottom", label: "Floating", description: "Draggable floating pill.", icon: Move },
+  { value: "floating-bottom", label: "Floating", description: "Draggable floating dock.", icon: Move },
   { value: "left", label: "Left side", description: "Tablet & desktop only.", icon: PanelLeft },
   { value: "right", label: "Right side", description: "Tablet & desktop only.", icon: PanelRight },
 ];

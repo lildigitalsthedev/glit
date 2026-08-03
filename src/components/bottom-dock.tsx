@@ -1,6 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type MouseEvent as ReactMouseEvent } from "react";
-import { ChevronUp, ChevronDown, LayoutGrid, Code2, History, UserRound } from "lucide-react";
+import { ChevronUp, ChevronDown, LayoutGrid, Code2, History, UserRound, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useNavPrefs, type NavPosition, type NavSize, type FloatingOffset } from "@/hooks/useNavPrefs";
@@ -17,9 +17,9 @@ const NAV = [
 // the workspace's fixed-height three-pane layout — can subtract the right
 // amount of space and never sit underneath the nav.
 const BOTTOM_SPACE: Record<NavSize, { expanded: string; collapsed: string }> = {
-  sm: { expanded: "6rem", collapsed: "3rem" },
-  md: { expanded: "7rem", collapsed: "3.5rem" },
-  lg: { expanded: "8rem", collapsed: "4rem" },
+  sm: { expanded: "5.5rem", collapsed: "3rem" },
+  md: { expanded: "6.5rem", collapsed: "3.5rem" },
+  lg: { expanded: "7.5rem", collapsed: "4rem" },
 };
 const RAIL_WIDTH: Record<NavSize, string> = {
   sm: "5rem",
@@ -27,28 +27,28 @@ const RAIL_WIDTH: Record<NavSize, string> = {
   lg: "7rem",
 };
 
-// Pixel margin kept between the floating pill and the edge of the viewport
+// Pixel margin kept between the floating dock and the edge of the viewport
 // while dragging, and the threshold (px) of movement before a pointer-down
 // counts as a drag rather than a tap (so nav links keep working normally).
 const DRAG_MARGIN = 16;
 const DRAG_THRESHOLD = 5;
 
-// The pill lays its items out in a 4-column grid (one column per nav item)
+// The dock lays its items out in a 4-column grid (one column per nav item)
 // so every item gets an exactly equal-width, equal-shape cell no matter how
 // long its label is — "Workspace" and "Repos" now occupy identical boxes.
-const PILL_SIZE: Record<NavSize, { icon: string; padY: string; text: string; minTouch: string }> = {
-  sm: { icon: "size-3.5", padY: "py-2", text: "text-[9px]", minTouch: "min-h-[2.5rem]" },
-  md: { icon: "size-4", padY: "py-2.5 sm:py-2", text: "text-[10px]", minTouch: "min-h-[2.75rem]" },
-  lg: { icon: "size-5", padY: "py-3", text: "text-[11px]", minTouch: "min-h-[3.25rem]" },
+const DOCK_SIZE: Record<NavSize, { icon: string; padY: string; text: string; minTouch: string }> = {
+  sm: { icon: "size-3.5", padY: "py-2", text: "text-[8px]", minTouch: "min-h-[2.5rem]" },
+  md: { icon: "size-4", padY: "py-2.5 sm:py-2", text: "text-[9px]", minTouch: "min-h-[2.75rem]" },
+  lg: { icon: "size-5", padY: "py-3", text: "text-[10px]", minTouch: "min-h-[3.25rem]" },
 };
 
 // The rail gives every item the same fixed width (rather than min-width) so
 // all four buttons render as identical, equally-sized shapes stacked
 // vertically.
 const RAIL_SIZE: Record<NavSize, { icon: string; width: string; padY: string; text: string; minTouch: string }> = {
-  sm: { icon: "size-4", width: "w-16", padY: "py-2", text: "text-[9px]", minTouch: "min-h-[2.5rem]" },
-  md: { icon: "size-[1.15rem]", width: "w-20", padY: "py-2.5", text: "text-[10px]", minTouch: "min-h-[2.75rem]" },
-  lg: { icon: "size-5", width: "w-24", padY: "py-3", text: "text-[11px]", minTouch: "min-h-[3.25rem]" },
+  sm: { icon: "size-4", width: "w-16", padY: "py-2", text: "text-[8px]", minTouch: "min-h-[2.5rem]" },
+  md: { icon: "size-[1.15rem]", width: "w-20", padY: "py-2.5", text: "text-[9px]", minTouch: "min-h-[2.75rem]" },
+  lg: { icon: "size-5", width: "w-24", padY: "py-3", text: "text-[10px]", minTouch: "min-h-[3.25rem]" },
 };
 
 function clampFloatingOffset(offset: FloatingOffset, width: number, height: number): FloatingOffset {
@@ -70,6 +70,16 @@ function snapFloatingOffset(offset: FloatingOffset, width: number): FloatingOffs
   return { x: snappedX, y: offset.y };
 }
 
+/** Blinking terminal-cursor glyph rendered next to the active label. Purely decorative. */
+function BlinkCursor({ className }: { className?: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={cn("inline-block w-[2px] animate-[blink_1.1s_steps(1)_infinite] bg-primary", className)}
+    />
+  );
+}
+
 export function BottomDock() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isMobile = useIsMobile();
@@ -79,7 +89,7 @@ export function BottomDock() {
   useEffect(() => setMounted(true), []);
 
   // Left/right rails are desktop & tablet only — phones always get the
-  // bottom pill regardless of the saved preference.
+  // bottom dock regardless of the saved preference.
   const effectivePosition: NavPosition =
     mounted && isMobile && (position === "left" || position === "right") ? "bottom" : position;
   const isRail = effectivePosition === "left" || effectivePosition === "right";
@@ -129,7 +139,7 @@ export function BottomDock() {
   }, [autoHide]);
 
   // Drag-to-reposition, floating mode only.
-  const pillRef = useRef<HTMLDivElement>(null);
+  const dockRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{
     startX: number;
     startY: number;
@@ -162,7 +172,7 @@ export function BottomDock() {
     if (!drag.dragging && Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
     drag.dragging = true;
     setIsDragging(true);
-    const rect = pillRef.current?.getBoundingClientRect();
+    const rect = dockRef.current?.getBoundingClientRect();
     if (!rect) return;
     const next = clampFloatingOffset({ x: drag.startOffsetX + dx, y: drag.startOffsetY + dy }, rect.width, rect.height);
     setDragOffset(next);
@@ -177,7 +187,7 @@ export function BottomDock() {
     setTimeout(() => {
       suppressClickRef.current = false;
     }, 250);
-    const rect = pillRef.current?.getBoundingClientRect();
+    const rect = dockRef.current?.getBoundingClientRect();
     if (!rect || !dragOffset) return;
     const snapped = snapFloatingOffset(dragOffset, rect.width);
     setDragOffset(snapped);
@@ -195,6 +205,7 @@ export function BottomDock() {
 
   if (isRail) {
     const sizing = RAIL_SIZE[size];
+    const accentSide = effectivePosition === "left" ? "right-0" : "left-0";
     return (
       <div
         className={cn(
@@ -205,7 +216,7 @@ export function BottomDock() {
         <nav
           aria-label="Primary"
           className={cn(
-            "pointer-events-auto flex flex-col items-center gap-1 rounded-2xl border border-white/10 bg-card/30 p-1.5 shadow-2xl shadow-black/40 ring-1 ring-white/5 backdrop-blur-2xl transition-all duration-300",
+            "pointer-events-auto flex flex-col items-stretch gap-0.5 rounded-lg border border-border/80 bg-card/95 p-1 shadow-2xl shadow-black/50 backdrop-blur-xl transition-all duration-300",
             mounted ? `${opacityClass} translate-x-0` : "translate-x-4 opacity-0",
           )}
         >
@@ -217,27 +228,32 @@ export function BottomDock() {
                 to={item.to}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "group flex flex-col items-center justify-center gap-0.5 rounded-xl font-mono transition-colors duration-200",
+                  "group relative flex flex-col items-center justify-center gap-1 rounded-md font-mono uppercase tracking-wider transition-colors duration-150",
                   sizing.width,
                   sizing.padY,
                   sizing.text,
                   sizing.minTouch,
-                  active
-                    ? "text-primary"
-                    : "text-muted-foreground hover:bg-white/10 hover:text-foreground",
+                  active ? "text-primary" : "text-muted-foreground hover:bg-white/5 hover:text-foreground",
                 )}
               >
+                <span
+                  className={cn(
+                    "absolute top-1.5 bottom-1.5 w-[2px] rounded-full bg-primary transition-all duration-200",
+                    accentSide,
+                    active ? "opacity-100" : "opacity-0",
+                  )}
+                  aria-hidden="true"
+                />
                 <item.icon
                   className={cn(
                     sizing.icon,
-                    "transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]",
-                    active
-                      ? "-translate-y-0.5 scale-110 fill-primary/25 drop-shadow-[0_0_6px_currentColor]"
-                      : "fill-transparent group-hover:scale-105",
+                    "transition-transform duration-200",
+                    active ? "drop-shadow-[0_0_6px_currentColor]" : "group-hover:scale-105",
                   )}
                 />
-                <span className={cn("max-w-full truncate", active && "font-semibold")}>
+                <span className="flex max-w-full items-center gap-0.5 truncate font-semibold">
                   {item.label}
+                  {active && <BlinkCursor className="h-2.5" />}
                 </span>
               </Link>
             );
@@ -247,14 +263,14 @@ export function BottomDock() {
     );
   }
 
-  const sizing = PILL_SIZE[size];
+  const sizing = DOCK_SIZE[size];
 
-  const pillNav = (
+  const dockNav = (
     <nav
       aria-label="Primary"
       className={cn(
-        "grid grid-cols-4 items-stretch gap-1 rounded-full border border-white/10 bg-card/30 p-1.5 shadow-2xl shadow-black/40 ring-1 ring-white/5 backdrop-blur-2xl sm:gap-1.5 sm:p-2",
-        isFloating && "shadow-black/50 ring-white/10",
+        "grid grid-cols-4 items-stretch divide-x divide-border/60 rounded-lg border border-border/80 bg-card/95 shadow-2xl shadow-black/50 backdrop-blur-xl",
+        isFloating && "shadow-black/60",
       )}
     >
       {NAV.map((item) => {
@@ -265,26 +281,30 @@ export function BottomDock() {
             to={item.to}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "group flex w-full flex-col items-center justify-center gap-0.5 rounded-full font-mono transition-colors duration-200",
+              "group relative flex w-full flex-col items-center justify-center gap-1 font-mono uppercase tracking-wider transition-colors duration-150",
               sizing.padY,
               sizing.text,
               sizing.minTouch,
-              active
-                ? "text-primary"
-                : "text-muted-foreground hover:bg-white/10 hover:text-foreground",
+              active ? "text-primary" : "text-muted-foreground hover:bg-white/5 hover:text-foreground",
             )}
           >
+            <span
+              className={cn(
+                "absolute inset-x-2 top-0 h-[2px] rounded-full bg-primary transition-all duration-200",
+                active ? "opacity-100" : "opacity-0",
+              )}
+              aria-hidden="true"
+            />
             <item.icon
               className={cn(
                 sizing.icon,
-                "transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]",
-                active
-                  ? "-translate-y-0.5 scale-110 fill-primary/25 drop-shadow-[0_0_6px_currentColor]"
-                  : "fill-transparent group-hover:scale-105",
+                "transition-transform duration-200",
+                active ? "-translate-y-0.5 drop-shadow-[0_0_6px_currentColor]" : "group-hover:scale-105",
               )}
             />
-            <span className={cn("max-w-full truncate", active && "font-semibold")}>
+            <span className="flex max-w-full items-center gap-0.5 truncate font-semibold">
               {item.label}
+              {active && <BlinkCursor className="h-2.5" />}
             </span>
           </Link>
         );
@@ -296,7 +316,7 @@ export function BottomDock() {
     return (
       <div className="pointer-events-none fixed inset-0 z-50">
         <div
-          ref={pillRef}
+          ref={dockRef}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
@@ -318,7 +338,7 @@ export function BottomDock() {
               type="button"
               onClick={() => setCollapsed(false)}
               aria-label="Show navigation"
-              className="flex size-10 animate-in items-center justify-center rounded-full border border-white/10 bg-card/30 text-foreground shadow-lg shadow-black/40 ring-1 ring-white/5 backdrop-blur-2xl duration-200 fade-in zoom-in-95 hover:scale-105 hover:bg-white/10 active:scale-95"
+              className="flex size-9 animate-in items-center justify-center rounded-md border border-border/80 bg-card/95 text-foreground shadow-lg shadow-black/50 backdrop-blur-xl duration-200 fade-in zoom-in-95 hover:bg-white/5 active:scale-95"
             >
               <ChevronUp className="size-4" />
             </button>
@@ -328,11 +348,11 @@ export function BottomDock() {
                 type="button"
                 onClick={() => setCollapsed(true)}
                 aria-label="Collapse navigation"
-                className="absolute -top-3.5 left-1/2 flex size-8 -translate-x-1/2 items-center justify-center rounded-full border border-white/10 bg-card/40 text-muted-foreground shadow-md backdrop-blur-xl transition-all duration-200 hover:bg-white/10 hover:text-foreground active:scale-90"
+                className="absolute -top-3 left-1/2 flex h-4 w-8 -translate-x-1/2 items-center justify-center rounded-t-md border border-b-0 border-border/80 bg-card/95 text-muted-foreground backdrop-blur-xl transition-colors duration-150 hover:text-foreground active:scale-95"
               >
-                <ChevronDown className="size-3.5" />
+                <Minus className="size-3" />
               </button>
-              {pillNav}
+              {dockNav}
             </div>
           )}
         </div>
@@ -356,7 +376,7 @@ export function BottomDock() {
             type="button"
             onClick={() => setCollapsed(false)}
             aria-label="Show navigation"
-            className="flex size-10 animate-in items-center justify-center rounded-full border border-white/10 bg-card/30 text-foreground shadow-lg shadow-black/40 ring-1 ring-white/5 backdrop-blur-2xl duration-200 fade-in zoom-in-95 hover:scale-105 hover:bg-white/10 active:scale-95"
+            className="flex size-9 animate-in items-center justify-center rounded-md border border-border/80 bg-card/95 text-foreground shadow-lg shadow-black/50 backdrop-blur-xl duration-200 fade-in zoom-in-95 hover:bg-white/5 active:scale-95"
           >
             <ChevronUp className="size-4" />
           </button>
@@ -366,11 +386,11 @@ export function BottomDock() {
               type="button"
               onClick={() => setCollapsed(true)}
               aria-label="Collapse navigation"
-              className="absolute -top-3.5 left-1/2 flex size-8 -translate-x-1/2 items-center justify-center rounded-full border border-white/10 bg-card/40 text-muted-foreground shadow-md backdrop-blur-xl transition-all duration-200 hover:bg-white/10 hover:text-foreground active:scale-90"
+              className="absolute -top-3 left-1/2 flex h-4 w-8 -translate-x-1/2 items-center justify-center rounded-t-md border border-b-0 border-border/80 bg-card/95 text-muted-foreground backdrop-blur-xl transition-colors duration-150 hover:text-foreground active:scale-95"
             >
-              <ChevronDown className="size-3.5" />
+              <ChevronDown className="size-3" />
             </button>
-            {pillNav}
+            {dockNav}
           </div>
         )}
       </div>
