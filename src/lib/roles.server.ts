@@ -4,8 +4,9 @@
 // `await import("./roles.server")` inside a handler, same pattern used for
 // `client.server.ts` elsewhere in this codebase.
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { type AppRole, isDeveloper } from "@/lib/permissions";
 
-export type AppRole = "user" | "admin" | "owner";
+export type { AppRole };
 export type SubscriptionPlan = "free" | "pro";
 
 export interface RoleRecord {
@@ -175,11 +176,18 @@ export async function listAllUsersWithRoles(): Promise<ManagedUser[]> {
 }
 
 /**
- * Owner-only: promotes a "user" to "admin" or demotes an "admin" back to
- * "user". Deliberately cannot touch the "owner" role in either direction —
- * ownership transfer is a separate, more sensitive future feature.
+ * Owner-only: moves a user between "user", "developer" and "admin".
+ * Deliberately cannot touch the "owner" role in either direction —
+ * ownership transfer is a separate, more sensitive future feature. This one
+ * function covers every Owner-level role change described in the role
+ * system: creating a Developer (user -> developer), removing/demoting one
+ * (developer -> user), promoting a Developer to Admin (developer -> admin),
+ * and ordinary Admin promotion/demotion (user <-> admin).
  */
-export async function setUserRole(targetUserId: string, nextRole: "admin" | "user"): Promise<RoleRecord> {
+export async function setUserRole(
+  targetUserId: string,
+  nextRole: "admin" | "developer" | "user",
+): Promise<RoleRecord> {
   const { data: target, error: targetError } = await supabaseAdmin
     .from("user_roles")
     .select("user_id, role")
@@ -193,6 +201,46 @@ export async function setUserRole(targetUserId: string, nextRole: "admin" | "use
     .from("user_roles")
     .update({ role: nextRole })
     .eq("user_id", targetUserId)
+    .select("user_id, role, subscription_plan, developer_mode")
+    .single();
+  if (error) throw new Error(error.message);
+
+  // Leaving the Developer role entirely (e.g. demoted straight to "user")
+  // also switches off their personal Developer Mode toggle, since that
+  // toggle is meaningless — and shouldn't linger silently enabled — for
+  // someone who no longer has Developer Dashboard access.
+  if (nextRole === "user" && data.developer_mode) {
+    const { data: reset, error: resetError } = await supabaseAdmin
+      .from("user_roles")
+      .update({ developer_mode: false })
+      .eq("user_id", targetUserId)
+      .select("user_id, role, subscription_plan, developer_mode")
+      .single();
+    if (resetError) throw new Error(resetError.message);
+    return toRoleRecord(reset);
+  }
+
+  return toRoleRecord(data);
+}
+
+/**
+ * Self-service: lets a Developer or the Owner flip their own "Developer
+ * Mode" toggle. This never changes anyone's role — it only controls whether
+ * developer-only UI affordances are switched on for the caller's own
+ * account — so it's safe to allow the caller to target only themselves.
+ * Anyone who isn't currently a Developer or the Owner is rejected, so a
+ * plain user can't use this as a backdoor into developer UI.
+ */
+export async function setDeveloperMode(userId: string, enabled: boolean): Promise<RoleRecord> {
+  const caller = await getRole(userId);
+  if (!caller || !isDeveloper(caller.role)) {
+    throw new Error("Forbidden: Developer access required.");
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from("user_roles")
+    .update({ developer_mode: enabled })
+    .eq("user_id", userId)
     .select("user_id, role, subscription_plan, developer_mode")
     .single();
   if (error) throw new Error(error.message);

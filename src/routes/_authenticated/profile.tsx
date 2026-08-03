@@ -17,6 +17,7 @@ import {
   RotateCcw,
   Lightbulb,
   Crown,
+  Code2,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { usePlan } from "@/hooks/usePlan";
@@ -73,7 +74,7 @@ function Profile() {
   const queryClient = useQueryClient();
   const accounts = useAccounts();
   const { plan, isPro } = usePlan();
-  const { isOwner } = useRole();
+  const { isOwner, isDeveloper } = useRole();
   const navPrefs = useNavPrefs();
 
   const prefsFn = useServerFn(getPreferences);
@@ -153,6 +154,25 @@ function Profile() {
           </div>
           <Button asChild variant="outline" size="sm">
             <Link to="/owner">Open</Link>
+          </Button>
+        </section>
+      )}
+
+      {/* Hidden Developer Dashboard — only ever rendered for Developers and
+          the Owner, which are themselves only ever assigned server-side. */}
+      {isDeveloper && (
+        <section className="mt-8 flex items-center justify-between gap-3 rounded-md border border-primary/30 bg-primary/5 p-4">
+          <div className="flex items-center gap-3">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <Code2 className="size-4" />
+            </div>
+            <div>
+              <p className="text-sm font-medium">Developer Dashboard</p>
+              <p className="text-xs text-muted-foreground">Feature flags, diagnostics, and debugging tools.</p>
+            </div>
+          </div>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/developer">Open</Link>
           </Button>
         </section>
       )}

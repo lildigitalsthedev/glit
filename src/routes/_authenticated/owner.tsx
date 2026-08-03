@@ -3,10 +3,19 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Loader2, ShieldCheck, Search, ArrowUpCircle, ArrowDownCircle, Crown } from "lucide-react";
+import {
+  Loader2,
+  ShieldCheck,
+  Search,
+  ArrowUpCircle,
+  ArrowDownCircle,
+  Crown,
+  Code2,
+} from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useRole } from "@/hooks/useRole";
 import { listManagedUsers, setManagedUserRole } from "@/lib/roles.functions";
+import type { AppRole } from "@/lib/permissions";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,7 +35,30 @@ export const Route = createFileRoute("/_authenticated/owner")({
 function roleBadgeVariant(role: string): "default" | "secondary" | "outline" {
   if (role === "owner") return "default";
   if (role === "admin") return "secondary";
+  if (role === "developer") return "outline";
   return "outline";
+}
+
+/** Every role transition the Owner is allowed to make for a given row, per the role hierarchy. */
+function availableActions(
+  role: AppRole,
+): { label: string; nextRole: "admin" | "developer" | "user"; icon: typeof ArrowUpCircle }[] {
+  if (role === "user") {
+    return [
+      { label: "Make Developer", nextRole: "developer", icon: Code2 },
+      { label: "Make Admin", nextRole: "admin", icon: ArrowUpCircle },
+    ];
+  }
+  if (role === "developer") {
+    return [
+      { label: "Promote to Admin", nextRole: "admin", icon: ArrowUpCircle },
+      { label: "Remove Developer", nextRole: "user", icon: ArrowDownCircle },
+    ];
+  }
+  if (role === "admin") {
+    return [{ label: "Demote to User", nextRole: "user", icon: ArrowDownCircle }];
+  }
+  return [];
 }
 
 function OwnerDashboard() {
@@ -47,7 +79,8 @@ function OwnerDashboard() {
 
   const setRoleFn = useServerFn(setManagedUserRole);
   const changeRole = useMutation({
-    mutationFn: (input: { targetUserId: string; role: "admin" | "user" }) => setRoleFn({ data: input }),
+    mutationFn: (input: { targetUserId: string; role: "admin" | "developer" | "user" }) =>
+      setRoleFn({ data: input }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["owner", "users"] });
       toast.success("Role updated.");
@@ -79,8 +112,8 @@ function OwnerDashboard() {
         Owner Dashboard
       </h1>
       <p className="mt-2 max-w-lg text-sm text-muted-foreground">
-        Signed in as {user?.email}. Promote users to Admin or demote Admins back to User. Role
-        changes take effect immediately.
+        Signed in as {user?.email}. Create Developers, promote them to Admin, or manage Admins
+        directly. Role changes take effect immediately.
       </p>
 
       <div className="mt-6 flex items-center gap-2">
@@ -117,6 +150,7 @@ function OwnerDashboard() {
         {filtered.map((row) => {
           const isSelf = row.userId === user?.id;
           const pending = changeRole.isPending && changeRole.variables?.targetUserId === row.userId;
+          const actions = row.role !== "owner" && !isSelf ? availableActions(row.role) : [];
           return (
             <div key={row.userId} className="flex items-center justify-between gap-3 px-4 py-3">
               <div className="min-w-0 flex-1">
@@ -136,27 +170,21 @@ function OwnerDashboard() {
                 </p>
               </div>
 
-              {row.role !== "owner" && !isSelf && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={pending}
-                  onClick={() =>
-                    changeRole.mutate({
-                      targetUserId: row.userId,
-                      role: row.role === "admin" ? "user" : "admin",
-                    })
-                  }
-                >
-                  {pending ? (
-                    <Loader2 className="size-3.5 animate-spin" />
-                  ) : row.role === "admin" ? (
-                    <ArrowDownCircle className="size-3.5" />
-                  ) : (
-                    <ArrowUpCircle className="size-3.5" />
-                  )}
-                  {row.role === "admin" ? "Demote to User" : "Promote to Admin"}
-                </Button>
+              {actions.length > 0 && (
+                <div className={cn("flex shrink-0 items-center gap-2")}>
+                  {actions.map((action) => (
+                    <Button
+                      key={action.label}
+                      variant="outline"
+                      size="sm"
+                      disabled={pending}
+                      onClick={() => changeRole.mutate({ targetUserId: row.userId, role: action.nextRole })}
+                    >
+                      {pending ? <Loader2 className="size-3.5 animate-spin" /> : <action.icon className="size-3.5" />}
+                      {action.label}
+                    </Button>
+                  ))}
+                </div>
               )}
             </div>
           );
