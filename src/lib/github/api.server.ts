@@ -113,11 +113,11 @@ export function renameRepo(token: string, fullName: string, newName: string) {
 
 export interface CreateRepoArgs {
   name: string;
-  description?: string;
+  description?: string | undefined;
   isPrivate: boolean;
   autoInit: boolean;
-  gitignoreTemplate?: string;
-  licenseTemplate?: string;
+  gitignoreTemplate?: string | undefined;
+  licenseTemplate?: string | undefined;
 }
 
 export function createRepo(token: string, args: CreateRepoArgs) {

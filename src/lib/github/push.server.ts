@@ -239,7 +239,7 @@ export async function pushMultipleFiles(
       path: file.path,
       mode: "100644",
       type: "blob",
-      sha: blobShas[index],
+      sha: blobShas[index] ?? null,
     }));
 
     const tree = await createTree(token, args.fullName, {
