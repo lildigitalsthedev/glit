@@ -170,6 +170,7 @@ function Workspace() {
   const [uploadFolderOpen, setUploadFolderOpen] = useState(false);
   const [uploadFolderUpgradeOpen, setUploadFolderUpgradeOpen] = useState(false);
   const [uploadZipOpen, setUploadZipOpen] = useState(false);
+  const [uploadZipUpgradeOpen, setUploadZipUpgradeOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [mobileCommitOpen, setMobileCommitOpen] = useState(false);
@@ -242,7 +243,7 @@ function Workspace() {
   function recordRecentFile(target: string) {
     if (!fullName || !branch) return;
     touchRecentFileFn({
-      data: { accountId: accountId ?? null, fullName, branch, path: target },
+      data: { accountId: accountId ?? undefined, fullName, branch, path: target },
     })
       .then(() => void queryClient.invalidateQueries({ queryKey: ["recent-files", fullName, branch] }))
       .catch(() => {
@@ -379,6 +380,15 @@ function Workspace() {
       setUploadFolderOpen(true);
     } else {
       setUploadFolderUpgradeOpen(true);
+    }
+  }
+
+  // ZIP uploads are also a GitPush Pro feature.
+  function openUploadZip() {
+    if (isPro) {
+      setUploadZipOpen(true);
+    } else {
+      setUploadZipUpgradeOpen(true);
     }
   }
 
@@ -831,9 +841,16 @@ function Workspace() {
                   <span className="ml-auto text-[10px] text-muted-foreground">Pro</span>
                 )}
               </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setUploadZipOpen(true)}>
-                <FileArchive className="size-3.5" />
+              <DropdownMenuItem onSelect={openUploadZip}>
+                {isPro ? (
+                  <FileArchive className="size-3.5" />
+                ) : (
+                  <Lock className="size-3.5" />
+                )}
                 Upload ZIP
+                {!isPro && (
+                  <span className="ml-auto text-[10px] text-muted-foreground">Pro</span>
+                )}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onSelect={() => setNewFileOpen(true)}>
@@ -888,9 +905,13 @@ function Workspace() {
             variant="outline"
             size="sm"
             className="hidden sm:inline-flex"
-            onClick={() => setUploadZipOpen(true)}
+            onClick={openUploadZip}
           >
-            <FileArchive className="size-3.5" />
+            {isPro ? (
+              <FileArchive className="size-3.5" />
+            ) : (
+              <Lock className="size-3.5" />
+            )}
             <span className="hidden sm:inline">Upload ZIP</span>
           </Button>
           <Button
@@ -970,6 +991,19 @@ function Workspace() {
         activeFolder={activeFolder}
         existingPaths={filePaths}
         onCommit={handleBulkCommit}
+      />
+
+      <ProUpgradeDialog
+        open={uploadZipUpgradeOpen}
+        onOpenChange={setUploadZipUpgradeOpen}
+        title="ZIP uploads are a Pro feature"
+        description="Free accounts upload files one at a time. Upgrade to GitPush Pro to drop in a ZIP archive and push its contents as a single commit."
+        features={[
+          "Extract and preview a ZIP archive's contents locally",
+          "Full folder hierarchy recreated automatically",
+          "Warned before overwriting any existing files",
+          "Everything lands in a single commit",
+        ]}
       />
 
       <DeleteFileDialog
