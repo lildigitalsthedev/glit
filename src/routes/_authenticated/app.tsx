@@ -3,13 +3,13 @@ import { useDeferredValue, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { GitBranch, Lock, Search, SearchX, Star, Unlock, Loader2, Github } from "lucide-react";
+import { GitBranch, Lock, SearchX, Star, Unlock, Loader2, Github } from "lucide-react";
 import { AccountRow, ConnectGithubDialog, useAccounts } from "@/components/connect-github";
 import { CreateRepositoryDialog } from "@/components/create-repository-dialog";
 import { listRepos, type RepoCard } from "@/lib/github.functions";
 import { getPreferences, listRepoPrefs, saveRepoPref, updatePreferences } from "@/lib/workspace.functions";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/search-input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/empty-state";
 import { cn } from "@/lib/utils";
@@ -58,7 +58,7 @@ function RepoTile({
     <article
       style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
       className={cn(
-        "group flex animate-in fade-in flex-col rounded-md border bg-card p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md",
+        "group flex animate-in fade-in flex-col rounded-md border bg-card p-3 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md",
         isFavorite ? "border-primary/30" : "border-border",
       )}
     >
@@ -81,10 +81,10 @@ function RepoTile({
           />
         </button>
       </div>
-      <p className="mt-2 line-clamp-2 min-h-8 text-xs text-muted-foreground">
+      <p className="mt-1.5 line-clamp-2 text-xs text-muted-foreground">
         {repo.description ?? "No description"}
       </p>
-      <div className="mt-3 flex items-center gap-3 font-mono text-[11px] text-muted-foreground">
+      <div className="mt-2 flex items-center gap-3 font-mono text-[11px] text-muted-foreground">
         <span className="flex items-center gap-1">
           {repo.isPrivate ? <Lock className="size-3" /> : <Unlock className="size-3" />}
           {repo.isPrivate ? "private" : "public"}
@@ -95,7 +95,7 @@ function RepoTile({
         </span>
         <span className="ml-auto">{timeAgo(repo.updatedAt)}</span>
       </div>
-      <Button size="sm" className="mt-4" disabled={!repo.canPush || opening} onClick={onOpen}>
+      <Button size="sm" className="mt-3" disabled={!repo.canPush || opening} onClick={onOpen}>
         {repo.canPush ? "Open in workspace" : "Read-only"}
       </Button>
     </article>
@@ -208,34 +208,29 @@ function Dashboard() {
   }
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-8">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="label-caps">Dashboard</p>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight">Repositories</h1>
-        </div>
+    <main className="mx-auto max-w-6xl px-3 py-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h1 className="text-base font-semibold tracking-tight">Repositories</h1>
         <div className="flex items-center gap-2">
           <CreateRepositoryDialog accountId={accountId} onCreated={handleRepoCreated} />
           <ConnectGithubDialog />
         </div>
       </div>
 
-      <section className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <section className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {(accounts.data ?? []).map((account) => (
           <AccountRow key={account.id} {...account} />
         ))}
       </section>
 
-      <div className="mt-8 flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-56">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Filter repositories…"
-            className="pl-9 font-mono text-xs"
-          />
-        </div>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <SearchInput
+          value={query}
+          onValueChange={setQuery}
+          placeholder="Filter repositories…"
+          className="min-w-56 flex-1"
+          inputClassName="h-9 font-mono text-xs"
+        />
         <Button
           variant={onlyFavorites ? "default" : "outline"}
           size="sm"
@@ -269,7 +264,7 @@ function Dashboard() {
       </div>
 
       {repos.isLoading && (
-        <section className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <section className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="flex flex-col rounded-md border border-border bg-card p-4">
               <div className="flex items-start gap-2">
@@ -295,12 +290,12 @@ function Dashboard() {
       )}
 
       {pinned.length > 0 && (
-        <section className="mt-4">
+        <section className="mt-3">
           <p className="label-caps flex items-center gap-1.5 text-muted-foreground">
             <Star className="size-3 fill-primary text-primary" />
             Pinned
           </p>
-          <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-1.5 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {pinned.map((repo, index) => (
               <RepoTile
                 key={repo.id}
@@ -317,9 +312,9 @@ function Dashboard() {
       )}
 
       {unpinned.length > 0 && (
-        <section className="mt-6">
+        <section className="mt-3">
           {pinned.length > 0 && <p className="label-caps text-muted-foreground">All repositories</p>}
-          <div className={cn("grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3", pinned.length > 0 && "mt-2")}>
+          <div className={cn("grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3", pinned.length > 0 && "mt-1.5")}>
             {unpinned.map((repo, index) => (
               <RepoTile
                 key={repo.id}
