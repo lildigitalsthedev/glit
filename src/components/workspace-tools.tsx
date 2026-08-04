@@ -147,7 +147,7 @@ export function WorkspaceTools({
             activePath={activePath}
             onOpenFile={onOpenFile}
             onClose={() => setActivePopup(null)}
-            onClear={onClearRecentFiles}
+            {...(onClearRecentFiles ? { onClear: onClearRecentFiles } : {})}
           />
         </ToolPopupShell>
       )}
