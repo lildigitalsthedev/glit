@@ -143,11 +143,11 @@ export function WorkspaceTools({
         <ToolPopupShell label="Recent">
           <RecentFilesPopup
             files={recentFiles}
-            loading={recentFilesLoading}
+            loading={recentFilesLoading ?? false}
             activePath={activePath}
             onOpenFile={onOpenFile}
             onClose={() => setActivePopup(null)}
-            onClear={onClearRecentFiles}
+            {...(onClearRecentFiles ? { onClear: onClearRecentFiles } : {})}
           />
         </ToolPopupShell>
       )}
@@ -156,7 +156,7 @@ export function WorkspaceTools({
         <ToolPopupShell label="Favorites">
           <FavoritePathsPopup
             paths={favoritePaths}
-            loading={favoritePathsLoading}
+            loading={favoritePathsLoading ?? false}
             activeFolder={activeFolder}
             onNavigate={onNavigateFolder}
             onRemove={onRemoveFavorite}

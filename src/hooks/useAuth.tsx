@@ -21,15 +21,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
-      setSession(next);
+    // The auth client throws if backend env vars are missing (e.g. a stale
+    // build). Degrade to "signed out" instead of blanking the whole app.
+    try {
+      const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
+        setSession(next);
+        setLoading(false);
+      });
+      void supabase.auth
+        .getSession()
+        .then(({ data }) => {
+          setSession(data.session);
+          setLoading(false);
+        })
+        .catch(() => setLoading(false));
+      return () => sub.subscription.unsubscribe();
+    } catch (err) {
+      console.error("[auth] unavailable:", err);
       setLoading(false);
-    });
-    void supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setLoading(false);
-    });
-    return () => sub.subscription.unsubscribe();
+      return;
+    }
   }, []);
 
   return (
@@ -39,7 +50,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user: session?.user ?? null,
         loading,
         signOut: async () => {
-          await supabase.auth.signOut();
+          try {
+            await supabase.auth.signOut();
+          } catch (err) {
+            console.error("[auth] sign-out failed:", err);
+          }
         },
       }}
     >
