@@ -27,6 +27,8 @@ import {
   Star,
   Info,
   Plus,
+  Sparkles,
+  Wand2,
 } from "lucide-react";
 import {
   listRepoBranches,
@@ -81,6 +83,8 @@ import { BulkUploadDialog } from "@/components/bulk-upload-dialog";
 import { UploadFolderDialog } from "@/components/upload-folder-dialog";
 import { UploadZipDialog } from "@/components/upload-zip-dialog";
 import { ProUpgradeDialog } from "@/components/pro-upgrade-dialog";
+import { AiGenerateDialog } from "@/components/ai-generate-dialog";
+import { AiEditDialog } from "@/components/ai-edit-dialog";
 import { FileTree } from "@/components/file-tree";
 import { FileBreadcrumbs } from "@/components/breadcrumb-nav";
 import { EmptyState } from "@/components/empty-state";
@@ -170,6 +174,9 @@ function Workspace() {
   const [uploadFolderUpgradeOpen, setUploadFolderUpgradeOpen] = useState(false);
   const [uploadZipOpen, setUploadZipOpen] = useState(false);
   const [uploadZipUpgradeOpen, setUploadZipUpgradeOpen] = useState(false);
+  const [aiGenerateOpen, setAiGenerateOpen] = useState(false);
+  const [aiEditOpen, setAiEditOpen] = useState(false);
+  const [aiUpgradeOpen, setAiUpgradeOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [mobileCommitOpen, setMobileCommitOpen] = useState(false);
