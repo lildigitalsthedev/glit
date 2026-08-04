@@ -1009,6 +1009,36 @@ function Workspace() {
         onCreate={handleCreateFile}
       />
 
+      <AiGenerateDialog
+        open={aiGenerateOpen}
+        onOpenChange={setAiGenerateOpen}
+        path={path}
+        onApply={applyGeneratedCode}
+      />
+
+      <AiEditDialog
+        open={aiEditOpen}
+        onOpenChange={setAiEditOpen}
+        path={path}
+        content={content}
+        onApply={(code) => {
+          setContent(code);
+          toast.success("Applied — review the diff, then commit.");
+        }}
+      />
+
+      <ProUpgradeDialog
+        open={aiUpgradeOpen}
+        onOpenChange={setAiUpgradeOpen}
+        title="AI tools are a Pro feature"
+        description="Upgrade to GitPush Pro to connect your own AI provider and generate or refactor files with natural language."
+        features={[
+          "Bring your own key: OpenAI, Claude, Gemini, xAI, OpenRouter, DeepSeek, Mistral, Together AI",
+          "Generate whole files straight into the editor",
+          "Edit existing files in plain English, with a diff preview before you apply",
+        ]}
+      />
+
       <BulkUploadDialog
         open={bulkUploadOpen}
         onOpenChange={setBulkUploadOpen}
