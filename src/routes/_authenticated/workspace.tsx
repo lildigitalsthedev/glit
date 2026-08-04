@@ -27,6 +27,8 @@ import {
   Star,
   Info,
   Plus,
+  Sparkles,
+  Wand2,
 } from "lucide-react";
 import {
   listRepoBranches,
@@ -81,6 +83,8 @@ import { BulkUploadDialog } from "@/components/bulk-upload-dialog";
 import { UploadFolderDialog } from "@/components/upload-folder-dialog";
 import { UploadZipDialog } from "@/components/upload-zip-dialog";
 import { ProUpgradeDialog } from "@/components/pro-upgrade-dialog";
+import { AiGenerateDialog } from "@/components/ai-generate-dialog";
+import { AiEditDialog } from "@/components/ai-edit-dialog";
 import { FileTree } from "@/components/file-tree";
 import { FileBreadcrumbs } from "@/components/breadcrumb-nav";
 import { EmptyState } from "@/components/empty-state";
@@ -170,6 +174,9 @@ function Workspace() {
   const [uploadFolderUpgradeOpen, setUploadFolderUpgradeOpen] = useState(false);
   const [uploadZipOpen, setUploadZipOpen] = useState(false);
   const [uploadZipUpgradeOpen, setUploadZipUpgradeOpen] = useState(false);
+  const [aiGenerateOpen, setAiGenerateOpen] = useState(false);
+  const [aiEditOpen, setAiEditOpen] = useState(false);
+  const [aiUpgradeOpen, setAiUpgradeOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [mobileCommitOpen, setMobileCommitOpen] = useState(false);
@@ -389,6 +396,40 @@ function Workspace() {
     } else {
       setUploadZipUpgradeOpen(true);
     }
+  }
+
+  /** AI code generation (Pro). Free plans get the upgrade dialog instead. */
+  function openAiGenerate() {
+    if (isPro) {
+      setAiGenerateOpen(true);
+    } else {
+      setAiUpgradeOpen(true);
+    }
+  }
+
+  /** AI file editing (Pro) — needs an open file with contents to work on. */
+  function openAiEdit() {
+    if (!isPro) {
+      setAiUpgradeOpen(true);
+      return;
+    }
+    if (!path || !content.trim()) {
+      toast.error("Open a file with contents first.");
+      return;
+    }
+    setAiEditOpen(true);
+  }
+
+  /** Drops generated code (and its path) into the editor for review. */
+  function applyGeneratedCode({ path: nextPath, code }: { path: string; code: string }) {
+    if (nextPath && nextPath !== path) {
+      setPath(nextPath);
+      setBaseSha(null);
+      setOriginal("");
+    }
+    setContent(code);
+    if (!message.trim()) setMessage("Add generated file");
+    toast.success("Inserted into the editor — review, then commit.");
   }
 
   async function handleBulkCommit(args: {
@@ -851,6 +892,17 @@ function Workspace() {
                 <FilePlus className="size-3.5" />
                 New file
               </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={openAiGenerate}>
+                {isPro ? <Sparkles className="size-3.5" /> : <Lock className="size-3.5" />}
+                Generate code
+                {!isPro && <span className="ml-auto text-[10px] text-muted-foreground">Pro</span>}
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={openAiEdit}>
+                {isPro ? <Wand2 className="size-3.5" /> : <Lock className="size-3.5" />}
+                Edit with AI
+                {!isPro && <span className="ml-auto text-[10px] text-muted-foreground">Pro</span>}
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           <input
@@ -918,6 +970,24 @@ function Workspace() {
             <span className="hidden sm:inline">New file</span>
           </Button>
           <Button
+            variant="outline"
+            size="sm"
+            className="hidden sm:inline-flex"
+            onClick={openAiGenerate}
+          >
+            {isPro ? <Sparkles className="size-3.5" /> : <Lock className="size-3.5" />}
+            <span className="hidden sm:inline">Generate</span>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="hidden sm:inline-flex"
+            onClick={openAiEdit}
+          >
+            {isPro ? <Wand2 className="size-3.5" /> : <Lock className="size-3.5" />}
+            <span className="hidden sm:inline">Edit with AI</span>
+          </Button>
+          <Button
             size="sm"
             className="relative h-9 md:hidden"
             onClick={() => setMobileCommitOpen((v) => !v)}
@@ -937,6 +1007,36 @@ function Workspace() {
         activeFolder={activeFolder}
         existingPaths={filePaths}
         onCreate={handleCreateFile}
+      />
+
+      <AiGenerateDialog
+        open={aiGenerateOpen}
+        onOpenChange={setAiGenerateOpen}
+        path={path}
+        onApply={applyGeneratedCode}
+      />
+
+      <AiEditDialog
+        open={aiEditOpen}
+        onOpenChange={setAiEditOpen}
+        path={path}
+        content={content}
+        onApply={(code) => {
+          setContent(code);
+          toast.success("Applied — review the diff, then commit.");
+        }}
+      />
+
+      <ProUpgradeDialog
+        open={aiUpgradeOpen}
+        onOpenChange={setAiUpgradeOpen}
+        title="AI tools are a Pro feature"
+        description="Upgrade to GitPush Pro to connect your own AI provider and generate or refactor files with natural language."
+        features={[
+          "Bring your own key: OpenAI, Claude, Gemini, xAI, OpenRouter, DeepSeek, Mistral, Together AI",
+          "Generate whole files straight into the editor",
+          "Edit existing files in plain English, with a diff preview before you apply",
+        ]}
       />
 
       <BulkUploadDialog

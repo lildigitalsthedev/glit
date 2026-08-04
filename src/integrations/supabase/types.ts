@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_providers: {
+        Row: {
+          api_key_ciphertext: string
+          base_url: string | null
+          created_at: string
+          enabled: boolean
+          id: string
+          is_default: boolean
+          key_hint: string
+          label: string | null
+          model: string | null
+          provider: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          api_key_ciphertext: string
+          base_url?: string | null
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          is_default?: boolean
+          key_hint?: string
+          label?: string | null
+          model?: string | null
+          provider: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          api_key_ciphertext?: string
+          base_url?: string | null
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          is_default?: boolean
+          key_hint?: string
+          label?: string | null
+          model?: string | null
+          provider?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       drafts: {
         Row: {
           base_sha: string | null
