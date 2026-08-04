@@ -892,6 +892,17 @@ function Workspace() {
                 <FilePlus className="size-3.5" />
                 New file
               </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={openAiGenerate}>
+                {isPro ? <Sparkles className="size-3.5" /> : <Lock className="size-3.5" />}
+                Generate code
+                {!isPro && <span className="ml-auto text-[10px] text-muted-foreground">Pro</span>}
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={openAiEdit}>
+                {isPro ? <Wand2 className="size-3.5" /> : <Lock className="size-3.5" />}
+                Edit with AI
+                {!isPro && <span className="ml-auto text-[10px] text-muted-foreground">Pro</span>}
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           <input
@@ -957,6 +968,24 @@ function Workspace() {
           >
             <FilePlus className="size-3.5" />
             <span className="hidden sm:inline">New file</span>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="hidden sm:inline-flex"
+            onClick={openAiGenerate}
+          >
+            {isPro ? <Sparkles className="size-3.5" /> : <Lock className="size-3.5" />}
+            <span className="hidden sm:inline">Generate</span>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="hidden sm:inline-flex"
+            onClick={openAiEdit}
+          >
+            {isPro ? <Wand2 className="size-3.5" /> : <Lock className="size-3.5" />}
+            <span className="hidden sm:inline">Edit with AI</span>
           </Button>
           <Button
             size="sm"
