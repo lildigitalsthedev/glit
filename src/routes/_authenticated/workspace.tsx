@@ -29,6 +29,7 @@ import {
   Plus,
   Sparkles,
   Wand2,
+  MessageSquare,
 } from "lucide-react";
 import {
   listRepoBranches,
@@ -85,6 +86,7 @@ import { UploadZipDialog } from "@/components/upload-zip-dialog";
 import { ProUpgradeDialog } from "@/components/pro-upgrade-dialog";
 import { AiGenerateDialog } from "@/components/ai-generate-dialog";
 import { AiEditDialog } from "@/components/ai-edit-dialog";
+import { AiRepoChatDialog } from "@/components/ai-repo-chat-dialog";
 import { FileTree } from "@/components/file-tree";
 import { FileBreadcrumbs } from "@/components/breadcrumb-nav";
 import { EmptyState } from "@/components/empty-state";
@@ -176,6 +178,7 @@ function Workspace() {
   const [uploadZipUpgradeOpen, setUploadZipUpgradeOpen] = useState(false);
   const [aiGenerateOpen, setAiGenerateOpen] = useState(false);
   const [aiEditOpen, setAiEditOpen] = useState(false);
+  const [aiChatOpen, setAiChatOpen] = useState(false);
   const [aiUpgradeOpen, setAiUpgradeOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -418,6 +421,15 @@ function Workspace() {
       return;
     }
     setAiEditOpen(true);
+  }
+
+  /** AI repo chat (Pro). Free plans get the upgrade dialog instead. */
+  function openAiChat() {
+    if (isPro) {
+      setAiChatOpen(true);
+    } else {
+      setAiUpgradeOpen(true);
+    }
   }
 
   /** Drops generated code (and its path) into the editor for review. */
@@ -903,6 +915,11 @@ function Workspace() {
                 Edit with AI
                 {!isPro && <span className="ml-auto text-[10px] text-muted-foreground">Pro</span>}
               </DropdownMenuItem>
+              <DropdownMenuItem onSelect={openAiChat}>
+                {isPro ? <MessageSquare className="size-3.5" /> : <Lock className="size-3.5" />}
+                Ask about repo
+                {!isPro && <span className="ml-auto text-[10px] text-muted-foreground">Pro</span>}
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           <input
@@ -988,6 +1005,15 @@ function Workspace() {
             <span className="hidden sm:inline">Edit with AI</span>
           </Button>
           <Button
+            variant="outline"
+            size="sm"
+            className="hidden sm:inline-flex"
+            onClick={openAiChat}
+          >
+            {isPro ? <MessageSquare className="size-3.5" /> : <Lock className="size-3.5" />}
+            <span className="hidden sm:inline">Ask repo</span>
+          </Button>
+          <Button
             size="sm"
             className="relative h-9 md:hidden"
             onClick={() => setMobileCommitOpen((v) => !v)}
@@ -1025,6 +1051,14 @@ function Workspace() {
           setContent(code);
           toast.success("Applied — review the diff, then commit.");
         }}
+      />
+
+      <AiRepoChatDialog
+        open={aiChatOpen}
+        onOpenChange={setAiChatOpen}
+        accountId={accountId!}
+        fullName={fullName!}
+        branch={branch}
       />
 
       <ProUpgradeDialog
