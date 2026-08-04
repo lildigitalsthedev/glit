@@ -25,6 +25,7 @@ import { useRole } from "@/hooks/useRole";
 import { useNavPrefs, type NavPosition, type NavSize } from "@/hooks/useNavPrefs";
 import { AccountRow, ConnectGithubDialog, useAccounts } from "@/components/connect-github";
 import { RequestFeatureDialog } from "@/components/request-feature-dialog";
+import { AiProvidersSection } from "@/components/ai-providers-section";
 import { getPreferences, updatePreferences, type Preferences } from "@/lib/workspace.functions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
