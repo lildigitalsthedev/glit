@@ -399,6 +399,8 @@ function Profile() {
         </div>
       </section>
 
+      <AiProvidersSection />
+
       {/* Feedback */}
       <section className="mt-8">
         <div className="flex items-center gap-2">
