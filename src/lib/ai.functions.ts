@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { EDIT_SYSTEM, GENERATE_SYSTEM } from "./ai/prompts";
+import { CHAT_SYSTEM, EDIT_SYSTEM, GENERATE_SYSTEM } from "./ai/prompts";
 
 /**
  * Bring Your Own AI + AI code generation / file editing.
@@ -132,31 +132,4 @@ export const generateCode = createServerFn({ method: "POST" })
 export const editFileWithAi = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
-    (data: { instruction: string; path: string; content: string; providerId?: string | null }) =>
-      data,
-  )
-  .handler(async ({ data, context }) => {
-    const { assertPro } = await import("./ai/gate.server");
-    await assertPro(context.userId);
-    const { resolveProviderForUser } = await import("./ai/store.server");
-    const { chat, stripCodeFences } = await import("./ai/call.server");
-
-    const instruction = data.instruction.trim();
-    if (!instruction) throw new Error("Describe the change you want.");
-    if (!data.content.trim()) throw new Error("Open a file with contents first.");
-
-    const credential = await resolveProviderForUser(context.userId, data.providerId ?? null);
-    const raw = await chat({
-      credential,
-      system: EDIT_SYSTEM,
-      prompt: [
-        `File path: ${data.path}`,
-        `Instruction: ${instruction}`,
-        `Current contents:\n${data.content}`,
-      ].join("\n\n"),
-      maxTokens: 8192,
-    });
-    const code = stripCodeFences(raw);
-    if (!code) throw new Error("The provider returned an empty response. Try again.");
-    return { code, model: credential.model, provider: credential.provider };
-  });
+    (
