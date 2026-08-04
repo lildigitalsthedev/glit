@@ -46,8 +46,7 @@ export function AiGenerateDialog({
   const [code, setCode] = useState("");
 
   const generate = useMutation({
-    mutationFn: () =>
-      generateFn({ data: { prompt, path: targetPath || path || undefined } }),
+    mutationFn: () => generateFn({ data: { prompt, path: targetPath || path || "" } }),
     onSuccess: (result) => {
       setCode(result.code);
       toast.success(`Generated with ${result.model}.`);
