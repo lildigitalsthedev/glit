@@ -132,4 +132,99 @@ export const generateCode = createServerFn({ method: "POST" })
 export const editFileWithAi = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
-    (
+    (data: {
+      instruction: string;
+      path: string;
+      content: string;
+      providerId?: string | null;
+    }) => data,
+  )
+  .handler(async ({ data, context }) => {
+    const { assertPro } = await import("./ai/gate.server");
+    await assertPro(context.userId);
+    const { resolveProviderForUser } = await import("./ai/store.server");
+    const { chat, stripCodeFences } = await import("./ai/call.server");
+
+    const instruction = data.instruction.trim();
+    if (!instruction) throw new Error("Describe what should change.");
+    if (!data.content) throw new Error("No file content to edit.");
+
+    const credential = await resolveProviderForUser(context.userId, data.providerId ?? null);
+    const prompt = [
+      `File path: ${data.path || "unknown"}`,
+      `Instruction: ${instruction}`,
+      `Current file contents:\n${data.content}`,
+    ].join("\n\n");
+
+    const raw = await chat({ credential, system: EDIT_SYSTEM, prompt, maxTokens: 8192 });
+    const code = stripCodeFences(raw);
+    if (!code) throw new Error("The provider returned an empty response. Try again.");
+    return { code, model: credential.model, provider: credential.provider };
+  });
+
+/**
+ * AI Repository Chat (Pro, FEATURE 9).
+ *
+ * Resolves the caller's decrypted GitHub token for the given account
+ * (RLS-scoped, so an account belonging to another user is never visible),
+ * pulls a small, keyword-relevant slice of the repo via `buildRepoContext`,
+ * and asks the user's chosen AI provider to answer strictly from that
+ * context.
+ */
+export const chatWithRepo = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    (data: {
+      accountId: string;
+      fullName: string;
+      branch: string;
+      question: string;
+      history?: { role: "user" | "assistant"; content: string }[];
+      providerId?: string | null;
+    }) => data,
+  )
+  .handler(async ({ data, context }) => {
+    const { assertPro } = await import("./ai/gate.server");
+    await assertPro(context.userId);
+
+    const question = data.question.trim();
+    if (!question) throw new Error("Ask a question about the repository.");
+    if (!data.accountId) throw new Error("Select a connected GitHub account first.");
+    if (!data.fullName || !data.branch) throw new Error("Select a repository and branch first.");
+
+    const { resolveProviderForUser } = await import("./ai/store.server");
+    const { chat } = await import("./ai/call.server");
+    const { loadAccountToken } = await import("./github/tokens.server");
+    const { buildRepoContext } = await import("./ai/repo-context.server");
+
+    const [{ token }, credential] = await Promise.all([
+      loadAccountToken(context.supabase, data.accountId),
+      resolveProviderForUser(context.userId, data.providerId ?? null),
+    ]);
+
+    const { context: repoContext, filesUsed } = await buildRepoContext({
+      token,
+      fullName: data.fullName,
+      branch: data.branch,
+      question,
+    });
+
+    const history = (data.history ?? [])
+      .slice(-8)
+      .map((m) => `${m.role === "user" ? "User" : "Assistant"}: ${m.content}`)
+      .join("\n\n");
+
+    const prompt = [
+      `Repository: ${data.fullName} (branch: ${data.branch})`,
+      repoContext,
+      history ? `Conversation so far:\n${history}` : "",
+      `Question: ${question}`,
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+
+    const answer = await chat({ credential, system: CHAT_SYSTEM, prompt, maxTokens: 2048 });
+    if (!answer) throw new Error("The provider returned an empty response. Try again.");
+
+    return { answer, filesUsed, model: credential.model, provider: credential.provider };
+  });
