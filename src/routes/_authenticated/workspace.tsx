@@ -398,6 +398,40 @@ function Workspace() {
     }
   }
 
+  /** AI code generation (Pro). Free plans get the upgrade dialog instead. */
+  function openAiGenerate() {
+    if (isPro) {
+      setAiGenerateOpen(true);
+    } else {
+      setAiUpgradeOpen(true);
+    }
+  }
+
+  /** AI file editing (Pro) — needs an open file with contents to work on. */
+  function openAiEdit() {
+    if (!isPro) {
+      setAiUpgradeOpen(true);
+      return;
+    }
+    if (!path || !content.trim()) {
+      toast.error("Open a file with contents first.");
+      return;
+    }
+    setAiEditOpen(true);
+  }
+
+  /** Drops generated code (and its path) into the editor for review. */
+  function applyGeneratedCode({ path: nextPath, code }: { path: string; code: string }) {
+    if (nextPath && nextPath !== path) {
+      setPath(nextPath);
+      setBaseSha(null);
+      setOriginal("");
+    }
+    setContent(code);
+    if (!message.trim()) setMessage("Add generated file");
+    toast.success("Inserted into the editor — review, then commit.");
+  }
+
   async function handleBulkCommit(args: {
     message: string;
     description: string;
