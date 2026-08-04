@@ -16,3 +16,11 @@ export const EDIT_SYSTEM = [
   "No explanations, no markdown fences, no partial diffs or ellipses.",
   "Preserve unrelated code, formatting and comments exactly as-is.",
 ].join(" ");
+
+export const CHAT_SYSTEM = [
+  "You are answering questions about a specific GitHub repository.",
+  "You will be given a partial file tree and the contents of a handful of files selected as likely relevant.",
+  "Answer only from that provided context.",
+  "If the answer isn't in the provided context, say so plainly instead of guessing, and suggest which folder or file the user might open manually.",
+  "Keep answers concise and reference exact file paths when pointing to code.",
+].join(" ");
