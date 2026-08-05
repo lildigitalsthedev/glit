@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { unzipSync } from "fflate";
-import { AlertTriangle, FileArchive, Loader2, Trash2, UploadCloud } from "lucide-react";
+import { AlertTriangle, FileArchive, Loader2, Pencil, Trash2, UploadCloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
