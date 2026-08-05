@@ -408,6 +408,127 @@ export function UploadZipDialog({
 
           {pending.length > 0 && (
             <>
+              <div className="space-y-2 rounded-md border border-border p-2.5">
+                <div className="space-y-1.5">
+                  <Label htmlFor="zip-dest-folder" className="text-xs">
+                    Destination folder
+                  </Label>
+                  <Input
+                    id="zip-dest-folder"
+                    value={destFolder}
+                    onChange={(e) => setDestFolder(e.target.value)}
+                    placeholder="repository root"
+                    className="h-8 font-mono text-xs"
+                    disabled={submitting}
+                  />
+                </div>
+
+                {archiveRoot && (
+                  <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <input
+                      type="checkbox"
+                      checked={stripRoot}
+                      onChange={(e) => applyStripRoot(e.target.checked)}
+                      disabled={submitting}
+                      className="size-3.5 accent-primary"
+                    />
+                    Strip the archive&rsquo;s top-level folder{" "}
+                    <span className="font-mono text-foreground">{archiveRoot}/</span>
+                  </label>
+                )}
+
+                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  <span>If a file already exists:</span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={conflictMode === "replace" ? "secondary" : "ghost"}
+                    className="h-7 text-xs"
+                    onClick={() => setConflictMode("replace")}
+                    disabled={submitting}
+                  >
+                    Replace it
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={conflictMode === "skip" ? "secondary" : "ghost"}
+                    className="h-7 text-xs"
+                    onClick={() => setConflictMode("skip")}
+                    disabled={submitting}
+                  >
+                    Skip it
+                  </Button>
+                </div>
+
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-fit text-xs"
+                  onClick={() => setShowPathEditor((prev) => !prev)}
+                  disabled={submitting}
+                >
+                  <Pencil className="size-3.5" />
+                  {showPathEditor ? "Hide path editor" : "Edit individual paths"}
+                </Button>
+              </div>
+
+              {(duplicatePaths.length > 0 || emptyPaths > 0) && (
+                <p className="flex items-start gap-1.5 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                  <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
+                  {duplicatePaths.length > 0
+                    ? `Two or more files point at the same path: ${duplicatePaths.slice(0, 3).join(", ")}. Edit the paths so each destination is unique.`
+                    : `${emptyPaths} file${emptyPaths === 1 ? " has" : "s have"} an empty destination path.`}
+                </p>
+              )}
+
+              {showPathEditor && (
+                <div className="max-h-56 min-h-0 space-y-1.5 overflow-y-auto overscroll-contain rounded-md border border-border p-2">
+                  {resolved.map((entry) => {
+                    const exists = existingPathsSet.has(entry.fullPath);
+                    const skipped = exists && conflictMode === "skip";
+                    return (
+                      <div key={entry.item.id} className="flex items-center gap-1.5">
+                        <Input
+                          value={entry.item.targetPath}
+                          onChange={(e) => updateTargetPath(entry.item.id, e.target.value)}
+                          className={cn(
+                            "h-7 font-mono text-[11px]",
+                            duplicatePaths.includes(entry.fullPath) && "border-destructive",
+                          )}
+                          disabled={submitting}
+                          aria-label={`Destination path for ${entry.item.path}`}
+                        />
+                        <span
+                          className={cn(
+                            "w-16 shrink-0 text-right text-[10px]",
+                            skipped
+                              ? "text-muted-foreground"
+                              : exists
+                                ? "text-primary"
+                                : "text-muted-foreground",
+                          )}
+                        >
+                          {skipped ? "skipped" : exists ? "replace" : "new"}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="size-7 shrink-0 text-muted-foreground hover:text-destructive"
+                          onClick={() => removeFile(entry.item.id)}
+                          disabled={submitting}
+                          aria-label={`Remove ${entry.item.path}`}
+                        >
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
               <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span>
                   {pending.length} file{pending.length === 1 ? "" : "s"}
@@ -494,8 +615,8 @@ export function UploadZipDialog({
             ) : (
               <UploadCloud className="size-4" />
             )}
-            {pending.length > 0
-              ? `Push ${pending.length} file${pending.length === 1 ? "" : "s"}`
+            {filesToPush.length > 0
+              ? `Push ${filesToPush.length} file${filesToPush.length === 1 ? "" : "s"}`
               : "Push files"}
           </Button>
         </DialogFooter>
