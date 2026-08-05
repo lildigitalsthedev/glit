@@ -3,7 +3,7 @@ import { Repository, RepoFile } from '../types';
 export async function fetchGitHubRepoDetails(githubUrl: string): Promise<Repository> {
   const cleanUrl = githubUrl.replace(/\.git$/, '').replace(/\/$/, '');
   const parts = cleanUrl.split('github.com/');
-  const repoPath = parts.length > 1 ? parts[1] : cleanUrl;
+  const repoPath = parts[1] ?? cleanUrl;
   const [owner, name] = repoPath.split('/');
 
   if (!owner || !name) {
