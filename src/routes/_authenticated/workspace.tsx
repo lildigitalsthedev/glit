@@ -30,6 +30,7 @@ import {
   Sparkles,
   Wand2,
   MessageSquare,
+  X,
 } from "lucide-react";
 import {
   listRepoBranches,
@@ -38,6 +39,7 @@ import {
   pushFile,
   pushFiles,
   deleteFile,
+  deleteFolder,
   downloadRepoZip,
   listRepoCommits,
   getRepoDetails,
@@ -80,6 +82,7 @@ import {
 import { RenameRepositoryDialog } from "@/components/rename-repository-dialog";
 import { RepositoryInfoDialog } from "@/components/repository-info-dialog";
 import { DeleteFileDialog } from "@/components/delete-file-dialog";
+import { DeleteFolderDialog } from "@/components/delete-folder-dialog";
 import { NewFileDialog } from "@/components/new-file-dialog";
 import { BulkUploadDialog } from "@/components/bulk-upload-dialog";
 import { UploadFolderDialog } from "@/components/upload-folder-dialog";
@@ -141,6 +144,7 @@ function Workspace() {
   const pushFn = useServerFn(pushFile);
   const pushFilesFn = useServerFn(pushFiles);
   const deleteFileFn = useServerFn(deleteFile);
+  const deleteFolderFn = useServerFn(deleteFolder);
   const zipFn = useServerFn(downloadRepoZip);
   const commitsFn = useServerFn(listRepoCommits);
   const repoDetailsFn = useServerFn(getRepoDetails);
@@ -191,6 +195,7 @@ function Workspace() {
   const [aiChatOpen, setAiChatOpen] = useState(false);
   const [aiUpgradeOpen, setAiUpgradeOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [deleteFolderTarget, setDeleteFolderTarget] = useState<string | null>(null);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [mobileCommitOpen, setMobileCommitOpen] = useState(false);
   const uploadInputRef = useRef<HTMLInputElement>(null);
@@ -559,6 +564,71 @@ function Workspace() {
     setDeleteTarget(target);
   }
 
+  const folderFilePaths = useMemo(() => {
+    if (!deleteFolderTarget) return [];
+    const prefix = `${deleteFolderTarget}/`;
+    return (tree.data?.nodes ?? [])
+      .filter((node) => node.type === "blob" && node.path.startsWith(prefix))
+      .map((node) => node.path);
+  }, [deleteFolderTarget, tree.data]);
+
+  const deleteFolderMutation = useMutation({
+    mutationFn: (args: { targetPath: string; message: string }) => {
+      if (!accountId || !fullName) throw new Error("Choose a repository first.");
+      if (!branch) throw new Error("Pick a branch before deleting.");
+      return deleteFolderFn({
+        data: {
+          accountId,
+          fullName,
+          branch,
+          path: args.targetPath,
+          message: args.message,
+        },
+      });
+    },
+    onSuccess: (result, args) => {
+      toast.success(
+        `Deleted ${result.filesDeleted} file${result.filesDeleted === 1 ? "" : "s"} from ${args.targetPath}.`,
+      );
+      // Clear the editor when the open file lived inside the deleted folder.
+      if (path.startsWith(`${args.targetPath}/`)) {
+        setPath("");
+        setContent("");
+        setOriginal("");
+        setBaseSha(null);
+        setShowDiff(false);
+        setLastFilePath("");
+      }
+      if (activeFolder === args.targetPath || activeFolder?.startsWith(`${args.targetPath}/`)) {
+        setActiveFolder(null);
+      }
+      setDeleteFolderTarget(null);
+      void queryClient.invalidateQueries({ queryKey: ["tree"] });
+      void queryClient.invalidateQueries({ queryKey: ["commits"] });
+      void queryClient.invalidateQueries({ queryKey: ["pushes"] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Couldn't delete that folder. Try again.");
+    },
+  });
+
+  /**
+   * Abandons the in-progress commit: clears the staged file, its contents,
+   * the destination path and the commit message/description, so an unwanted
+   * upload can be dropped without clearing fields by hand or reloading.
+   */
+  function handleDiscardCommit() {
+    setPath("");
+    setContent("");
+    setOriginal("");
+    setBaseSha(null);
+    setShowDiff(false);
+    setLastFilePath("");
+    setMessage("");
+    setDescription("");
+    toast.success("Pending commit discarded.");
+  }
+
   async function handleCopyPath(target: string) {
     try {
       await navigator.clipboard.writeText(target);
@@ -679,6 +749,7 @@ function Workspace() {
           onSelectFolder={(target) => setActiveFolder(target)}
           onCopyPath={handleCopyPath}
           onDeleteFile={handleDeleteFile}
+          onDeleteFolder={(target) => setDeleteFolderTarget(target)}
         />
       </div>
     </div>
@@ -728,6 +799,17 @@ function Workspace() {
           )}
           Commit &amp; push
         </Button>
+        {(path || message.trim() || description.trim() || content) && (
+          <Button
+            variant="ghost"
+            className="mt-2 h-9 w-full text-muted-foreground hover:text-destructive"
+            disabled={commit.isPending}
+            onClick={handleDiscardCommit}
+          >
+            <X className="size-4" />
+            Discard pending commit
+          </Button>
+        )}
       </div>
     </div>
   );
@@ -1188,6 +1270,24 @@ function Workspace() {
         onConfirm={(commitMessage) => {
           if (!deleteTarget) return;
           deleteMutation.mutate({ targetPath: deleteTarget, message: commitMessage });
+        }}
+      />
+
+      <DeleteFolderDialog
+        open={deleteFolderTarget !== null}
+        onOpenChange={(next) => {
+          if (!next) setDeleteFolderTarget(null);
+        }}
+        path={deleteFolderTarget}
+        branch={branch}
+        filePaths={folderFilePaths}
+        isDeleting={deleteFolderMutation.isPending}
+        onConfirm={(commitMessage) => {
+          if (!deleteFolderTarget) return;
+          deleteFolderMutation.mutate({
+            targetPath: deleteFolderTarget,
+            message: commitMessage,
+          });
         }}
       />
 

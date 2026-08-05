@@ -86,7 +86,9 @@ export async function buildRepoContext(
   // Sort by score descending, then by path length ascending
   scored.sort((a, b) => b.score - a.score || a.path.length - b.path.length);
 
-  let selected = scored.filter((item) => item.score > 0).slice(0, 8);
+  let selected: (typeof candidates)[number][] = scored
+    .filter((item) => item.score > 0)
+    .slice(0, 8);
 
   // Fallback if no paths matched any keywords
   if (selected.length === 0) {
@@ -106,7 +108,8 @@ export async function buildRepoContext(
   const fetchedFiles = await Promise.all(
     selected.map(async (item) => {
       try {
-        const content = await readFile(token, fullName, branch, item.path);
+        const result = await readFile(token, fullName, branch, item.path);
+        const content = typeof result === "string" ? result : result.content;
         return { path: item.path, content };
       } catch {
         return null;

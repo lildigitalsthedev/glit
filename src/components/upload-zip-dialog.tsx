@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { unzipSync } from "fflate";
-import { AlertTriangle, FileArchive, Loader2, Trash2, UploadCloud } from "lucide-react";
+import { AlertTriangle, FileArchive, Loader2, Pencil, Trash2, UploadCloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -37,6 +37,12 @@ export interface PendingZipFile {
   id: string;
   /** Path inside the archive, e.g. "my-project/src/App.tsx". */
   path: string;
+  /**
+   * Destination path relative to the chosen destination folder. Starts out as
+   * the archive path (minus any stripped common root) and can be edited
+   * per-file before pushing.
+   */
+  targetPath: string;
   size: number;
   bytes: Uint8Array;
 }
@@ -74,6 +80,29 @@ function joinFolder(folder: string | null, relativePath: string): string {
   return folder ? `${folder}/${cleaned}` : cleaned;
 }
 
+/** Normalizes a user-typed path: trims segments, drops empties and "." parts. */
+function normalizeRelPath(input: string): string {
+  return input
+    .split("/")
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0 && part !== ".")
+    .join("/");
+}
+
+/**
+ * Returns the single top-level folder shared by every archive entry, or null
+ * when the archive has more than one top-level entry. GitHub-style archives
+ * ("repo-main/...") nest everything one level deep, which would otherwise be
+ * recreated inside the repository.
+ */
+function commonRootFolder(paths: string[]): string | null {
+  if (paths.length === 0) return null;
+  const first = paths[0]?.split("/") ?? [];
+  if (first.length < 2) return null;
+  const root = first[0]!;
+  return paths.every((path) => path.startsWith(`${root}/`)) ? root : null;
+}
+
 let idCounter = 0;
 function nextId(): string {
   idCounter += 1;
@@ -107,6 +136,14 @@ export function UploadZipDialog({
   const [submitting, setSubmitting] = useState(false);
   const [progress, setProgress] = useState(0);
   const [confirmOverwriteOpen, setConfirmOverwriteOpen] = useState(false);
+  /** Destination folder for the whole archive; defaults to the active folder. */
+  const [destFolder, setDestFolder] = useState("");
+  /** Common top-level folder inside the archive, if any. */
+  const [archiveRoot, setArchiveRoot] = useState<string | null>(null);
+  const [stripRoot, setStripRoot] = useState(true);
+  /** What to do with files that already exist at their destination. */
+  const [conflictMode, setConflictMode] = useState<"replace" | "skip">("replace");
+  const [showPathEditor, setShowPathEditor] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const progressTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -122,8 +159,13 @@ export function UploadZipDialog({
       setSubmitting(false);
       setProgress(0);
       setConfirmOverwriteOpen(false);
+      setDestFolder(activeFolder ?? "");
+      setArchiveRoot(null);
+      setStripRoot(true);
+      setConflictMode("replace");
+      setShowPathEditor(false);
     }
-  }, [open]);
+  }, [open, activeFolder]);
 
   useEffect(() => {
     return () => {
@@ -137,16 +179,26 @@ export function UploadZipDialog({
     try {
       const buffer = await file.arrayBuffer();
       const entries = unzipSync(new Uint8Array(buffer));
-      const files: PendingZipFile[] = [];
+      const raw: { path: string; bytes: Uint8Array }[] = [];
       for (const [path, bytes] of Object.entries(entries)) {
         if (path.endsWith("/")) continue; // directory entry
         if (isIgnored(path)) continue;
-        files.push({ id: nextId(), path, size: bytes.byteLength, bytes });
+        raw.push({ path, bytes });
       }
+      const root = commonRootFolder(raw.map((entry) => entry.path));
+      const files: PendingZipFile[] = raw.map((entry) => ({
+        id: nextId(),
+        path: entry.path,
+        targetPath: root ? entry.path.slice(root.length + 1) : entry.path,
+        size: entry.bytes.byteLength,
+        bytes: entry.bytes,
+      }));
       if (files.length === 0) {
         setExtractError("That archive doesn't contain any files.");
         return;
       }
+      setArchiveRoot(root);
+      setStripRoot(true);
       setArchiveName(file.name);
       setPending(files);
       if (!message.trim()) {
@@ -175,15 +227,52 @@ export function UploadZipDialog({
     setPending((prev) => prev.filter((item) => item.id !== id));
   }
 
+  function updateTargetPath(id: string, nextPath: string) {
+    setPending((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, targetPath: nextPath } : item)),
+    );
+  }
+
+  /** Re-derives every destination from the archive paths + the strip toggle. */
+  function applyStripRoot(next: boolean) {
+    setStripRoot(next);
+    if (!archiveRoot) return;
+    setPending((prev) =>
+      prev.map((item) => ({
+        ...item,
+        targetPath: next ? item.path.slice(archiveRoot.length + 1) : item.path,
+      })),
+    );
+  }
+
+  const folder = normalizeRelPath(destFolder) || null;
+
+  /** Final repo path for each pending file, after folder + per-file edits. */
+  const resolved = useMemo(
+    () =>
+      pending.map((item) => ({
+        item,
+        relativePath: normalizeRelPath(item.targetPath),
+        fullPath: joinFolder(folder, normalizeRelPath(item.targetPath)),
+      })),
+    [pending, folder],
+  );
+
+  const duplicatePaths = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const entry of resolved) counts.set(entry.fullPath, (counts.get(entry.fullPath) ?? 0) + 1);
+    return [...counts.entries()].filter(([, count]) => count > 1).map(([path]) => path);
+  }, [resolved]);
+
+  const emptyPaths = resolved.filter((entry) => !entry.relativePath).length;
+
   const existingPathsSet = useMemo(() => new Set(existingPaths), [existingPaths]);
   const tree = useMemo(() => {
-    const sources: PreviewSource<PendingZipFile>[] = pending.map((item) => ({
-      item,
-      relativePath: item.path,
-      fullPath: joinFolder(activeFolder, item.path),
-    }));
+    const sources: PreviewSource<PendingZipFile>[] = resolved.filter(
+      (entry) => entry.relativePath.length > 0,
+    );
     return buildCommitTree(sources);
-  }, [pending, activeFolder]);
+  }, [resolved]);
   const totals = useMemo(
     () => computeCommitTotals(tree, existingPathsSet),
     [tree, existingPathsSet],
@@ -191,13 +280,30 @@ export function UploadZipDialog({
   const totalSize = pending.reduce((sum, item) => sum + item.size, 0);
   const overwritePaths = useMemo(
     () =>
-      pending
-        .map((item) => joinFolder(activeFolder, item.path))
-        .filter((path) => existingPaths.includes(path)),
-    [pending, activeFolder, existingPaths],
+      resolved
+        .filter((entry) => entry.relativePath && existingPathsSet.has(entry.fullPath))
+        .map((entry) => entry.fullPath),
+    [resolved, existingPathsSet],
   );
+
+  /** Files actually sent, honouring the skip-existing conflict mode. */
+  const filesToPush = useMemo(
+    () =>
+      resolved.filter(
+        (entry) =>
+          entry.relativePath.length > 0 &&
+          (conflictMode === "replace" || !existingPathsSet.has(entry.fullPath)),
+      ),
+    [resolved, conflictMode, existingPathsSet],
+  );
+
   const canSubmit =
-    pending.length > 0 && message.trim().length > 0 && !submitting && !isExtracting;
+    filesToPush.length > 0 &&
+    message.trim().length > 0 &&
+    duplicatePaths.length === 0 &&
+    emptyPaths === 0 &&
+    !submitting &&
+    !isExtracting;
 
   async function push() {
     setSubmitting(true);
@@ -207,9 +313,9 @@ export function UploadZipDialog({
     }, 180);
 
     try {
-      const files = pending.map((item) => ({
-        path: joinFolder(activeFolder, item.path),
-        content: bytesToBase64(item.bytes),
+      const files = filesToPush.map((entry) => ({
+        path: entry.fullPath,
+        content: bytesToBase64(entry.item.bytes),
       }));
       await onCommit({ message: message.trim(), description: description.trim(), files });
       setProgress(100);
@@ -226,7 +332,7 @@ export function UploadZipDialog({
 
   function handleSubmit() {
     if (!canSubmit) return;
-    if (overwritePaths.length > 0) {
+    if (conflictMode === "replace" && overwritePaths.length > 0) {
       setConfirmOverwriteOpen(true);
       return;
     }
@@ -302,6 +408,127 @@ export function UploadZipDialog({
 
           {pending.length > 0 && (
             <>
+              <div className="space-y-2 rounded-md border border-border p-2.5">
+                <div className="space-y-1.5">
+                  <Label htmlFor="zip-dest-folder" className="text-xs">
+                    Destination folder
+                  </Label>
+                  <Input
+                    id="zip-dest-folder"
+                    value={destFolder}
+                    onChange={(e) => setDestFolder(e.target.value)}
+                    placeholder="repository root"
+                    className="h-8 font-mono text-xs"
+                    disabled={submitting}
+                  />
+                </div>
+
+                {archiveRoot && (
+                  <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <input
+                      type="checkbox"
+                      checked={stripRoot}
+                      onChange={(e) => applyStripRoot(e.target.checked)}
+                      disabled={submitting}
+                      className="size-3.5 accent-primary"
+                    />
+                    Strip the archive&rsquo;s top-level folder{" "}
+                    <span className="font-mono text-foreground">{archiveRoot}/</span>
+                  </label>
+                )}
+
+                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  <span>If a file already exists:</span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={conflictMode === "replace" ? "secondary" : "ghost"}
+                    className="h-7 text-xs"
+                    onClick={() => setConflictMode("replace")}
+                    disabled={submitting}
+                  >
+                    Replace it
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={conflictMode === "skip" ? "secondary" : "ghost"}
+                    className="h-7 text-xs"
+                    onClick={() => setConflictMode("skip")}
+                    disabled={submitting}
+                  >
+                    Skip it
+                  </Button>
+                </div>
+
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-fit text-xs"
+                  onClick={() => setShowPathEditor((prev) => !prev)}
+                  disabled={submitting}
+                >
+                  <Pencil className="size-3.5" />
+                  {showPathEditor ? "Hide path editor" : "Edit individual paths"}
+                </Button>
+              </div>
+
+              {(duplicatePaths.length > 0 || emptyPaths > 0) && (
+                <p className="flex items-start gap-1.5 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                  <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
+                  {duplicatePaths.length > 0
+                    ? `Two or more files point at the same path: ${duplicatePaths.slice(0, 3).join(", ")}. Edit the paths so each destination is unique.`
+                    : `${emptyPaths} file${emptyPaths === 1 ? " has" : "s have"} an empty destination path.`}
+                </p>
+              )}
+
+              {showPathEditor && (
+                <div className="max-h-56 min-h-0 space-y-1.5 overflow-y-auto overscroll-contain rounded-md border border-border p-2">
+                  {resolved.map((entry) => {
+                    const exists = existingPathsSet.has(entry.fullPath);
+                    const skipped = exists && conflictMode === "skip";
+                    return (
+                      <div key={entry.item.id} className="flex items-center gap-1.5">
+                        <Input
+                          value={entry.item.targetPath}
+                          onChange={(e) => updateTargetPath(entry.item.id, e.target.value)}
+                          className={cn(
+                            "h-7 font-mono text-[11px]",
+                            duplicatePaths.includes(entry.fullPath) && "border-destructive",
+                          )}
+                          disabled={submitting}
+                          aria-label={`Destination path for ${entry.item.path}`}
+                        />
+                        <span
+                          className={cn(
+                            "w-16 shrink-0 text-right text-[10px]",
+                            skipped
+                              ? "text-muted-foreground"
+                              : exists
+                                ? "text-primary"
+                                : "text-muted-foreground",
+                          )}
+                        >
+                          {skipped ? "skipped" : exists ? "replace" : "new"}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="size-7 shrink-0 text-muted-foreground hover:text-destructive"
+                          onClick={() => removeFile(entry.item.id)}
+                          disabled={submitting}
+                          aria-label={`Remove ${entry.item.path}`}
+                        >
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
               <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <span>
                   {pending.length} file{pending.length === 1 ? "" : "s"}
@@ -388,8 +615,8 @@ export function UploadZipDialog({
             ) : (
               <UploadCloud className="size-4" />
             )}
-            {pending.length > 0
-              ? `Push ${pending.length} file${pending.length === 1 ? "" : "s"}`
+            {filesToPush.length > 0
+              ? `Push ${filesToPush.length} file${filesToPush.length === 1 ? "" : "s"}`
               : "Push files"}
           </Button>
         </DialogFooter>

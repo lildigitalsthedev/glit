@@ -41,7 +41,7 @@ const MainApp: React.FC = () => {
   const [repos, setRepos] = useState<Repository[]>([defaultGlitRepo]);
   const [isCloneOpen, setIsCloneOpen] = useState(false);
 
-  const activeRepo = repos.find((r) => r.id === navState.repos.selectedRepoId) || repos[0];
+  const activeRepo = repos.find((r) => r.id === navState.repos.selectedRepoId) ?? repos[0]!;
 
   const handleCloneRepo = async (githubUrl: string) => {
     const newRepo = await fetchGitHubRepoDetails(githubUrl);
