@@ -54,6 +54,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { WorkspaceTools } from "@/components/workspace-tools";
+import { usePersistentState } from "@/hooks/use-persistent-state";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -168,7 +169,16 @@ function Workspace() {
   const [filter, setFilter] = useState("");
   const [renameOpen, setRenameOpen] = useState(false);
   const [repoInfoOpen, setRepoInfoOpen] = useState(false);
-  const [activeFolder, setActiveFolder] = useState<string | null>(null);
+  // Persisted per-repo so returning to Workspace — whether by switching
+  // tabs and coming back, or reopening the app later — drops the user back
+  // into the exact folder they were browsing, instead of always resetting
+  // to the repo root. Keyed by `fullName` so different repos don't bleed
+  // their locations into each other; falls back to plain in-memory state
+  // until `fullName` has loaded.
+  const [activeFolder, setActiveFolder] = usePersistentState<string | null>(
+    fullName ? `gitpush:workspace:activeFolder:${fullName}` : null,
+    null,
+  );
   const [newFileOpen, setNewFileOpen] = useState(false);
   const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
   const [bulkUploadUpgradeOpen, setBulkUploadUpgradeOpen] = useState(false);
