@@ -206,7 +206,7 @@ export function BulkUploadDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex min-h-0 flex-1 flex-col gap-3">
+        <div className="flex-1 min-h-0 space-y-3 overflow-y-auto pr-0.5">
           <div
             onDragOver={(e) => {
               e.preventDefault();
@@ -216,16 +216,26 @@ export function BulkUploadDialog({
             onDrop={handleDrop}
             onClick={() => inputRef.current?.click()}
             className={cn(
-              "flex cursor-pointer flex-col items-center justify-center gap-2 rounded-md border border-dashed px-4 py-8 text-center transition-colors",
+              "flex cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed text-center transition-colors",
+              pending.length > 0 ? "px-3 py-2" : "flex-col px-4 py-8",
               isDragging ? "border-primary bg-primary/5" : "border-border hover:bg-accent/40",
             )}
           >
-            <UploadCloud className="size-6 text-muted-foreground" />
-            <p className="text-sm">
-              <span className="font-medium text-foreground">Click to browse</span> or drag and
-              drop files here
-            </p>
-            <p className="text-xs text-muted-foreground">Multiple files are supported</p>
+            {pending.length > 0 ? (
+              <p className="text-xs text-muted-foreground">
+                <span className="font-medium text-foreground">+ Add more files</span> or drag and
+                drop
+              </p>
+            ) : (
+              <>
+                <UploadCloud className="size-6 text-muted-foreground" />
+                <p className="text-sm">
+                  <span className="font-medium text-foreground">Click to browse</span> or drag and
+                  drop files here
+                </p>
+                <p className="text-xs text-muted-foreground">Multiple files are supported</p>
+              </>
+            )}
             <input
               ref={inputRef}
               type="file"
@@ -260,7 +270,7 @@ export function BulkUploadDialog({
                 folders={totals.folders}
               />
 
-              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain rounded-md border border-border">
+              <div className="max-h-[45vh] min-h-[180px] overflow-y-auto overscroll-contain rounded-md border border-border">
                 <div className="divide-y divide-border">
                   {pending.map((item) => {
                     const trimmedPath = item.path.trim();

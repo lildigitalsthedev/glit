@@ -357,7 +357,7 @@ export function UploadZipDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex min-h-0 flex-1 flex-col gap-3">
+        <div className="flex-1 min-h-0 space-y-3 overflow-y-auto pr-0.5">
           <div
             onDragOver={(e) => {
               e.preventDefault();
@@ -367,26 +367,36 @@ export function UploadZipDialog({
             onDrop={handleDrop}
             onClick={() => inputRef.current?.click()}
             className={cn(
-              "flex cursor-pointer flex-col items-center justify-center gap-2 rounded-md border border-dashed px-4 py-8 text-center transition-colors",
+              "flex cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed text-center transition-colors",
+              pending.length > 0 ? "px-3 py-2" : "flex-col px-4 py-8",
               isDragging ? "border-primary bg-primary/5" : "border-border hover:bg-accent/40",
             )}
           >
             {isExtracting ? (
               <Loader2 className="size-6 animate-spin text-primary" />
-            ) : (
+            ) : pending.length === 0 ? (
               <FileArchive className="size-6 text-muted-foreground" />
+            ) : null}
+            {pending.length > 0 && !isExtracting ? (
+              <p className="text-xs text-muted-foreground">
+                <span className="font-medium text-foreground">
+                  Loaded {archiveName}
+                </span>{" "}
+                — drop another .zip to replace it
+              </p>
+            ) : (
+              <>
+                <p className="text-sm">
+                  <span className="font-medium text-foreground">Click to choose a .zip</span> or
+                  drag and drop one here
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {isExtracting
+                    ? "Extracting…"
+                    : "Extracted locally in your browser, folder structure preserved"}
+                </p>
+              </>
             )}
-            <p className="text-sm">
-              <span className="font-medium text-foreground">Click to choose a .zip</span> or drag
-              and drop one here
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {isExtracting
-                ? "Extracting…"
-                : archiveName
-                  ? `Loaded ${archiveName} — drop another to replace it`
-                  : "Extracted locally in your browser, folder structure preserved"}
-            </p>
             <input
               ref={inputRef}
               type="file"
@@ -549,7 +559,7 @@ export function UploadZipDialog({
                 folders={totals.folders}
               />
 
-              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain rounded-md border border-border">
+              <div className="max-h-[45vh] min-h-[180px] overflow-y-auto overscroll-contain rounded-md border border-border">
                 <CommitFileTree
                   root={tree}
                   existingPaths={existingPathsSet}
