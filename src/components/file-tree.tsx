@@ -420,6 +420,142 @@ export function FileTree({
   onCopyPath,
   onDeleteFile,
   onDeleteFolder,
+}: Parameters<typeof FileTreeInner>[0]) {
+  return (
+    <FileTreeInner
+      nodes={nodes}
+      loading={loading}
+      filter={filter}
+      activePath={activePath}
+      activeFolder={activeFolder}
+      onOpenFile={onOpenFile}
+      onSelectFolder={onSelectFolder}
+      onCopyPath={onCopyPath}
+      onDeleteFile={onDeleteFile}
+      onDeleteFolder={onDeleteFolder}
+    />
+  );
+}
+
+function FolderRow({
+  path,
+  name,
+  isOpen,
+  isActiveFolder,
+  paddingLeft,
+  onToggle,
+  onCopyPath,
+  onDeleteFolder,
+}: {
+  path: string;
+  name: string;
+  isOpen: boolean;
+  isActiveFolder: boolean;
+  paddingLeft: number;
+  onToggle: () => void;
+  onCopyPath: (path: string) => void;
+  onDeleteFolder: (path: string) => void;
+}) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressFired = useRef(false);
+
+  function startLongPress() {
+    longPressFired.current = false;
+    longPressTimer.current = setTimeout(() => {
+      longPressFired.current = true;
+      setMenuOpen(true);
+    }, LONG_PRESS_MS);
+  }
+
+  function cancelLongPress() {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  }
+
+  return (
+    <div className="group relative flex items-center">
+      <button
+        onClick={() => {
+          if (longPressFired.current) {
+            longPressFired.current = false;
+            return;
+          }
+          onToggle();
+        }}
+        onTouchStart={startLongPress}
+        onTouchEnd={cancelLongPress}
+        onTouchMove={cancelLongPress}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          setMenuOpen(true);
+        }}
+        style={{ paddingLeft }}
+        className={cn(
+          "flex w-full min-w-0 items-center gap-1.5 truncate rounded py-1 pr-7 text-left font-mono text-[11px] transition-colors duration-150",
+          isActiveFolder
+            ? "bg-secondary/70 text-foreground"
+            : "text-muted-foreground hover:bg-secondary/40 hover:text-foreground",
+        )}
+        title={path}
+      >
+        <ChevronRight
+          className={cn("size-3 shrink-0 transition-transform duration-200", isOpen && "rotate-90")}
+        />
+        {isOpen ? (
+          <FolderOpen className="size-3.5 shrink-0 text-primary" />
+        ) : (
+          <Folder className="size-3.5 shrink-0 text-primary" />
+        )}
+        <span className="truncate">{name}</span>
+      </button>
+
+      <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            onClick={(e) => e.stopPropagation()}
+            aria-label={`Actions for folder ${name}`}
+            className={cn(
+              "absolute right-1 flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground opacity-100 transition-opacity duration-150 hover:bg-secondary hover:text-foreground sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100",
+              menuOpen && "sm:opacity-100",
+            )}
+          >
+            <MoreVertical className="size-3.5" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-44">
+          <DropdownMenuItem onSelect={() => onCopyPath(path)}>
+            <Copy className="size-3.5" />
+            Copy Path
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onSelect={() => onDeleteFolder(path)}
+            className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+          >
+            <Trash2 className="size-3.5" />
+            Delete folder
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+}
+
+function FileTreeInner({
+  nodes,
+  loading,
+  filter,
+  activePath,
+  activeFolder,
+  onOpenFile,
+  onSelectFolder,
+  onCopyPath,
+  onDeleteFile,
+  onDeleteFolder,
 }: {
   nodes: TreeNode[];
   loading?: boolean;
