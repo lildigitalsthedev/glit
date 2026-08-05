@@ -30,6 +30,7 @@ import {
   Sparkles,
   Wand2,
   MessageSquare,
+  X,
 } from "lucide-react";
 import {
   listRepoBranches,
@@ -194,6 +195,7 @@ function Workspace() {
   const [aiChatOpen, setAiChatOpen] = useState(false);
   const [aiUpgradeOpen, setAiUpgradeOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [deleteFolderTarget, setDeleteFolderTarget] = useState<string | null>(null);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [mobileCommitOpen, setMobileCommitOpen] = useState(false);
   const uploadInputRef = useRef<HTMLInputElement>(null);
