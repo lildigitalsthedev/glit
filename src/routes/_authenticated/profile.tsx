@@ -42,10 +42,10 @@ import { EmptyState } from "@/components/empty-state";
 import { cn } from "@/lib/utils";
 
 const NAV_POSITIONS: { value: NavPosition; label: string; description: string; icon: typeof PanelBottom }[] = [
-  { value: "bottom", label: "Bottom", description: "Docked to the bottom edge.", icon: PanelBottom },
+  { value: "bottom", label: "Bottom", description: "Docked to the bottom edge — the phone default.", icon: PanelBottom },
   { value: "floating-bottom", label: "Floating", description: "Draggable floating dock.", icon: Move },
-  { value: "left", label: "Left side", description: "Tablet & desktop only.", icon: PanelLeft },
-  { value: "right", label: "Right side", description: "Tablet & desktop only.", icon: PanelRight },
+  { value: "left", label: "Left side", description: "Side rail — the tablet/desktop default.", icon: PanelLeft },
+  { value: "right", label: "Right side", description: "Side rail, opposite edge.", icon: PanelRight },
 ];
 
 const NAV_SIZES: { value: NavSize; label: string }[] = [

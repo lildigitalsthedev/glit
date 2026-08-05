@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
  * Supported navigation bar positions.
  *
  * - "bottom": docked pill anchored to the bottom-center of the screen (the
- *   original/default GitPush look).
+ *   default on phones).
  * - "floating-bottom": the same pill, but draggable anywhere on screen and
  *   remembers wherever the user drops it.
  * - "left" / "right": a vertical rail docked to the edge of the screen.
@@ -60,6 +60,18 @@ function isNavSize(value: unknown): value is NavSize {
   return value === "sm" || value === "md" || value === "lg";
 }
 
+// Tablet/desktop-sized viewports default to a persistent side rail (an
+// actual "side pane", the way a native desktop app would look) rather than
+// the bottom pill — the bottom dock is the phone-appropriate default and is
+// what brand-new tablet/desktop visitors would otherwise be stuck with until
+// they found this setting themselves. Anyone who explicitly picks a
+// position afterwards (including switching back to "bottom") has that
+// stored and always wins over this initial guess.
+const DESKTOP_BREAKPOINT = 768;
+function deviceDefaultPosition(): NavPosition {
+  return window.innerWidth >= DESKTOP_BREAKPOINT ? "left" : "bottom";
+}
+
 function loadStoredPrefs(): NavPrefsState {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
@@ -82,12 +94,24 @@ function loadStoredPrefs(): NavPrefsState {
     const legacyCollapsed = window.localStorage.getItem(LEGACY_COLLAPSED_KEY);
     if (legacyCollapsed !== null) {
       window.localStorage.removeItem(LEGACY_COLLAPSED_KEY);
+      // A pre-existing user from before the rail existed — respect their old
+      // collapse flag, but still only default to "bottom" since that's all
+      // that existed back then; they can move to a rail from settings.
       return { ...DEFAULT_NAV_PREFS, collapsed: legacyCollapsed === "1" };
     }
+
+    // Genuinely first-run — no prefs of any kind stored yet. Pick the
+    // position a native app on this size of screen would use.
+    return { ...DEFAULT_NAV_PREFS, position: deviceDefaultPosition() };
   } catch {
-    // localStorage may be unavailable (private mode, etc.) — fall back to defaults.
+    // localStorage may be unavailable (private mode, etc.) — fall back to
+    // the same device-aware guess rather than always "bottom".
+    try {
+      return { ...DEFAULT_NAV_PREFS, position: deviceDefaultPosition() };
+    } catch {
+      return DEFAULT_NAV_PREFS;
+    }
   }
-  return DEFAULT_NAV_PREFS;
 }
 
 function persistPrefs(state: NavPrefsState) {
@@ -128,8 +152,9 @@ export function NavPrefsProvider({ children }: { children: ReactNode }) {
       setCollapsed: (collapsed) => update({ collapsed }),
       setFloatingOffset: (floatingOffset) => update({ floatingOffset }),
       reset: () => {
-        setState(DEFAULT_NAV_PREFS);
-        persistPrefs(DEFAULT_NAV_PREFS);
+        const next = { ...DEFAULT_NAV_PREFS, position: deviceDefaultPosition() };
+        setState(next);
+        persistPrefs(next);
       },
     }),
     [state, update],
