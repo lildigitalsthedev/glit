@@ -162,6 +162,18 @@ export const createRepository = createServerFn({ method: "POST" })
       licenseTemplate?: string | undefined;
     }) => data,
   )
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    (data: {
+      accountId: string;
+      name: string;
+      description?: string | undefined;
+      isPrivate: boolean;
+      autoInit: boolean;
+      gitignoreTemplate?: string | undefined;
+      licenseTemplate?: string | undefined;
+    }) => data,
+  )
   .handler(async ({ data, context }): Promise<RepoCard> => {
     const name = data.name.trim();
     if (!name) throw new Error("Repository name cannot be empty.");
