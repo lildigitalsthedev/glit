@@ -26,6 +26,8 @@ import {
   GitBranch,
   FolderOpen,
   Bot,
+  Trash2,
+  AlertTriangle,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { usePlan } from "@/hooks/usePlan";
@@ -36,6 +38,7 @@ import { AccountRow, ConnectGithubDialog, useAccounts } from "@/components/conne
 import { RequestFeatureDialog } from "@/components/request-feature-dialog";
 import { AiProvidersSection } from "@/components/ai-providers-section";
 import { getPreferences, updatePreferences, type Preferences } from "@/lib/workspace.functions";
+import { deleteUserAccount } from "@/lib/accounts.functions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
@@ -207,6 +210,92 @@ function ChangePasswordDialog() {
           <Button size="sm" onClick={() => void handleSave()} disabled={saving}>
             {saving && <Loader2 className="size-3.5 animate-spin" />}
             Save password
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** Permanently deletes the account. Requires typing the account's own email
+ * exactly before the button unlocks — a stronger confirmation than a plain
+ * "type DELETE" prompt since it forces the user to look at *which* account
+ * they're about to lose. */
+function DeleteAccountDialog({ email }: { email: string | null | undefined }) {
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+  const [confirmText, setConfirmText] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const deleteAccountFn = useServerFn(deleteUserAccount);
+
+  const matches = email != null && confirmText.trim().toLowerCase() === email.toLowerCase();
+
+  async function handleDelete() {
+    if (!matches || deleting) return;
+    setDeleting(true);
+    try {
+      await deleteAccountFn();
+      toast.success("Account deleted.");
+      try {
+        await supabase.auth.signOut();
+      } catch {
+        // Account no longer exists server-side — a local sign-out failure
+        // here is harmless, we're navigating away regardless.
+      }
+      await navigate({ to: "/auth" });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't delete account.");
+      setDeleting(false);
+    }
+  }
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (deleting) return;
+        setOpen(next);
+        if (!next) setConfirmText("");
+      }}
+    >
+      <Button variant="destructive" size="sm" onClick={() => setOpen(true)}>
+        <Trash2 className="size-3.5" />
+        Delete account
+      </Button>
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Delete your account?</DialogTitle>
+          <DialogDescription>
+            This permanently deletes your GitPush account — connected GitHub accounts, AI provider
+            keys, drafts, and every preference. GitHub itself is untouched; this only removes
+            GitPush's access and data. This can't be undone.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-1.5">
+          <Label htmlFor="delete-confirm" className="text-sm">
+            Type <span className="font-mono text-foreground">{email ?? "your email"}</span> to confirm
+          </Label>
+          <Input
+            id="delete-confirm"
+            value={confirmText}
+            onChange={(e) => setConfirmText(e.target.value)}
+            placeholder={email ?? ""}
+            autoComplete="off"
+            autoCapitalize="off"
+          />
+        </div>
+        <DialogFooter>
+          <Button variant="outline" size="sm" onClick={() => setOpen(false)} disabled={deleting}>
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => void handleDelete()}
+            disabled={!matches || deleting}
+          >
+            {deleting && <Loader2 className="size-3.5 animate-spin" />}
+            Delete my account
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -386,6 +475,22 @@ function Settings() {
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
+            </div>
+          </section>
+
+          <section className="rounded-md border border-destructive/30 bg-destructive/5 p-4">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="size-4 text-destructive" />
+              <h2 className="text-sm font-semibold text-destructive">Danger zone</h2>
+            </div>
+            <div className="mt-3 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium">Delete account</p>
+                <p className="text-xs text-muted-foreground">
+                  Permanently erase your GitPush account and all its data.
+                </p>
+              </div>
+              <DeleteAccountDialog email={user?.email} />
             </div>
           </section>
 

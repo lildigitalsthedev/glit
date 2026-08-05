@@ -117,3 +117,25 @@ export const startGithubOAuth = createServerFn({ method: "POST" })
     url.searchParams.set("state", state);
     return { authorizationUrl: url.toString() };
   });
+
+/**
+ * Permanently deletes the CALLING USER'S OWN GitPush account (auth user +
+ * every row that references it). Not to be confused with `deleteAccount`
+ * above, which only disconnects one linked GitHub account.
+ *
+ * Every user-owned table (`profiles`, `github_accounts`, `ai_providers`,
+ * `drafts`, `favorite_paths`, `feature_requests`, `oauth_states`,
+ * `recent_files`, `recent_pushes`, `repo_prefs`, `user_preferences`,
+ * `user_roles`) has `user_id REFERENCES auth.users ON DELETE CASCADE`, so
+ * deleting the auth user is sufficient — Postgres cleans up the rest.
+ * Requires the service-role admin client since only Supabase's admin API
+ * can delete an auth user.
+ */
+export const deleteUserAccount = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.auth.admin.deleteUser(context.userId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
