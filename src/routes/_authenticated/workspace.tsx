@@ -194,6 +194,23 @@ function Workspace() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [mobileCommitOpen, setMobileCommitOpen] = useState(false);
   const uploadInputRef = useRef<HTMLInputElement>(null);
+  // Tracks which repo we've already tried to auto-reopen the last file
+  // for, so the restore effect below fires once per repo visit rather
+  // than re-triggering on every render or fighting the user's own clicks.
+  const restoredFileRef = useRef<string | null>(null);
+
+  // Mirrors whatever file is open into a persisted "last file" pointer,
+  // per repo. This is deliberately separate from `path` itself — `path`
+  // stays plain, transient editor state, and is never restored directly
+  // with stale content. Restoring instead re-fetches through `openFile`
+  // below, so the reopened file is always current, never cached/stale.
+  const [lastFilePath, setLastFilePath] = usePersistentState<string>(
+    fullName ? `gitpush:workspace:lastFile:${fullName}` : null,
+    "",
+  );
+  useEffect(() => {
+    if (path) setLastFilePath(path);
+  }, [path]);
 
   useEffect(() => {
     if (!branch && prefs.data?.defaultBranch) setBranch(prefs.data.defaultBranch);
@@ -293,6 +310,21 @@ function Workspace() {
     },
     onError: (error: Error) => toast.error(error.message),
   });
+
+  // Restores the file the user was last editing in this repo, once per
+  // repo visit. Runs through the exact same `openFile` fetch a manual
+  // click would use, so the reopened file's content/sha are always fresh
+  // off GitHub — never the stale text that was on screen before the tab
+  // switch. If the file was since renamed or deleted, this fails the same
+  // way a manual open of a missing file would (a toast, nothing more).
+  useEffect(() => {
+    if (!accountId || !fullName || !branch || !lastFilePath) return;
+    if (path || openFile.isPending) return;
+    if (restoredFileRef.current === fullName) return;
+    restoredFileRef.current = fullName;
+    openFile.mutate(lastFilePath);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accountId, fullName, branch, lastFilePath]);
 
   const commit = useMutation({
     mutationFn: () =>
@@ -510,6 +542,7 @@ function Workspace() {
         setOriginal("");
         setBaseSha(null);
         setShowDiff(false);
+        setLastFilePath("");
       }
       setDeleteTarget(null);
       void queryClient.invalidateQueries({ queryKey: ["tree"] });
