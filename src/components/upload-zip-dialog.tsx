@@ -37,6 +37,12 @@ export interface PendingZipFile {
   id: string;
   /** Path inside the archive, e.g. "my-project/src/App.tsx". */
   path: string;
+  /**
+   * Destination path relative to the chosen destination folder. Starts out as
+   * the archive path (minus any stripped common root) and can be edited
+   * per-file before pushing.
+   */
+  targetPath: string;
   size: number;
   bytes: Uint8Array;
 }
@@ -72,6 +78,29 @@ function bytesToBase64(bytes: Uint8Array): string {
 function joinFolder(folder: string | null, relativePath: string): string {
   const cleaned = relativePath.replace(/^\/+/, "");
   return folder ? `${folder}/${cleaned}` : cleaned;
+}
+
+/** Normalizes a user-typed path: trims segments, drops empties and "." parts. */
+function normalizeRelPath(input: string): string {
+  return input
+    .split("/")
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0 && part !== ".")
+    .join("/");
+}
+
+/**
+ * Returns the single top-level folder shared by every archive entry, or null
+ * when the archive has more than one top-level entry. GitHub-style archives
+ * ("repo-main/...") nest everything one level deep, which would otherwise be
+ * recreated inside the repository.
+ */
+function commonRootFolder(paths: string[]): string | null {
+  if (paths.length === 0) return null;
+  const first = paths[0]?.split("/") ?? [];
+  if (first.length < 2) return null;
+  const root = first[0]!;
+  return paths.every((path) => path.startsWith(`${root}/`)) ? root : null;
 }
 
 let idCounter = 0;
