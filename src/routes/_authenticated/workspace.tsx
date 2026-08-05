@@ -31,6 +31,8 @@ import {
   Wand2,
   MessageSquare,
   X,
+  ClipboardPaste,
+  TextSelect,
 } from "lucide-react";
 import {
   listRepoBranches,
@@ -199,6 +201,14 @@ function Workspace() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [mobileCommitOpen, setMobileCommitOpen] = useState(false);
   const uploadInputRef = useRef<HTMLInputElement>(null);
+  // Holds the live Monaco editor instance once mounted, so the mobile
+  // edit-actions menu (select all / copy all / paste) can drive it directly —
+  // touch browsers often don't surface a usable long-press menu inside
+  // Monaco's own text area, so these buttons are the reliable fallback.
+  // Typed loosely (rather than importing monaco-editor's own types) since
+  // only a handful of well-known editor methods are used here.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const editorInstanceRef = useRef<any>(null);
   // Tracks which repo we've already tried to auto-reopen the last file
   // for, so the restore effect below fires once per repo visit rather
   // than re-triggering on every render or fighting the user's own clicks.
@@ -638,6 +648,58 @@ function Workspace() {
     }
   }
 
+  /**
+   * Selects the entire editor contents. Driven directly through the Monaco
+   * API rather than a native "select all" shortcut, since touch browsers
+   * frequently don't expose a working long-press menu inside Monaco's
+   * hidden text area.
+   */
+  function handleEditorSelectAll() {
+    try {
+      const editorInstance = editorInstanceRef.current;
+      if (!editorInstance) return;
+      const model = editorInstance.getModel();
+      if (!model) return;
+      editorInstance.focus();
+      editorInstance.setSelection(model.getFullModelRange());
+    } catch {
+      // Editor instance may have been disposed by a file/view switch;
+      // nothing to select in that case.
+    }
+  }
+
+  /** Copies the whole file's contents to the clipboard, regardless of selection. */
+  async function handleEditorCopyAll() {
+    try {
+      await navigator.clipboard.writeText(content);
+      toast.success("File contents copied");
+    } catch {
+      toast.error("Couldn't access the clipboard on this device.");
+    }
+  }
+
+  /**
+   * Pastes clipboard text into the editor at the current cursor position —
+   * or over the current selection, so "Select all" followed by "Paste"
+   * behaves like a normal overwrite.
+   */
+  async function handleEditorPaste() {
+    const editorInstance = editorInstanceRef.current;
+    if (!editorInstance) return;
+    try {
+      const text = await navigator.clipboard.readText();
+      const selection = editorInstance.getSelection();
+      editorInstance.focus();
+      editorInstance.executeEdits("mobile-paste-button", [
+        { range: selection, text, forceMoveMarkers: true },
+      ]);
+    } catch {
+      toast.error(
+        "Couldn't paste from the clipboard. Your browser may need clipboard permission for this site.",
+      );
+    }
+  }
+
   function handleRefreshRepository() {
     if (!accountId || !fullName) return;
     const promise = Promise.all([
@@ -816,13 +878,43 @@ function Workspace() {
 
   const editorPanel = (
     <section className="flex min-h-0 flex-1 flex-col">
-      <div className="border-b border-border p-1.5">
+      <div className="flex items-center gap-1.5 border-b border-border p-1.5">
         <Input
           value={path}
           onChange={(e) => setPath(e.target.value)}
           placeholder="src/components/Button.tsx"
           className="h-8 font-mono text-xs"
         />
+        {path && !showDiff && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                className="size-8 shrink-0 text-muted-foreground hover:text-foreground"
+                aria-label="Editor edit actions"
+                title="Edit actions (select all, copy, paste)"
+              >
+                <Pencil className="size-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={handleEditorSelectAll}>
+                <TextSelect className="size-3.5" />
+                Select all
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => void handleEditorCopyAll()}>
+                <Copy className="size-3.5" />
+                Copy all
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => void handleEditorPaste()}>
+                <ClipboardPaste className="size-3.5" />
+                Paste
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
       <div className="min-h-0 flex-1 overflow-auto">
         {!path ? (
@@ -860,6 +952,9 @@ function Workspace() {
             language={languageFor(path)}
             value={content}
             onChange={(value) => setContent(value ?? "")}
+            onMount={(editorInstance) => {
+              editorInstanceRef.current = editorInstance;
+            }}
             options={{
               fontFamily: "JetBrains Mono, ui-monospace, monospace",
               fontSize: prefs.data?.editorFontSize ?? 13,
