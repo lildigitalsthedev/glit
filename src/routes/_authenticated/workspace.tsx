@@ -42,6 +42,10 @@ import {
   Eraser,
   Scissors,
   Trash2,
+  PanelLeftClose,
+  PanelLeftOpen,
+  PanelRightClose,
+  PanelRightOpen,
 } from "lucide-react";
 import {
   listRepoBranches,
@@ -209,6 +213,18 @@ function Workspace() {
   const [deleteFolderTarget, setDeleteFolderTarget] = useState<string | null>(null);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [mobileCommitOpen, setMobileCommitOpen] = useState(false);
+  // Desktop & tablet only: lets the persistent file-tree / commit side
+  // panes be closed to give the editor the full width, mirroring the
+  // collapse affordance code editors like VS Code offer. Global (not
+  // per-repo) since it's a layout preference, not repo-specific state.
+  const [leftPaneCollapsed, setLeftPaneCollapsed] = usePersistentState<boolean>(
+    "gitpush:workspace:leftPaneCollapsed",
+    false,
+  );
+  const [rightPaneCollapsed, setRightPaneCollapsed] = usePersistentState<boolean>(
+    "gitpush:workspace:rightPaneCollapsed",
+    false,
+  );
   const uploadInputRef = useRef<HTMLInputElement>(null);
   // Holds the live Monaco editor instance once mounted, so the mobile
   // edit-actions menu (select all / copy all / paste) can drive it directly —
@@ -1544,11 +1560,85 @@ function Workspace() {
       />
 
       {/* Desktop & tablet: persistent three-pane layout, like a WhatsApp-style
-          side pane (files) + main content (editor) + right pane (commit). */}
-      <div className="hidden min-h-0 flex-1 md:grid md:grid-cols-[220px_1fr_280px] lg:grid-cols-[260px_1fr_320px] xl:grid-cols-[280px_1fr_360px]">
-        <aside className="flex min-h-0 flex-col border-r border-border">{fileTreePanel}</aside>
+          side pane (files) + main content (editor) + right pane (commit).
+          Either side pane can be closed independently to hand its space
+          back to the editor — the collapsed pane shrinks to a slim rail
+          with a single button to reopen it, rather than disappearing
+          entirely, so the toggle is always reachable. */}
+      <div
+        className={cn(
+          "hidden min-h-0 flex-1 md:grid",
+          leftPaneCollapsed &&
+            rightPaneCollapsed &&
+            "md:grid-cols-[2.75rem_1fr_2.75rem]",
+          leftPaneCollapsed &&
+            !rightPaneCollapsed &&
+            "md:grid-cols-[2.75rem_1fr_280px] lg:grid-cols-[2.75rem_1fr_320px] xl:grid-cols-[2.75rem_1fr_360px]",
+          !leftPaneCollapsed &&
+            rightPaneCollapsed &&
+            "md:grid-cols-[220px_1fr_2.75rem] lg:grid-cols-[260px_1fr_2.75rem] xl:grid-cols-[280px_1fr_2.75rem]",
+          !leftPaneCollapsed &&
+            !rightPaneCollapsed &&
+            "md:grid-cols-[220px_1fr_280px] lg:grid-cols-[260px_1fr_320px] xl:grid-cols-[280px_1fr_360px]",
+        )}
+      >
+        <aside className="flex min-h-0 flex-col border-r border-border">
+          {leftPaneCollapsed ? (
+            <button
+              type="button"
+              onClick={() => setLeftPaneCollapsed(false)}
+              aria-label="Open file tree pane"
+              title="Open file tree pane"
+              className="flex h-11 w-11 shrink-0 items-center justify-center text-muted-foreground transition-colors duration-150 hover:bg-white/5 hover:text-foreground"
+            >
+              <PanelLeftOpen className="size-4" />
+            </button>
+          ) : (
+            <>
+              <div className="flex shrink-0 items-center justify-end border-b border-border px-1 py-1">
+                <button
+                  type="button"
+                  onClick={() => setLeftPaneCollapsed(true)}
+                  aria-label="Close file tree pane"
+                  title="Close file tree pane"
+                  className="flex size-6 items-center justify-center rounded text-muted-foreground transition-colors duration-150 hover:bg-white/5 hover:text-foreground"
+                >
+                  <PanelLeftClose className="size-3.5" />
+                </button>
+              </div>
+              {fileTreePanel}
+            </>
+          )}
+        </aside>
         {editorPanel}
-        <aside className="flex min-h-0 flex-col border-l border-border">{commitPanel}</aside>
+        <aside className="flex min-h-0 flex-col border-l border-border">
+          {rightPaneCollapsed ? (
+            <button
+              type="button"
+              onClick={() => setRightPaneCollapsed(false)}
+              aria-label="Open commit pane"
+              title="Open commit pane"
+              className="flex h-11 w-11 shrink-0 items-center justify-center text-muted-foreground transition-colors duration-150 hover:bg-white/5 hover:text-foreground"
+            >
+              <PanelRightOpen className="size-4" />
+            </button>
+          ) : (
+            <>
+              <div className="flex shrink-0 items-center justify-start border-b border-border px-1 py-1">
+                <button
+                  type="button"
+                  onClick={() => setRightPaneCollapsed(true)}
+                  aria-label="Close commit pane"
+                  title="Close commit pane"
+                  className="flex size-6 items-center justify-center rounded text-muted-foreground transition-colors duration-150 hover:bg-white/5 hover:text-foreground"
+                >
+                  <PanelRightClose className="size-3.5" />
+                </button>
+              </div>
+              {commitPanel}
+            </>
+          )}
+        </aside>
       </div>
 
       {/* Mobile: editor takes the full screen; the file tree and commit

@@ -54,6 +54,19 @@ const NAV_SIZES: { value: NavSize; label: string }[] = [
   { value: "lg", label: "Large" },
 ];
 
+// Anchors for the desktop-only section nav rail — lets a wide viewport jump
+// straight to a section instead of scrolling a long single column, the way
+// a settings dashboard would rather than a stacked mobile page.
+const SECTIONS = [
+  { id: "account", label: "Account" },
+  { id: "plan", label: "Plan" },
+  { id: "connected-accounts", label: "Connected accounts" },
+  { id: "editor-settings", label: "Editor settings" },
+  { id: "navigation", label: "Navigation" },
+  { id: "ai-providers", label: "AI providers" },
+  { id: "feedback", label: "Feedback" },
+] as const;
+
 export const Route = createFileRoute("/_authenticated/profile")({
   head: () => ({
     meta: [
@@ -89,97 +102,134 @@ function Profile() {
   const initials = (user?.email ?? "?").slice(0, 2).toUpperCase();
 
   return (
-    <main className="mx-auto max-w-3xl px-3 py-4">
+    <main className="mx-auto max-w-3xl px-3 py-4 lg:max-w-6xl lg:px-6 lg:py-8">
       <p className="label-caps">Account</p>
       <h1 className="mt-1 text-2xl font-semibold tracking-tight">Profile</h1>
 
-      {/* User details */}
-      <section className="mt-8 flex items-center gap-4 rounded-md border border-border bg-card p-4">
-        <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-secondary font-mono text-sm text-foreground">
-          {initials}
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium">{user?.email ?? "Unknown user"}</p>
-          <p className="truncate font-mono text-[11px] text-muted-foreground">
-            Signed in · user id {user?.id?.slice(0, 8)}…
-          </p>
-        </div>
-        <Button variant="outline" size="sm" onClick={() => void signOut().then(() => void navigate({ to: "/auth" }))}>
-          <LogOut className="size-3.5" />
-          Log out
-        </Button>
-      </section>
+      {/* Desktop & larger tablets: a settings-dashboard layout — a sticky
+          section rail down the left, content in a wide right column —
+          instead of the single centered mobile-width column stretched
+          across the extra space. Below `lg` this collapses back to the
+          plain stacked column phones and small tablets get. */}
+      <div className="lg:grid lg:grid-cols-[200px_1fr] lg:items-start lg:gap-10">
+        <nav
+          aria-label="Profile sections"
+          className="hidden lg:sticky lg:top-14 lg:flex lg:flex-col lg:gap-0.5 lg:pt-8"
+        >
+          {SECTIONS.map((section) => (
+            <a
+              key={section.id}
+              href={`#${section.id}`}
+              className="truncate rounded-md px-2 py-1.5 text-xs text-muted-foreground transition-colors duration-150 hover:bg-white/5 hover:text-foreground"
+            >
+              {section.label}
+            </a>
+          ))}
+        </nav>
 
-      {/* Plan */}
-      <section className="mt-8 flex items-center justify-between gap-3 rounded-md border border-border bg-card p-4">
-        <div className="flex items-center gap-3">
-          <div
-            className={cn(
-              "flex size-10 shrink-0 items-center justify-center rounded-full",
-              isPro ? "bg-primary/10 text-primary" : "bg-secondary text-muted-foreground",
-            )}
-          >
-            <Sparkles className="size-4" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <p className="text-sm font-medium">{isPro ? "GitPush Pro" : "Free plan"}</p>
-              <Badge variant={isPro ? "default" : "secondary"} className="font-mono text-[10px]">
-                {plan}
-              </Badge>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {isPro
-                ? "Unlimited accounts and AI-assisted tools are unlocked."
-                : "Upgrade for unlimited accounts and AI-assisted tools."}
-            </p>
-          </div>
-        </div>
-        <Button asChild variant="outline" size="sm">
-          <Link to="/pricing">{isPro ? "Manage plan" : "Upgrade"}</Link>
-        </Button>
-      </section>
+        <div className="min-w-0">
+          {/* User details + plan, side by side on desktop */}
+          <div className="mt-8 grid gap-4 lg:grid-cols-2">
+            <section
+              id="account"
+              className="flex scroll-mt-20 items-center gap-4 rounded-md border border-border bg-card p-4"
+            >
+              <div className="flex size-12 shrink-0 items-center justify-center rounded-full bg-secondary font-mono text-sm text-foreground">
+                {initials}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium">{user?.email ?? "Unknown user"}</p>
+                <p className="truncate font-mono text-[11px] text-muted-foreground">
+                  Signed in · user id {user?.id?.slice(0, 8)}…
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void signOut().then(() => void navigate({ to: "/auth" }))}
+              >
+                <LogOut className="size-3.5" />
+                Log out
+              </Button>
+            </section>
 
-      {/* Hidden Owner Dashboard — only ever rendered for the account holding
-          the "owner" role, which is itself only ever assigned server-side. */}
-      {isOwner && (
-        <section className="mt-8 flex items-center justify-between gap-3 rounded-md border border-primary/30 bg-primary/5 p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <Crown className="size-4" />
-            </div>
-            <div>
-              <p className="text-sm font-medium">Owner Dashboard</p>
-              <p className="text-xs text-muted-foreground">Manage user roles across GitPush.</p>
-            </div>
+            <section
+              id="plan"
+              className="flex scroll-mt-20 items-center justify-between gap-3 rounded-md border border-border bg-card p-4"
+            >
+              <div className="flex items-center gap-3">
+                <div
+                  className={cn(
+                    "flex size-10 shrink-0 items-center justify-center rounded-full",
+                    isPro ? "bg-primary/10 text-primary" : "bg-secondary text-muted-foreground",
+                  )}
+                >
+                  <Sparkles className="size-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium">{isPro ? "GitPush Pro" : "Free plan"}</p>
+                    <Badge variant={isPro ? "default" : "secondary"} className="font-mono text-[10px]">
+                      {plan}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {isPro
+                      ? "Unlimited accounts and AI-assisted tools are unlocked."
+                      : "Upgrade for unlimited accounts and AI-assisted tools."}
+                  </p>
+                </div>
+              </div>
+              <Button asChild variant="outline" size="sm">
+                <Link to="/pricing">{isPro ? "Manage plan" : "Upgrade"}</Link>
+              </Button>
+            </section>
           </div>
-          <Button asChild variant="outline" size="sm">
-            <Link to="/owner">Open</Link>
-          </Button>
-        </section>
-      )}
 
-      {/* Hidden Developer Dashboard — only ever rendered for Developers and
-          the Owner, which are themselves only ever assigned server-side. */}
-      {isDeveloper && (
-        <section className="mt-8 flex items-center justify-between gap-3 rounded-md border border-primary/30 bg-primary/5 p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <Code2 className="size-4" />
-            </div>
-            <div>
-              <p className="text-sm font-medium">Developer Dashboard</p>
-              <p className="text-xs text-muted-foreground">Feature flags, diagnostics, and debugging tools.</p>
-            </div>
-          </div>
-          <Button asChild variant="outline" size="sm">
-            <Link to="/developer">Open</Link>
-          </Button>
-        </section>
-      )}
+          {/* Hidden Owner / Developer dashboards — only ever rendered for
+              accounts holding those roles, which are themselves only ever
+              assigned server-side. Paired side by side on desktop when
+              both are present. */}
+          {(isOwner || isDeveloper) && (
+            <div className="mt-8 grid gap-4 lg:grid-cols-2">
+              {isOwner && (
+                <section className="flex items-center justify-between gap-3 rounded-md border border-primary/30 bg-primary/5 p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                      <Crown className="size-4" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">Owner Dashboard</p>
+                      <p className="text-xs text-muted-foreground">Manage user roles across GitPush.</p>
+                    </div>
+                  </div>
+                  <Button asChild variant="outline" size="sm">
+                    <Link to="/owner">Open</Link>
+                  </Button>
+                </section>
+              )}
 
-      {/* Connected GitHub accounts */}
-      <section className="mt-8">
+              {isDeveloper && (
+                <section className="flex items-center justify-between gap-3 rounded-md border border-primary/30 bg-primary/5 p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                      <Code2 className="size-4" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">Developer Dashboard</p>
+                      <p className="text-xs text-muted-foreground">Feature flags, diagnostics, and debugging tools.</p>
+                    </div>
+                  </div>
+                  <Button asChild variant="outline" size="sm">
+                    <Link to="/developer">Open</Link>
+                  </Button>
+                </section>
+              )}
+            </div>
+          )}
+
+          {/* Connected GitHub accounts */}
+          <section id="connected-accounts" className="mt-8 scroll-mt-20">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Github className="size-4 text-muted-foreground" />
@@ -212,7 +262,7 @@ function Profile() {
       </section>
 
       {/* App settings */}
-      <section className="mt-8">
+      <section id="editor-settings" className="mt-8 scroll-mt-20">
         <div className="flex items-center gap-2">
           <SlidersHorizontal className="size-4 text-muted-foreground" />
           <h2 className="text-sm font-semibold">Editor settings</h2>
@@ -308,7 +358,7 @@ function Profile() {
       </section>
 
       {/* Navigation bar customization */}
-      <section className="mt-8">
+      <section id="navigation" className="mt-8 scroll-mt-20">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Navigation className="size-4 text-muted-foreground" />
@@ -399,10 +449,12 @@ function Profile() {
         </div>
       </section>
 
-      <AiProvidersSection />
+      <div id="ai-providers" className="scroll-mt-20">
+        <AiProvidersSection />
+      </div>
 
       {/* Feedback */}
-      <section className="mt-8">
+      <section id="feedback" className="mt-8 scroll-mt-20">
         <div className="flex items-center gap-2">
           <Lightbulb className="size-4 text-muted-foreground" />
           <h2 className="text-sm font-semibold">Feedback</h2>
@@ -419,6 +471,8 @@ function Profile() {
           <RequestFeatureDialog />
         </div>
       </section>
+        </div>
+      </div>
     </main>
   );
 }

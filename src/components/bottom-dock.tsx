@@ -117,6 +117,13 @@ export function BottomDock() {
 
   // Auto-hide: fade the nav after a few seconds of inactivity, and bring it
   // right back on any scroll or tap/click/keypress anywhere on the page.
+  //
+  // The wake handler is batched onto a single rAF per frame instead of
+  // running once per raw 'scroll' event (which on mobile can fire dozens of
+  // times a second). Left unthrottled, that burst of synchronous state
+  // updates competes with the browser's own scroll/chrome-resize work and
+  // is what makes the dock appear to "snap" into place a beat after the
+  // scroll gesture has already stopped, instead of tracking smoothly.
   const [faded, setFaded] = useState(false);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
@@ -124,10 +131,16 @@ export function BottomDock() {
       setFaded(false);
       return;
     }
+    let framePending = false;
     function wake() {
-      setFaded(false);
-      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-      hideTimerRef.current = setTimeout(() => setFaded(true), 3000);
+      if (framePending) return;
+      framePending = true;
+      requestAnimationFrame(() => {
+        framePending = false;
+        setFaded(false);
+        if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+        hideTimerRef.current = setTimeout(() => setFaded(true), 3000);
+      });
     }
     wake();
     const events: Array<keyof WindowEventMap> = ["scroll", "touchstart", "pointerdown", "keydown"];
@@ -209,14 +222,14 @@ export function BottomDock() {
     return (
       <div
         className={cn(
-          "pointer-events-none fixed inset-y-0 z-50 flex items-center py-4",
+          "pointer-events-none fixed inset-y-0 z-50 flex items-center py-4 transform-gpu will-change-transform",
           effectivePosition === "left" ? "left-0 pl-3" : "right-0 pr-3",
         )}
       >
         <nav
           aria-label="Primary"
           className={cn(
-            "pointer-events-auto flex flex-col items-stretch gap-0.5 rounded-lg border border-border/80 bg-card/95 p-1 shadow-2xl shadow-black/50 backdrop-blur-xl transition-all duration-300",
+            "pointer-events-auto flex transform-gpu flex-col items-stretch gap-0.5 rounded-lg border border-border/80 bg-card/95 p-1 shadow-2xl shadow-black/50 backdrop-blur-xl transition-all duration-300 will-change-transform",
             mounted ? `${opacityClass} translate-x-0` : "translate-x-4 opacity-0",
           )}
         >
@@ -314,7 +327,7 @@ export function BottomDock() {
 
   if (isFloating) {
     return (
-      <div className="pointer-events-none fixed inset-0 z-50">
+      <div className="pointer-events-none fixed inset-0 z-50 will-change-transform">
         <div
           ref={dockRef}
           onPointerDown={handlePointerDown}
@@ -323,7 +336,7 @@ export function BottomDock() {
           onPointerCancel={handlePointerUp}
           onClickCapture={handleClickCapture}
           className={cn(
-            "pointer-events-auto absolute bottom-0 left-1/2 flex touch-none flex-col items-center",
+            "pointer-events-auto absolute bottom-0 left-1/2 flex touch-none flex-col items-center [backface-visibility:hidden]",
             mounted ? opacityClass : "opacity-0",
             isDragging ? "duration-0" : "transition-[transform,opacity] duration-300",
             isDragging ? "cursor-grabbing" : "cursor-grab",
@@ -362,12 +375,12 @@ export function BottomDock() {
 
   return (
     <div
-      className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-4"
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-4 transform-gpu will-change-transform"
       style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
     >
       <div
         className={cn(
-          "pointer-events-auto flex flex-col items-center transition-opacity duration-300",
+          "pointer-events-auto flex flex-col items-center transition-opacity duration-300 [backface-visibility:hidden]",
           mounted ? opacityClass : "opacity-0",
         )}
       >
