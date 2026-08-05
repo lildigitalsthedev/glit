@@ -295,3 +295,114 @@ export async function pushMultipleFiles(
     throw new Error(error instanceof GithubError ? messageText : messageText);
   }
 }
+
+export interface DeleteFolderArgs {
+  accountId: string;
+  fullName: string;
+  branch: string;
+  /** Repo-relative folder path, e.g. "src/components". */
+  path: string;
+  message: string;
+}
+
+export interface DeleteFolderResult {
+  ok: true;
+  path: string;
+  filesDeleted: number;
+  paths: string[];
+  commitSha: string;
+  commitUrl: string;
+}
+
+/**
+ * Deletes every file inside a folder (recursively) in a single commit, using
+ * the Git Data API: the folder's blobs are written into a new tree with a
+ * null sha, which removes them. GitHub has no "delete directory" endpoint,
+ * and Git itself has no empty directories, so removing all contained blobs
+ * is exactly what removing the folder means.
+ */
+export async function deleteFolderRecursive(
+  supabase: Client,
+  userId: string,
+  args: DeleteFolderArgs,
+): Promise<DeleteFolderResult> {
+  const folder = normalizePath("", args.path);
+  if (!folder) throw new Error("A folder path is required.");
+  if (folder.includes("..")) throw new Error("Folder paths cannot contain '..'.");
+  if (!args.message.trim()) throw new Error("A commit message is required.");
+  if (!args.branch.trim()) throw new Error("A branch is required.");
+
+  const { token } = await loadAccountToken(supabase, args.accountId);
+  const commitMessage = args.message.trim();
+
+  try {
+    const { tree: entries } = await listTree(token, args.fullName, args.branch);
+    const prefix = `${folder}/`;
+    const targets = entries
+      .filter((entry) => entry.type === "blob" && entry.path.startsWith(prefix))
+      .map((entry) => entry.path);
+
+    if (targets.length === 0) {
+      throw new Error("That folder is empty or no longer exists on this branch.");
+    }
+
+    const ref = await getRef(token, args.fullName, args.branch);
+    const baseCommitSha = ref.object.sha;
+
+    const tree = await createTree(token, args.fullName, {
+      tree: targets.map<GhNewTreeEntry>((path) => ({
+        path,
+        mode: "100644",
+        type: "blob",
+        sha: null,
+      })),
+      base_tree: baseCommitSha,
+    });
+
+    const commit = await createCommit(token, args.fullName, {
+      message: commitMessage,
+      tree: tree.sha,
+      parents: [baseCommitSha],
+    });
+
+    await updateRef(token, args.fullName, args.branch, { sha: commit.sha });
+
+    await supabase.from("recent_pushes").insert(
+      targets.map((path) => ({
+        user_id: userId,
+        account_id: args.accountId,
+        full_name: args.fullName,
+        branch: args.branch,
+        path,
+        commit_message: commitMessage,
+        commit_sha: commit.sha,
+        commit_url: commit.html_url,
+        action: "delete",
+        status: "success",
+      })),
+    );
+
+    return {
+      ok: true,
+      path: folder,
+      filesDeleted: targets.length,
+      paths: targets,
+      commitSha: commit.sha.slice(0, 7),
+      commitUrl: commit.html_url,
+    };
+  } catch (error) {
+    const messageText = error instanceof Error ? error.message : String(error);
+    await supabase.from("recent_pushes").insert({
+      user_id: userId,
+      account_id: args.accountId,
+      full_name: args.fullName,
+      branch: args.branch,
+      path: folder,
+      commit_message: commitMessage,
+      action: "delete",
+      status: "failed",
+      error_message: messageText.slice(0, 500),
+    });
+    throw new Error(messageText);
+  }
+}
