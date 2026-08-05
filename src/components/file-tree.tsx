@@ -409,32 +409,8 @@ function FileRow({
   );
 }
 
-export function FileTree({
-  nodes,
-  loading,
-  filter,
-  activePath,
-  activeFolder,
-  onOpenFile,
-  onSelectFolder,
-  onCopyPath,
-  onDeleteFile,
-  onDeleteFolder,
-}: Parameters<typeof FileTreeInner>[0]) {
-  return (
-    <FileTreeInner
-      nodes={nodes}
-      loading={loading}
-      filter={filter}
-      activePath={activePath}
-      activeFolder={activeFolder}
-      onOpenFile={onOpenFile}
-      onSelectFolder={onSelectFolder}
-      onCopyPath={onCopyPath}
-      onDeleteFile={onDeleteFile}
-      onDeleteFolder={onDeleteFolder}
-    />
-  );
+export function FileTree(props: Parameters<typeof FileTreeInner>[0]) {
+  return <FileTreeInner {...props} />;
 }
 
 function FolderRow({
