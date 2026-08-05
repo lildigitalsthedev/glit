@@ -11,6 +11,7 @@ import {
   updateRef,
   type GhNewTreeEntry,
 } from "./api.server";
+import { listTree } from "./api.server";
 import { loadAccountToken } from "./tokens.server";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
