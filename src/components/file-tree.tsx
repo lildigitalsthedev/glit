@@ -419,6 +419,7 @@ export function FileTree({
   onSelectFolder,
   onCopyPath,
   onDeleteFile,
+  onDeleteFolder,
 }: {
   nodes: TreeNode[];
   loading?: boolean;
@@ -429,6 +430,7 @@ export function FileTree({
   onSelectFolder: (path: string | null) => void;
   onCopyPath: (path: string) => void;
   onDeleteFile: (path: string) => void;
+  onDeleteFolder: (path: string) => void;
 }) {
   const blobPaths = useMemo(
     () => nodes.filter((n) => n.type === "blob").map((n) => n.path),
@@ -555,33 +557,19 @@ export function FileTree({
         const isActiveFolder = entry.path === activeFolder;
         return (
           <div key={entry.path}>
-            <button
-              onClick={() => {
+            <FolderRow
+              path={entry.path}
+              name={entry.name}
+              isOpen={isOpen}
+              isActiveFolder={isActiveFolder}
+              paddingLeft={indent}
+              onToggle={() => {
                 toggleFolder(entry.path);
                 onSelectFolder(entry.path);
               }}
-              style={{ paddingLeft: indent }}
-              className={cn(
-                "flex w-full items-center gap-1.5 truncate rounded py-1 pr-2 text-left font-mono text-[11px] transition-colors duration-150",
-                isActiveFolder
-                  ? "bg-secondary/70 text-foreground"
-                  : "text-muted-foreground hover:bg-secondary/40 hover:text-foreground",
-              )}
-              title={entry.path}
-            >
-              <ChevronRight
-                className={cn(
-                  "size-3 shrink-0 transition-transform duration-200",
-                  isOpen && "rotate-90",
-                )}
-              />
-              {isOpen ? (
-                <FolderOpen className="size-3.5 shrink-0 text-primary" />
-              ) : (
-                <Folder className="size-3.5 shrink-0 text-primary" />
-              )}
-              <span className="truncate">{entry.name}</span>
-            </button>
+              onCopyPath={onCopyPath}
+              onDeleteFolder={onDeleteFolder}
+            />
             <div
               className={cn(
                 "grid transition-[grid-template-rows] duration-200 ease-out",
