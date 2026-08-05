@@ -112,6 +112,8 @@ export const pushFile = createServerFn({ method: "POST" })
     }) => data,
   )
   .handler(async ({ data, context }) => {
+    const { assertRateLimit } = await import("./rate-limit.server");
+    await assertRateLimit(context.userId, { bucket: "github_write", limit: 60, windowSeconds: 300 });
     const { pushSingleFile } = await import("./github/push.server");
     return pushSingleFile(context.supabase, context.userId, data);
   });
@@ -129,6 +131,8 @@ export const pushFiles = createServerFn({ method: "POST" })
     }) => data,
   )
   .handler(async ({ data, context }) => {
+    const { assertRateLimit } = await import("./rate-limit.server");
+    await assertRateLimit(context.userId, { bucket: "github_write", limit: 60, windowSeconds: 300 });
     const { pushMultipleFiles } = await import("./github/push.server");
     return pushMultipleFiles(context.supabase, context.userId, data);
   });
@@ -145,6 +149,8 @@ export const deleteFile = createServerFn({ method: "POST" })
     }) => data,
   )
   .handler(async ({ data, context }) => {
+    const { assertRateLimit } = await import("./rate-limit.server");
+    await assertRateLimit(context.userId, { bucket: "github_write", limit: 60, windowSeconds: 300 });
     const { deleteSingleFile } = await import("./github/push.server");
     return deleteSingleFile(context.supabase, context.userId, data);
   });
@@ -161,6 +167,8 @@ export const deleteFolder = createServerFn({ method: "POST" })
     }) => data,
   )
   .handler(async ({ data, context }) => {
+    const { assertRateLimit } = await import("./rate-limit.server");
+    await assertRateLimit(context.userId, { bucket: "github_write", limit: 60, windowSeconds: 300 });
     const { deleteFolderRecursive } = await import("./github/push.server");
     return deleteFolderRecursive(context.supabase, context.userId, data);
   });
@@ -179,6 +187,8 @@ export const createRepository = createServerFn({ method: "POST" })
     }) => data,
   )
   .handler(async ({ data, context }): Promise<RepoCard> => {
+    const { assertRateLimit } = await import("./rate-limit.server");
+    await assertRateLimit(context.userId, { bucket: "github_repo_admin", limit: 10, windowSeconds: 3600 });
     const name = data.name.trim();
     if (!name) throw new Error("Repository name cannot be empty.");
     if (name.length > 100) throw new Error("Repository names can't be longer than 100 characters.");
@@ -263,6 +273,8 @@ export const renameRepository = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: { accountId: string; fullName: string; newName: string }) => data)
   .handler(async ({ data, context }): Promise<RenamedRepo> => {
+    const { assertRateLimit } = await import("./rate-limit.server");
+    await assertRateLimit(context.userId, { bucket: "github_repo_admin", limit: 10, windowSeconds: 3600 });
     const { loadAccountToken } = await import("./github/tokens.server");
     const { renameRepo } = await import("./github/api.server");
     const { token } = await loadAccountToken(context.supabase, data.accountId);
@@ -284,6 +296,8 @@ export const downloadRepoZip = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: { accountId: string; fullName: string; branch: string }) => data)
   .handler(async ({ data, context }): Promise<RepoZipResult> => {
+    const { assertRateLimit } = await import("./rate-limit.server");
+    await assertRateLimit(context.userId, { bucket: "github_zip", limit: 10, windowSeconds: 600 });
     const { loadAccountToken } = await import("./github/tokens.server");
     const { downloadZipball } = await import("./github/api.server");
     const { token } = await loadAccountToken(context.supabase, data.accountId);

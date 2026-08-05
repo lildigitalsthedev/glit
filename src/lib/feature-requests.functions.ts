@@ -9,6 +9,8 @@ export const submitFeatureRequest = createServerFn({ method: "POST" })
     (data: { gitpushUsername: string; email: string; feature: string }) => data,
   )
   .handler(async ({ data, context }) => {
+    const { assertRateLimit } = await import("./rate-limit.server");
+    await assertRateLimit(context.userId, { bucket: "feature_request", limit: 5, windowSeconds: 86400 });
     const gitpushUsername = data.gitpushUsername.trim();
     const email = data.email.trim();
     const feature = data.feature.trim();

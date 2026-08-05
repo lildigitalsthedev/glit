@@ -90,6 +90,8 @@ export const testAiProvider = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { assertPro } = await import("./ai/gate.server");
     await assertPro(context.userId);
+    const { assertRateLimit } = await import("./rate-limit.server");
+    await assertRateLimit(context.userId, { bucket: "ai_test", limit: 10, windowSeconds: 60 });
     const { resolveProviderForUser } = await import("./ai/store.server");
     const { chat } = await import("./ai/call.server");
     const credential = await resolveProviderForUser(context.userId, data.id);
@@ -110,6 +112,8 @@ export const generateCode = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { assertPro } = await import("./ai/gate.server");
     await assertPro(context.userId);
+    const { assertRateLimit } = await import("./rate-limit.server");
+    await assertRateLimit(context.userId, { bucket: "ai_generate", limit: 20, windowSeconds: 300 });
     const { resolveProviderForUser } = await import("./ai/store.server");
     const { chat, stripCodeFences } = await import("./ai/call.server");
 
@@ -142,6 +146,8 @@ export const editFileWithAi = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { assertPro } = await import("./ai/gate.server");
     await assertPro(context.userId);
+    const { assertRateLimit } = await import("./rate-limit.server");
+    await assertRateLimit(context.userId, { bucket: "ai_edit", limit: 20, windowSeconds: 300 });
     const { resolveProviderForUser } = await import("./ai/store.server");
     const { chat, stripCodeFences } = await import("./ai/call.server");
 
@@ -186,6 +192,8 @@ export const chatWithRepo = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { assertPro } = await import("./ai/gate.server");
     await assertPro(context.userId);
+    const { assertRateLimit } = await import("./rate-limit.server");
+    await assertRateLimit(context.userId, { bucket: "ai_chat", limit: 20, windowSeconds: 300 });
 
     const question = data.question.trim();
     if (!question) throw new Error("Ask a question about the repository.");
