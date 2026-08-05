@@ -249,7 +249,7 @@ function GithubDiagnosticsSection() {
             size="compact"
             icon={Github}
             title="No GitHub accounts connected."
-            description="Connect an account from your profile to see diagnostics here."
+            description="Connect an account from settings to see diagnostics here."
           />
         )}
         {(diagnostics.data ?? []).map((account) => (

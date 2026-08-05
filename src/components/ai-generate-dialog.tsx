@@ -75,7 +75,7 @@ export function AiGenerateDialog({
           </DialogTitle>
           <DialogDescription>
             Uses your own AI provider. Review the result before it goes into the editor —{" "}
-            <Link to="/profile" className="underline">
+            <Link to="/settings" search={{ tab: "ai" }} className="underline">
               manage providers
             </Link>
             .

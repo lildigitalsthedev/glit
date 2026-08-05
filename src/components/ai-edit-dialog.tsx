@@ -92,7 +92,7 @@ export function AiEditDialog({
           <DialogDescription>
             <span className="font-mono">{path || "no file selected"}</span> — uses your own AI
             provider (
-            <Link to="/profile" className="underline">
+            <Link to="/settings" search={{ tab: "ai" }} className="underline">
               manage providers
             </Link>
             ).

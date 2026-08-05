@@ -124,7 +124,7 @@ export function AiRepoChatDialog({
           </DialogTitle>
           <DialogDescription>
             Uses your own AI provider to analyze repository files —{" "}
-            <Link to="/profile" className="underline">
+            <Link to="/settings" search={{ tab: "ai" }} className="underline">
               manage providers
             </Link>
             .

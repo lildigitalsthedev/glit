@@ -163,7 +163,7 @@ export async function resolveProviderForUser(
   const row = rows.find((r) => r["is_default"] === true) ?? rows[0];
   if (!row) {
     throw new Error(
-      "No enabled AI provider. Add your own API key in Profile → AI providers to use AI tools.",
+      "No enabled AI provider. Add your own API key in Settings → AI to use AI tools.",
     );
   }
 

@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { LayoutGrid, Code2, History, UserRound, Sparkles, Crown, Wrench } from "lucide-react";
+import { LayoutGrid, Code2, History, Settings, Sparkles, Crown, Wrench } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useRole } from "@/hooks/useRole";
 import { cn } from "@/lib/utils";
@@ -11,7 +11,7 @@ const PRIMARY = [
 ] as const;
 
 const ACCOUNT = [
-  { to: "/profile", label: "Profile & settings", icon: UserRound },
+  { to: "/settings", label: "Settings", icon: Settings },
   { to: "/pricing", label: "Plan & pricing", icon: Sparkles },
 ] as const;
 

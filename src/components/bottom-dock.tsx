@@ -1,6 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type MouseEvent as ReactMouseEvent } from "react";
-import { ChevronUp, ChevronDown, LayoutGrid, Code2, History, UserRound, Minus } from "lucide-react";
+import { ChevronUp, ChevronDown, LayoutGrid, Code2, History, Settings, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useNavPrefs, type NavPosition, type NavSize, type FloatingOffset } from "@/hooks/useNavPrefs";
@@ -9,7 +9,7 @@ const NAV = [
   { to: "/app", label: "Repos", icon: LayoutGrid },
   { to: "/workspace", label: "Workspace", icon: Code2 },
   { to: "/activity", label: "Activity", icon: History },
-  { to: "/profile", label: "Profile", icon: UserRound },
+  { to: "/settings", label: "Settings", icon: Settings },
 ] as const;
 
 // Reserved viewport space (bottom-safe area + dock height + margin) and the
