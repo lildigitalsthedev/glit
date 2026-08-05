@@ -33,6 +33,15 @@ import {
   X,
   ClipboardPaste,
   TextSelect,
+  Undo2,
+  Redo2,
+  Search,
+  Hash,
+  AlignLeft,
+  Slash,
+  Eraser,
+  Scissors,
+  Trash2,
 } from "lucide-react";
 import {
   listRepoBranches,
@@ -700,6 +709,112 @@ function Workspace() {
     }
   }
 
+  /** Steps the editor's own undo stack back one change. */
+  function handleEditorUndo() {
+    try {
+      editorInstanceRef.current?.focus();
+      editorInstanceRef.current?.trigger("mobile-menu", "undo", null);
+    } catch {
+      // No-op: nothing to undo, or the editor instance isn't ready.
+    }
+  }
+
+  /** Steps the editor's own undo stack forward one change. */
+  function handleEditorRedo() {
+    try {
+      editorInstanceRef.current?.focus();
+      editorInstanceRef.current?.trigger("mobile-menu", "redo", null);
+    } catch {
+      // No-op: nothing to redo, or the editor instance isn't ready.
+    }
+  }
+
+  /** Opens Monaco's built-in find/replace widget — there's no keyboard shortcut on touch. */
+  function handleEditorFindReplace() {
+    const editorInstance = editorInstanceRef.current;
+    if (!editorInstance) return;
+    editorInstance.focus();
+    editorInstance
+      .getAction("editor.action.startFindReplaceAction")
+      ?.run();
+  }
+
+  /** Opens Monaco's "Go to line" prompt. */
+  function handleEditorGotoLine() {
+    const editorInstance = editorInstanceRef.current;
+    if (!editorInstance) return;
+    editorInstance.focus();
+    editorInstance.getAction("editor.action.gotoLine")?.run();
+  }
+
+  /**
+   * Runs Monaco's built-in document formatter for the current language, if
+   * one is registered. Not every language has a formatting provider built
+   * into Monaco (there's no bundled Prettier), so this silently no-ops for
+   * languages without one rather than failing.
+   */
+  function handleEditorFormatDocument() {
+    const editorInstance = editorInstanceRef.current;
+    if (!editorInstance) return;
+    editorInstance.focus();
+    const action = editorInstance.getAction("editor.action.formatDocument");
+    if (!action) {
+      toast.error("No formatter is available for this file type.");
+      return;
+    }
+    void action.run();
+  }
+
+  /** Toggles a line comment for the current line or selection. */
+  function handleEditorToggleComment() {
+    const editorInstance = editorInstanceRef.current;
+    if (!editorInstance) return;
+    editorInstance.focus();
+    editorInstance.getAction("editor.action.commentLine")?.run();
+  }
+
+  /** Strips trailing whitespace from every line in the file. */
+  function handleEditorTrimWhitespace() {
+    const editorInstance = editorInstanceRef.current;
+    if (!editorInstance) return;
+    editorInstance.focus();
+    editorInstance.getAction("editor.action.trimTrailingWhitespace")?.run();
+  }
+
+  /**
+   * Copies the whole file to the clipboard, then empties it. Implemented as
+   * a single undoable edit (rather than model.setValue) so "Undo" restores
+   * the file if this was tapped by mistake.
+   */
+  async function handleEditorCutAll() {
+    const editorInstance = editorInstanceRef.current;
+    if (!editorInstance) return;
+    try {
+      await navigator.clipboard.writeText(content);
+    } catch {
+      toast.error("Couldn't access the clipboard on this device.");
+      return;
+    }
+    const model = editorInstance.getModel();
+    if (!model) return;
+    editorInstance.focus();
+    editorInstance.executeEdits("mobile-cut-all-button", [
+      { range: model.getFullModelRange(), text: "", forceMoveMarkers: true },
+    ]);
+  }
+
+  /** Empties the file as a single undoable edit, without touching the clipboard. */
+  function handleEditorClearAll() {
+    const editorInstance = editorInstanceRef.current;
+    if (!editorInstance) return;
+    const model = editorInstance.getModel();
+    if (!model) return;
+    editorInstance.focus();
+    editorInstance.executeEdits("mobile-clear-all-button", [
+      { range: model.getFullModelRange(), text: "", forceMoveMarkers: true },
+    ]);
+  }
+
   function handleRefreshRepository() {
     if (!accountId || !fullName) return;
     const promise = Promise.all([
@@ -893,12 +1008,21 @@ function Workspace() {
                 size="icon"
                 className="size-8 shrink-0 text-muted-foreground hover:text-foreground"
                 aria-label="Editor edit actions"
-                title="Edit actions (select all, copy, paste)"
+                title="Edit actions"
               >
                 <Pencil className="size-3.5" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={handleEditorUndo}>
+                <Undo2 className="size-3.5" />
+                Undo
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={handleEditorRedo}>
+                <Redo2 className="size-3.5" />
+                Redo
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem onSelect={handleEditorSelectAll}>
                 <TextSelect className="size-3.5" />
                 Select all
@@ -907,10 +1031,43 @@ function Workspace() {
                 <Copy className="size-3.5" />
                 Copy all
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
               <DropdownMenuItem onSelect={() => void handleEditorPaste()}>
                 <ClipboardPaste className="size-3.5" />
                 Paste
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={handleEditorFindReplace}>
+                <Search className="size-3.5" />
+                Find &amp; replace
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={handleEditorGotoLine}>
+                <Hash className="size-3.5" />
+                Go to line
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={handleEditorFormatDocument}>
+                <AlignLeft className="size-3.5" />
+                Format document
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={handleEditorToggleComment}>
+                <Slash className="size-3.5" />
+                Toggle comment
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={handleEditorTrimWhitespace}>
+                <Eraser className="size-3.5" />
+                Trim trailing whitespace
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => void handleEditorCutAll()}>
+                <Scissors className="size-3.5" />
+                Cut all
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={handleEditorClearAll}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash2 className="size-3.5" />
+                Clear all
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
