@@ -106,17 +106,10 @@ async function promoteToOwner(userId: string): Promise<RoleRecord> {
     .select("user_id, role, subscription_plan, developer_mode")
     .single();
   if (error) throw new Error(error.message);
-
-  // Keep the existing `user_preferences.plan` flag (already used throughout
-  // the app for `isPro` gating) in sync so the Owner is never restricted by
-  // billing anywhere that already checks `usePlan()`.
-  await supabaseAdmin
-    .from("user_preferences")
-    .upsert(
-      { user_id: userId, plan: "pro", plan_updated_at: new Date().toISOString() },
-      { onConflict: "user_id" },
-    );
-
+  // `subscription_plan: "pro"` above (and `isOwner()` in `usePlan`/
+  // `assertPro`) already covers "Owner is never restricted by billing" —
+  // no second flag to keep in sync since `user_preferences.plan` was
+  // removed. See `src/lib/paystack/subscriptions.server.ts`.
   return toRoleRecord(data);
 }
 

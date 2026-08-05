@@ -22,14 +22,17 @@ export async function assertAccountQuota(supabase: Client, userId: string) {
     .eq("user_id", userId);
   if (countError) throw new Error(countError.message);
 
-  const { data: prefs, error: prefsError } = await supabase
-    .from("user_preferences")
-    .select("plan")
+  // Reads `user_roles.subscription_plan`, not `user_preferences.plan` —
+  // the latter was client-writable and let anyone bypass this quota by
+  // calling Supabase directly. See `src/lib/paystack/subscriptions.server.ts`.
+  const { data: role, error: roleError } = await supabase
+    .from("user_roles")
+    .select("subscription_plan")
     .eq("user_id", userId)
     .maybeSingle();
-  if (prefsError) throw new Error(prefsError.message);
+  if (roleError) throw new Error(roleError.message);
 
-  const plan = (prefs?.plan as string | undefined) ?? "free";
+  const plan = (role?.subscription_plan as string | undefined) ?? "free";
   if (plan !== "pro" && (count ?? 0) >= 1) {
     throw new Error(
       "Free plan is limited to 1 connected GitHub account. Upgrade to GitPush Pro for unlimited accounts.",

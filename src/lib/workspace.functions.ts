@@ -12,8 +12,6 @@ export interface Preferences {
   defaultFolder: string | null;
   activeAccountId: string | null;
   activeRepo: string | null;
-  /** "free" or "pro" — see GitPush Pro. Changed via `setPlan`, not `updatePreferences`. */
-  plan: "free" | "pro";
 }
 
 export const getPreferences = createServerFn({ method: "GET" })
@@ -38,7 +36,6 @@ export const getPreferences = createServerFn({ method: "GET" })
         defaultFolder: null,
         activeAccountId: null,
         activeRepo: null,
-        plan: "free",
       };
     }
     return {
@@ -52,13 +49,12 @@ export const getPreferences = createServerFn({ method: "GET" })
       defaultFolder: data.default_folder as string | null,
       activeAccountId: data.active_account_id as string | null,
       activeRepo: data.active_repo as string | null,
-      plan: (data.plan as "free" | "pro" | undefined) ?? "free",
     };
   });
 
 export const updatePreferences = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: Partial<Omit<Preferences, "plan">>) => data)
+  .inputValidator((data: Partial<Preferences>) => data)
   .handler(async ({ data, context }) => {
     const patch: Record<string, unknown> = { user_id: context.userId };
     if (data.theme !== undefined) patch["theme"] = data.theme;
@@ -78,30 +74,14 @@ export const updatePreferences = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-/**
- * Switches the user's plan between "free" and "pro".
- *
- * NOTE: this flips the flag directly — there's no payment processor wired
- * up yet. Before shipping GitPush Pro for real, this should sit behind an
- * actual checkout (e.g. a Stripe Checkout session + webhook that calls this
- * same upsert on payment confirmation) rather than being callable directly
- * from the client like it is today.
- */
-export const setPlan = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((data: { plan: "free" | "pro" }) => data)
-  .handler(async ({ data, context }) => {
-    const { error } = await context.supabase.from("user_preferences").upsert(
-      {
-        user_id: context.userId,
-        plan: data.plan,
-        plan_updated_at: new Date().toISOString(),
-      } as never,
-      { onConflict: "user_id" },
-    );
-    if (error) throw new Error(error.message);
-    return { ok: true, plan: data.plan };
-  });
+// `setPlan` used to live here — it upserted `user_preferences.plan`
+// directly from a client-callable server function. That column granted
+// `authenticated` full RLS access to their own row, so it could be set to
+// "pro" by calling Supabase directly, bypassing this function entirely.
+// GitPush Pro is now tracked in `user_roles.subscription_plan`, which has
+// zero client write grants, and is only ever set by the Paystack webhook
+// handler. See `src/lib/billing.functions.ts` (`startCheckout`,
+// `cancelSubscription`) and `src/lib/paystack/subscriptions.server.ts`.
 
 export interface RepoPref {
   fullName: string;
