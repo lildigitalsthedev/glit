@@ -1,6 +1,5 @@
 import { QueryClient } from "@tanstack/react-query";
 import { createRouter } from "@tanstack/react-router";
-import * as Sentry from "@sentry/tanstackstart-react";
 import { routeTree } from "./routeTree.gen";
 
 export const getRouter = () => {
@@ -27,20 +26,6 @@ export const getRouter = () => {
     scrollRestoration: true,
     defaultPreloadStaleTime: 0,
   });
-
-  // Browser-only. VITE_SENTRY_DSN unset (e.g. local dev) leaves the SDK
-  // disabled — Sentry.captureException calls elsewhere become no-ops.
-  if (!router.isServer) {
-    Sentry.init({
-      dsn: import.meta.env["VITE_SENTRY_DSN"],
-      environment: import.meta.env["VITE_SENTRY_ENVIRONMENT"] ?? "production",
-      integrations: [Sentry.tanstackRouterBrowserTracingIntegration(router)],
-      tracesSampleRate: 0.2,
-      // Session Replay isn't wired up yet — add Sentry.replayIntegration()
-      // to the array above plus replaysSessionSampleRate /
-      // replaysOnErrorSampleRate here if that becomes a priority.
-    });
-  }
 
   return router;
 };

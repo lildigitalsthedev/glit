@@ -1,17 +1,7 @@
-import * as Sentry from "@sentry/tanstackstart-react";
-
 import "./lib/error-capture";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
-
-// Cold-start init. SENTRY_DSN unset (e.g. local dev) leaves the SDK disabled —
-// captureException calls elsewhere become no-ops rather than throwing.
-Sentry.init({
-  dsn: process.env["SENTRY_DSN"],
-  environment: process.env["SENTRY_ENVIRONMENT"] ?? "production",
-  tracesSampleRate: 0.2,
-});
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;

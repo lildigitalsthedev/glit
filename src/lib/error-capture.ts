@@ -1,19 +1,11 @@
 // Captures the original Error out-of-band so server.ts can recover the stack
 // when h3 has already swallowed the throw into a generic 500 Response.
-//
-// This is also the single funnel for server-side Sentry error reporting:
-// every path that reaches console.error(someError) or a global
-// error/unhandledrejection event on the server passes through record()
-// below, so that's the one place we forward to Sentry rather than calling
-// captureException at each individual catch site.
-import * as Sentry from "@sentry/tanstackstart-react";
 
 let lastCapturedError: { error: unknown; at: number } | undefined;
 const TTL_MS = 5_000;
 
 function record(error: unknown) {
   lastCapturedError = { error, at: Date.now() };
-  Sentry.captureException(error);
 }
 
 // h3's HTTPError serializes to {"status":500,"unhandled":true,"message":"HTTPError"} —

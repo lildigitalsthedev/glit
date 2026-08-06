@@ -1,6 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
-import * as Sentry from "@sentry/tanstackstart-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface AuthState {
@@ -20,14 +19,6 @@ const AuthContext = createContext<AuthState>({
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-
-  // Ties Sentry events to the signed-in user so issues can be filtered/traced
-  // by account. Runs client and server side; harmless no-op without a DSN.
-  useEffect(() => {
-    Sentry.setUser(
-      session?.user ? { id: session.user.id, email: session.user.email ?? undefined } : null,
-    );
-  }, [session]);
 
   useEffect(() => {
     // The auth client throws if backend env vars are missing (e.g. a stale
