@@ -103,8 +103,8 @@ function isTabValue(value: string): value is TabValue {
 
 export const Route = createFileRoute("/_authenticated/settings")({
   validateSearch: (search: Record<string, unknown>): { tab?: TabValue } => {
-    const raw = typeof search.tab === "string" ? search.tab : undefined;
-    return { tab: raw && isTabValue(raw) ? raw : undefined };
+    const raw = typeof search["tab"] === "string" ? search["tab"] : undefined;
+    return raw && isTabValue(raw) ? { tab: raw } : {};
   },
   head: () => ({
     meta: [

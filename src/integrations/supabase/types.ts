@@ -290,6 +290,27 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_limits: {
+        Row: {
+          bucket: string
+          count: number
+          user_id: string
+          window_start: string
+        }
+        Insert: {
+          bucket: string
+          count?: number
+          user_id: string
+          window_start?: string
+        }
+        Update: {
+          bucket?: string
+          count?: number
+          user_id?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
       recent_files: {
         Row: {
           account_id: string | null
@@ -484,6 +505,8 @@ export type Database = {
           default_folder: string | null
           editor_font_size: number
           notifications: boolean
+          plan: string
+          plan_updated_at: string | null
           tab_width: number
           theme: string
           updated_at: string
@@ -499,6 +522,8 @@ export type Database = {
           default_folder?: string | null
           editor_font_size?: number
           notifications?: boolean
+          plan?: string
+          plan_updated_at?: string | null
           tab_width?: number
           theme?: string
           updated_at?: string
@@ -514,6 +539,8 @@ export type Database = {
           default_folder?: string | null
           editor_font_size?: number
           notifications?: boolean
+          plan?: string
+          plan_updated_at?: string | null
           tab_width?: number
           theme?: string
           updated_at?: string
@@ -554,7 +581,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      increment_rate_limit: {
+        Args: { p_bucket: string; p_user_id: string; p_window_seconds: number }
+        Returns: number
+      }
     }
     Enums: {
       [_ in never]: never

@@ -17,9 +17,11 @@ import { Route as AuthenticatedAppRouteImport } from './routes/_authenticated/ap
 import { Route as AuthenticatedDeveloperRouteImport } from './routes/_authenticated/developer'
 import { Route as AuthenticatedOwnerRouteImport } from './routes/_authenticated/owner'
 import { Route as AuthenticatedPricingRouteImport } from './routes/_authenticated/pricing'
-import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
+import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedWorkspaceRouteImport } from './routes/_authenticated/workspace'
 import { Route as ApiPublicGithubCallbackRouteImport } from './routes/api/public/github/callback'
+import { Route as ApiPublicPaystackCallbackRouteImport } from './routes/api/public/paystack/callback'
+import { Route as ApiPublicPaystackWebhookRouteImport } from './routes/api/public/paystack/webhook'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -60,9 +62,9 @@ const AuthenticatedPricingRoute = AuthenticatedPricingRouteImport.update({
   path: '/pricing',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedProfileRoute = AuthenticatedProfileRouteImport.update({
-  id: '/profile',
-  path: '/profile',
+const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedWorkspaceRoute = AuthenticatedWorkspaceRouteImport.update({
@@ -75,6 +77,18 @@ const ApiPublicGithubCallbackRoute = ApiPublicGithubCallbackRouteImport.update({
   path: '/api/public/github/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicPaystackCallbackRoute =
+  ApiPublicPaystackCallbackRouteImport.update({
+    id: '/api/public/paystack/callback',
+    path: '/api/public/paystack/callback',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicPaystackWebhookRoute =
+  ApiPublicPaystackWebhookRouteImport.update({
+    id: '/api/public/paystack/webhook',
+    path: '/api/public/paystack/webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -84,9 +98,11 @@ export interface FileRoutesByFullPath {
   '/developer': typeof AuthenticatedDeveloperRoute
   '/owner': typeof AuthenticatedOwnerRoute
   '/pricing': typeof AuthenticatedPricingRoute
-  '/profile': typeof AuthenticatedProfileRoute
+  '/settings': typeof AuthenticatedSettingsRoute
   '/workspace': typeof AuthenticatedWorkspaceRoute
   '/api/public/github/callback': typeof ApiPublicGithubCallbackRoute
+  '/api/public/paystack/callback': typeof ApiPublicPaystackCallbackRoute
+  '/api/public/paystack/webhook': typeof ApiPublicPaystackWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -96,9 +112,11 @@ export interface FileRoutesByTo {
   '/developer': typeof AuthenticatedDeveloperRoute
   '/owner': typeof AuthenticatedOwnerRoute
   '/pricing': typeof AuthenticatedPricingRoute
-  '/profile': typeof AuthenticatedProfileRoute
+  '/settings': typeof AuthenticatedSettingsRoute
   '/workspace': typeof AuthenticatedWorkspaceRoute
   '/api/public/github/callback': typeof ApiPublicGithubCallbackRoute
+  '/api/public/paystack/callback': typeof ApiPublicPaystackCallbackRoute
+  '/api/public/paystack/webhook': typeof ApiPublicPaystackWebhookRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -110,9 +128,11 @@ export interface FileRoutesById {
   '/_authenticated/developer': typeof AuthenticatedDeveloperRoute
   '/_authenticated/owner': typeof AuthenticatedOwnerRoute
   '/_authenticated/pricing': typeof AuthenticatedPricingRoute
-  '/_authenticated/profile': typeof AuthenticatedProfileRoute
+  '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/workspace': typeof AuthenticatedWorkspaceRoute
   '/api/public/github/callback': typeof ApiPublicGithubCallbackRoute
+  '/api/public/paystack/callback': typeof ApiPublicPaystackCallbackRoute
+  '/api/public/paystack/webhook': typeof ApiPublicPaystackWebhookRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -124,9 +144,11 @@ export interface FileRouteTypes {
     | '/developer'
     | '/owner'
     | '/pricing'
-    | '/profile'
+    | '/settings'
     | '/workspace'
     | '/api/public/github/callback'
+    | '/api/public/paystack/callback'
+    | '/api/public/paystack/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -136,9 +158,11 @@ export interface FileRouteTypes {
     | '/developer'
     | '/owner'
     | '/pricing'
-    | '/profile'
+    | '/settings'
     | '/workspace'
     | '/api/public/github/callback'
+    | '/api/public/paystack/callback'
+    | '/api/public/paystack/webhook'
   id:
     | '__root__'
     | '/'
@@ -149,9 +173,11 @@ export interface FileRouteTypes {
     | '/_authenticated/developer'
     | '/_authenticated/owner'
     | '/_authenticated/pricing'
-    | '/_authenticated/profile'
+    | '/_authenticated/settings'
     | '/_authenticated/workspace'
     | '/api/public/github/callback'
+    | '/api/public/paystack/callback'
+    | '/api/public/paystack/webhook'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -159,6 +185,8 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   ApiPublicGithubCallbackRoute: typeof ApiPublicGithubCallbackRoute
+  ApiPublicPaystackCallbackRoute: typeof ApiPublicPaystackCallbackRoute
+  ApiPublicPaystackWebhookRoute: typeof ApiPublicPaystackWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -219,11 +247,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPricingRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/profile': {
-      id: '/_authenticated/profile'
-      path: '/profile'
-      fullPath: '/profile'
-      preLoaderRoute: typeof AuthenticatedProfileRouteImport
+    '/_authenticated/settings': {
+      id: '/_authenticated/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/workspace': {
@@ -240,6 +268,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicGithubCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/paystack/callback': {
+      id: '/api/public/paystack/callback'
+      path: '/api/public/paystack/callback'
+      fullPath: '/api/public/paystack/callback'
+      preLoaderRoute: typeof ApiPublicPaystackCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/paystack/webhook': {
+      id: '/api/public/paystack/webhook'
+      path: '/api/public/paystack/webhook'
+      fullPath: '/api/public/paystack/webhook'
+      preLoaderRoute: typeof ApiPublicPaystackWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -249,7 +291,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDeveloperRoute: typeof AuthenticatedDeveloperRoute
   AuthenticatedOwnerRoute: typeof AuthenticatedOwnerRoute
   AuthenticatedPricingRoute: typeof AuthenticatedPricingRoute
-  AuthenticatedProfileRoute: typeof AuthenticatedProfileRoute
+  AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedWorkspaceRoute: typeof AuthenticatedWorkspaceRoute
 }
 
@@ -259,7 +301,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDeveloperRoute: AuthenticatedDeveloperRoute,
   AuthenticatedOwnerRoute: AuthenticatedOwnerRoute,
   AuthenticatedPricingRoute: AuthenticatedPricingRoute,
-  AuthenticatedProfileRoute: AuthenticatedProfileRoute,
+  AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedWorkspaceRoute: AuthenticatedWorkspaceRoute,
 }
 
@@ -271,6 +313,8 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   ApiPublicGithubCallbackRoute: ApiPublicGithubCallbackRoute,
+  ApiPublicPaystackCallbackRoute: ApiPublicPaystackCallbackRoute,
+  ApiPublicPaystackWebhookRoute: ApiPublicPaystackWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
