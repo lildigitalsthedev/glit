@@ -1,5 +1,4 @@
 import * as Sentry from "@sentry/tanstackstart-react";
-import { wrapFetchWithSentry } from "@sentry/tanstackstart-react";
 
 import "./lib/error-capture";
 
@@ -55,7 +54,7 @@ function isH3SwallowedErrorBody(body: string): boolean {
   }
 }
 
-export default wrapFetchWithSentry({
+export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
       const handler = await getServerEntry();
@@ -69,4 +68,4 @@ export default wrapFetchWithSentry({
       });
     }
   },
-});
+};
