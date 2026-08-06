@@ -7,6 +7,7 @@ import { billingAvailable, cancelSubscription, getMyBilling, startCheckout } fro
 import { usePlan } from "@/hooks/usePlan";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { proPriceLocalEquivalent, proPriceNGN } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/pricing")({
@@ -67,6 +68,8 @@ function formatDate(iso: string | null): string | null {
 function Pricing() {
   const queryClient = useQueryClient();
   const { plan, isLoading } = usePlan();
+  const proPrice = proPriceNGN();
+  const proPriceLocal = proPriceLocalEquivalent();
 
   const availableFn = useServerFn(billingAvailable);
   const available = useQuery({ queryKey: ["billing-available"], queryFn: () => availableFn() });
@@ -170,8 +173,11 @@ function Pricing() {
             )}
           </div>
           <p className="mt-3 flex items-baseline gap-1">
-            <span className="text-3xl font-semibold tracking-tight">$12</span>
+            <span className="text-3xl font-semibold tracking-tight">{proPrice}</span>
             <span className="text-xs text-muted-foreground">/month</span>
+            {proPriceLocal && (
+              <span className="text-xs text-muted-foreground">({proPriceLocal})</span>
+            )}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
             AI-assisted development, unlimited accounts, and advanced workflows.
