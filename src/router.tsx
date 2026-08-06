@@ -34,11 +34,15 @@ export const getRouter = () => {
     Sentry.init({
       dsn: import.meta.env["VITE_SENTRY_DSN"],
       environment: import.meta.env["VITE_SENTRY_ENVIRONMENT"] ?? "production",
-      integrations: [Sentry.tanstackRouterBrowserTracingIntegration(router)],
+      integrations: [
+        Sentry.tanstackRouterBrowserTracingIntegration(router),
+        Sentry.replayIntegration(),
+      ],
       tracesSampleRate: 0.2,
-      // Session Replay isn't wired up yet — add Sentry.replayIntegration()
-      // to the array above plus replaysSessionSampleRate /
-      // replaysOnErrorSampleRate here if that becomes a priority.
+      // Record 10% of ordinary sessions, but always record when a session
+      // hits an error, so the replay is there when you actually need it.
+      replaysSessionSampleRate: 0.1,
+      replaysOnErrorSampleRate: 1.0,
     });
   }
 
