@@ -3,6 +3,7 @@
 // Mirrors the shape of `github/api.server.ts`: a thin typed fetch wrapper
 // plus a typed error class, nothing fancier.
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { PRO_PRICE_NGN } from "@/lib/pricing";
 
 const PAYSTACK_API = "https://api.paystack.co";
 
@@ -70,6 +71,15 @@ export interface InitializeTransactionResult {
  * webhook event for this transaction/subscription, which is how the
  * webhook handler maps a Paystack event back to a GitPush user without
  * relying on email matching.
+ *
+ * Paystack's `/transaction/initialize` endpoint requires `amount` on every
+ * request, even when `plan` is also provided — the plan's amount is what
+ * actually gets charged and simply overrides this value server-side, but
+ * omitting `amount` entirely causes Paystack to reject the request with
+ * "Invalid Amount Sent". We still source the number from `PRO_PRICE_NGN`
+ * (converted to kobo) so this file has no separate price to keep in sync;
+ * see pricing.ts for the real source of truth and why it must match the
+ * Plan configured in the Paystack dashboard.
  */
 export async function initializeTransaction(args: {
   email: string;
@@ -83,6 +93,7 @@ export async function initializeTransaction(args: {
     method: "POST",
     body: JSON.stringify({
       email: args.email,
+      amount: PRO_PRICE_NGN * 100,
       plan: args.planCode,
       callback_url: args.callbackUrl,
       metadata: { userId: args.userId },
