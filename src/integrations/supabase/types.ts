@@ -432,48 +432,6 @@ export type Database = {
           },
         ]
       }
-      subscriptions: {
-        Row: {
-          created_at: string
-          current_period_end: string | null
-          last_event: string | null
-          last_event_at: string | null
-          paystack_customer_code: string | null
-          paystack_email_token: string | null
-          paystack_plan_code: string | null
-          paystack_subscription_code: string | null
-          status: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          current_period_end?: string | null
-          last_event?: string | null
-          last_event_at?: string | null
-          paystack_customer_code?: string | null
-          paystack_email_token?: string | null
-          paystack_plan_code?: string | null
-          paystack_subscription_code?: string | null
-          status?: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          current_period_end?: string | null
-          last_event?: string | null
-          last_event_at?: string | null
-          paystack_customer_code?: string | null
-          paystack_email_token?: string | null
-          paystack_plan_code?: string | null
-          paystack_subscription_code?: string | null
-          status?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       user_preferences: {
         Row: {
           active_account_id: string | null
@@ -484,6 +442,8 @@ export type Database = {
           default_folder: string | null
           editor_font_size: number
           notifications: boolean
+          plan: string
+          plan_updated_at: string | null
           tab_width: number
           theme: string
           updated_at: string
@@ -499,6 +459,8 @@ export type Database = {
           default_folder?: string | null
           editor_font_size?: number
           notifications?: boolean
+          plan?: string
+          plan_updated_at?: string | null
           tab_width?: number
           theme?: string
           updated_at?: string
@@ -514,6 +476,8 @@ export type Database = {
           default_folder?: string | null
           editor_font_size?: number
           notifications?: boolean
+          plan?: string
+          plan_updated_at?: string | null
           tab_width?: number
           theme?: string
           updated_at?: string
