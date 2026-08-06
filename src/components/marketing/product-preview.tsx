@@ -134,7 +134,7 @@ export function ProductPreview() {
   const effectivePhase = reducedMotion ? "pushed" : phase;
 
   return (
-    <div className="overflow-hidden rounded-lg border border-border bg-card shadow-xl shadow-black/30">
+    <div className="w-full min-w-0 max-w-full overflow-hidden rounded-lg border border-border bg-card shadow-xl shadow-black/30">
       {/* window chrome */}
       <div className="flex items-center gap-3 border-b border-border bg-secondary/40 px-3 py-2.5">
         <div className="flex gap-1.5">
@@ -142,14 +142,14 @@ export function ProductPreview() {
           <span className="size-2.5 rounded-full bg-chart-3/70" />
           <span className="size-2.5 rounded-full bg-success/70" />
         </div>
-        <div className="flex flex-1 items-center gap-1.5 rounded border border-border bg-background px-2.5 py-1 font-mono text-[10px] text-muted-foreground">
+        <div className="flex min-w-0 flex-1 items-center gap-1.5 rounded border border-border bg-background px-2.5 py-1 font-mono text-[10px] text-muted-foreground">
           <GitBranch className="size-3 shrink-0 text-primary" />
           <span className="truncate">you / api-gateway</span>
           <span className="text-code-comment">on main</span>
         </div>
       </div>
 
-      <div className="flex">
+      <div className="flex min-w-0">
         {/* file tree */}
         <div className="hidden w-36 shrink-0 border-r border-border p-2 sm:block">
           {FILES.map((file) => (
@@ -182,12 +182,12 @@ export function ProductPreview() {
             </div>
           </div>
 
-          <div className="overflow-x-auto px-2 py-2 font-mono text-[10.5px] leading-5 sm:text-[11px]">
+          <div className="w-full min-w-0 max-w-full overflow-x-auto px-2 py-2 font-mono text-[10.5px] leading-5 sm:text-[11px]">
             {CODE_LINES.map((line) => (
               <div
                 key={line.n}
                 className={cn(
-                  "flex gap-3 rounded px-1.5 transition-colors duration-500",
+                  "flex w-max min-w-full gap-3 rounded px-1.5 transition-colors duration-500",
                   line.added && showDiff && "bg-success/10",
                 )}
               >
@@ -206,8 +206,8 @@ export function ProductPreview() {
           </div>
 
           {/* commit bar */}
-          <div className="flex items-center gap-2 border-t border-border bg-secondary/30 px-2.5 py-2">
-            <div className="flex-1 truncate rounded border border-border bg-background px-2.5 py-1.5 font-mono text-[10.5px] text-foreground">
+          <div className="flex min-w-0 items-center gap-2 border-t border-border bg-secondary/30 px-2.5 py-2">
+            <div className="min-w-0 flex-1 truncate rounded border border-border bg-background px-2.5 py-1.5 font-mono text-[10.5px] text-foreground">
               {commitText || <span className="text-muted-foreground">Commit message</span>}
               {phase === "typing-commit" && !reducedMotion && (
                 <span className="ml-px inline-block h-3 w-px animate-[blink_1s_step-end_infinite] bg-primary align-middle" />

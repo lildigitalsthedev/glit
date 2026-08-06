@@ -65,7 +65,7 @@ function Index() {
   }, [loading, session, navigate]);
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-16 sm:py-24">
+    <main className="mx-auto max-w-5xl overflow-x-hidden px-4 py-16 sm:py-24">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-2 font-mono text-sm">
           <Terminal className="size-4 text-primary" />
@@ -81,8 +81,8 @@ function Index() {
         </nav>
       </div>
 
-      <div className="grid gap-12 lg:mt-16 lg:grid-cols-[1.05fr_1fr] lg:items-center lg:gap-10">
-        <div className="mt-16 lg:mt-0">
+      <div className="grid min-w-0 gap-12 lg:mt-16 lg:grid-cols-[1.05fr_1fr] lg:items-center lg:gap-10">
+        <div className="mt-16 min-w-0 lg:mt-0">
           <h1 className="max-w-xl text-4xl font-semibold tracking-tight sm:text-5xl">
             Push files to GitHub straight from your browser.
           </h1>
@@ -116,7 +116,7 @@ function Index() {
           </div>
         </div>
 
-        <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
+        <div className="min-w-0 animate-in fade-in slide-in-from-bottom-2 duration-500">
           <ProductPreview />
           <p className="mt-3 text-center text-xs text-muted-foreground">
             The actual GitPush editor — file tree, diff, and commit, live.
