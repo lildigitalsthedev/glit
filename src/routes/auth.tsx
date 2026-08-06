@@ -7,6 +7,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { TermsDialog } from "@/components/terms-dialog";
 import { Terminal, Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/auth")({
@@ -35,6 +37,11 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [termsOpen, setTermsOpen] = useState(false);
+
+  const requiresAgreement = mode === "signup";
+  const canProceed = !requiresAgreement || agreedToTerms;
 
   useEffect(() => {
     if (!loading && session) void navigate({ to: "/app" });
@@ -42,6 +49,10 @@ function AuthPage() {
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
+    if (!canProceed) {
+      toast.error("Please agree to the Terms of Service to create an account.");
+      return;
+    }
     setBusy(true);
     try {
       if (mode === "signup") {
@@ -67,6 +78,10 @@ function AuthPage() {
   }
 
   async function onGoogle() {
+    if (!canProceed) {
+      toast.error("Please agree to the Terms of Service to create an account.");
+      return;
+    }
     setBusy(true);
     const result = await lovable.auth.signInWithOAuth("google", {
       redirect_uri: window.location.origin,
@@ -142,7 +157,30 @@ function AuthPage() {
               autoComplete={mode === "signin" ? "current-password" : "new-password"}
             />
           </div>
-          <Button type="submit" className="w-full" disabled={busy}>
+          {mode === "signup" && (
+            <label htmlFor="terms" className="flex cursor-pointer items-start gap-2.5 select-none">
+              <Checkbox
+                id="terms"
+                checked={agreedToTerms}
+                onCheckedChange={(checked) => setAgreedToTerms(checked === true)}
+                className="mt-0.5"
+              />
+              <span className="text-xs leading-relaxed text-muted-foreground">
+                I agree to the{" "}
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    setTermsOpen(true);
+                  }}
+                  className="text-primary underline-offset-4 hover:underline"
+                >
+                  Terms of Service
+                </button>
+              </span>
+            </label>
+          )}
+          <Button type="submit" className="w-full" disabled={busy || !canProceed}>
             {busy && <Loader2 className="size-4 animate-spin" />}
             {mode === "signin" ? "Sign in" : "Create account"}
           </Button>
@@ -154,7 +192,7 @@ function AuthPage() {
           <span className="h-px flex-1 bg-border" />
         </div>
 
-        <Button variant="outline" className="w-full" onClick={onGoogle} disabled={busy}>
+        <Button variant="outline" className="w-full" onClick={onGoogle} disabled={busy || !canProceed}>
           Continue with Google
         </Button>
 
@@ -169,6 +207,8 @@ function AuthPage() {
           </button>
         </p>
       </div>
+
+      <TermsDialog open={termsOpen} onOpenChange={setTermsOpen} />
     </main>
   );
 }
