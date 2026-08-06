@@ -8,6 +8,7 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
+import * as Sentry from "@sentry/tanstackstart-react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -41,6 +42,10 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   const router = useRouter();
   useEffect(() => {
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
+    // TanStack's errorComponent isn't reached by the Sentry request/function
+    // middleware (those only see server-side throws), so it needs a manual
+    // captureException call same as the Lovable editor reporting above.
+    Sentry.captureException(error, { tags: { boundary: "tanstack_root_error_component" } });
   }, [error]);
 
   return (

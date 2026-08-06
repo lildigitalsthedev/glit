@@ -1,4 +1,8 @@
 import { createStart, createCsrfMiddleware, createMiddleware } from "@tanstack/react-start";
+import {
+  sentryGlobalFunctionMiddleware,
+  sentryGlobalRequestMiddleware,
+} from "@sentry/tanstackstart-react";
 
 import { renderErrorPage } from "./lib/error-page";
 import { attachSupabaseAuth } from "@/integrations/supabase/auth-attacher";
@@ -26,6 +30,10 @@ const csrfMiddleware = createCsrfMiddleware({
 });
 
 export const startInstance = createStart(() => ({
-  functionMiddleware: [attachSupabaseAuth],
-  requestMiddleware: [errorMiddleware, csrfMiddleware],
+  // Sentry's middleware goes first in each array so it sees (and reports)
+  // errors before any other middleware has a chance to swallow or rewrite
+  // them. It doesn't catch SSR render exceptions — those are covered
+  // separately via error-capture.ts's console.error hook.
+  functionMiddleware: [sentryGlobalFunctionMiddleware, attachSupabaseAuth],
+  requestMiddleware: [sentryGlobalRequestMiddleware, errorMiddleware, csrfMiddleware],
 }));
