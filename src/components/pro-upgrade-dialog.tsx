@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { proPriceLocalEquivalent, proPriceNGN } from "@/lib/pricing";
 import {
   Dialog,
   DialogContent,
@@ -30,6 +31,8 @@ export function ProUpgradeDialog({
   description: string;
   features: string[];
 }) {
+  const proPrice = proPriceNGN();
+  const proPriceLocal = proPriceLocalEquivalent();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
@@ -53,7 +56,8 @@ export function ProUpgradeDialog({
           <Button asChild className="w-full" onClick={() => onOpenChange(false)}>
             <Link to="/pricing">
               <Sparkles className="size-4" />
-              Upgrade to GitPush Pro — $12/mo
+              Upgrade to GitPush Pro — {proPrice}/mo
+              {proPriceLocal ? ` (${proPriceLocal})` : ""}
             </Link>
           </Button>
         </div>
