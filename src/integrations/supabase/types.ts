@@ -290,6 +290,27 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_limits: {
+        Row: {
+          bucket: string
+          count: number
+          user_id: string
+          window_start: string
+        }
+        Insert: {
+          bucket: string
+          count?: number
+          user_id: string
+          window_start?: string
+        }
+        Update: {
+          bucket?: string
+          count?: number
+          user_id?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
       recent_files: {
         Row: {
           account_id: string | null
@@ -432,6 +453,48 @@ export type Database = {
           },
         ]
       }
+      subscriptions: {
+        Row: {
+          created_at: string
+          current_period_end: string | null
+          last_event: string | null
+          last_event_at: string | null
+          paystack_customer_code: string | null
+          paystack_email_token: string | null
+          paystack_plan_code: string | null
+          paystack_subscription_code: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_period_end?: string | null
+          last_event?: string | null
+          last_event_at?: string | null
+          paystack_customer_code?: string | null
+          paystack_email_token?: string | null
+          paystack_plan_code?: string | null
+          paystack_subscription_code?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_period_end?: string | null
+          last_event?: string | null
+          last_event_at?: string | null
+          paystack_customer_code?: string | null
+          paystack_email_token?: string | null
+          paystack_plan_code?: string | null
+          paystack_subscription_code?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_preferences: {
         Row: {
           active_account_id: string | null
@@ -518,7 +581,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      increment_rate_limit: {
+        Args: { p_bucket: string; p_user_id: string; p_window_seconds: number }
+        Returns: number
+      }
     }
     Enums: {
       [_ in never]: never
