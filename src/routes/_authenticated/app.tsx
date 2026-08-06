@@ -12,6 +12,7 @@ import {
   Loader2,
   Github,
   LayoutGrid,
+  Grid3x3,
   List,
   Settings2,
   Plus,
@@ -44,7 +45,7 @@ export const Route = createFileRoute("/_authenticated/app")({
   component: Dashboard,
 });
 
-type RepoView = "grid" | "list";
+type RepoView = "grid" | "compact" | "list";
 
 function timeAgo(iso: string) {
   const diff = Date.now() - new Date(iso).getTime();
@@ -114,6 +115,50 @@ function RepoGridCard({ repo, index, isFavorite, onToggleFavorite, onOpen, openi
   );
 }
 
+/** A denser card for the "Compact" grid — shows two-up on phones (up to 5-up on desktop) by trading the description and most metadata for a smaller footprint. */
+function RepoCompactCard({ repo, index, isFavorite, onToggleFavorite, onOpen, opening }: RepoTileProps) {
+  return (
+    <article
+      style={{ animationDelay: `${Math.min(index, 8) * 30}ms` }}
+      className={cn(
+        "group flex animate-in fade-in flex-col rounded-md border bg-card p-2 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md",
+        isFavorite ? "border-primary/30" : "border-border",
+      )}
+    >
+      <div className="flex items-start gap-1">
+        <p className="min-w-0 flex-1 truncate text-[10px] text-muted-foreground">{repo.owner}</p>
+        <button
+          onClick={onToggleFavorite}
+          aria-label={isFavorite ? "Remove Favorite" : "Favorite"}
+          title={isFavorite ? "Remove Favorite" : "Favorite"}
+          className="shrink-0 transition-transform duration-150 hover:scale-110 active:scale-95"
+        >
+          <Star
+            className={cn(
+              "size-3 transition-colors duration-150",
+              isFavorite ? "fill-primary text-primary" : "text-muted-foreground group-hover:text-foreground",
+            )}
+          />
+        </button>
+      </div>
+      <h2 className="truncate font-mono text-xs font-medium leading-tight">{repo.name}</h2>
+      <div className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground">
+        {repo.isPrivate ? <Lock className="size-2.5 shrink-0" /> : <Unlock className="size-2.5 shrink-0" />}
+        <span className="truncate">{timeAgo(repo.updatedAt)}</span>
+      </div>
+      <Button
+        size="sm"
+        variant={repo.canPush ? "default" : "secondary"}
+        className="mt-2 h-7 w-full text-[11px]"
+        disabled={!repo.canPush || opening}
+        onClick={onOpen}
+      >
+        {repo.canPush ? "Open" : "Read-only"}
+      </Button>
+    </article>
+  );
+}
+
 /** A single repository row, used in the compact list view. */
 function RepoListRow({ repo, index, isFavorite, onToggleFavorite, onOpen, opening }: RepoTileProps) {
   return (
@@ -172,11 +217,15 @@ function RepoListRow({ repo, index, isFavorite, onToggleFavorite, onOpen, openin
 }
 
 function RepoTile(props: RepoTileProps & { view: RepoView }) {
-  return props.view === "grid" ? <RepoGridCard {...props} /> : <RepoListRow {...props} />;
+  if (props.view === "grid") return <RepoGridCard {...props} />;
+  if (props.view === "compact") return <RepoCompactCard {...props} />;
+  return <RepoListRow {...props} />;
 }
 
 function repoSectionClass(view: RepoView) {
-  return view === "grid" ? "grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3" : "flex flex-col gap-1.5";
+  if (view === "grid") return "grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3";
+  if (view === "compact") return "grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5";
+  return "flex flex-col gap-1.5";
 }
 
 /** Compact chip strip for switching between connected GitHub accounts — replaces the old full account-card grid, which duplicated what already lives on Settings → Connections. */
@@ -396,6 +445,15 @@ function Dashboard() {
           <ToggleGroupItem value="grid" aria-label="Grid view" title="Grid view" size="sm" className="h-8 px-2.5">
             <LayoutGrid className="size-3.5" />
           </ToggleGroupItem>
+          <ToggleGroupItem
+            value="compact"
+            aria-label="Compact grid view"
+            title="Compact grid view"
+            size="sm"
+            className="h-8 px-2.5"
+          >
+            <Grid3x3 className="size-3.5" />
+          </ToggleGroupItem>
           <ToggleGroupItem value="list" aria-label="List view" title="List view" size="sm" className="h-8 px-2.5">
             <List className="size-3.5" />
           </ToggleGroupItem>
@@ -404,30 +462,46 @@ function Dashboard() {
 
       {repos.isLoading && (
         <section className={cn("mt-3", sectionClass)}>
-          {Array.from({ length: 6 }).map((_, i) =>
-            view === "grid" ? (
-              <div key={i} className="flex flex-col rounded-md border border-border bg-card p-4">
-                <div className="flex items-start gap-2">
-                  <Skeleton className="h-4 w-2/3" />
-                  <Skeleton className="ml-auto size-3.5 shrink-0 rounded-full" />
+          {Array.from({ length: view === "compact" ? 10 : 6 }).map((_, i) => {
+            if (view === "grid") {
+              return (
+                <div key={i} className="flex flex-col rounded-md border border-border bg-card p-4">
+                  <div className="flex items-start gap-2">
+                    <Skeleton className="h-4 w-2/3" />
+                    <Skeleton className="ml-auto size-3.5 shrink-0 rounded-full" />
+                  </div>
+                  <Skeleton className="mt-3 h-3 w-full" />
+                  <Skeleton className="mt-1.5 h-3 w-4/5" />
+                  <div className="mt-4 flex items-center gap-3">
+                    <Skeleton className="h-3 w-14" />
+                    <Skeleton className="h-3 w-14" />
+                    <Skeleton className="ml-auto h-3 w-10" />
+                  </div>
+                  <Skeleton className="mt-4 h-8 w-full" />
                 </div>
-                <Skeleton className="mt-3 h-3 w-full" />
-                <Skeleton className="mt-1.5 h-3 w-4/5" />
-                <div className="mt-4 flex items-center gap-3">
-                  <Skeleton className="h-3 w-14" />
-                  <Skeleton className="h-3 w-14" />
-                  <Skeleton className="ml-auto h-3 w-10" />
+              );
+            }
+            if (view === "compact") {
+              return (
+                <div key={i} className="flex flex-col rounded-md border border-border bg-card p-2">
+                  <div className="flex items-start gap-1">
+                    <Skeleton className="h-2.5 w-10" />
+                    <Skeleton className="ml-auto size-3 shrink-0 rounded-full" />
+                  </div>
+                  <Skeleton className="mt-1.5 h-3.5 w-4/5" />
+                  <Skeleton className="mt-1.5 h-2.5 w-1/2" />
+                  <Skeleton className="mt-2 h-7 w-full" />
                 </div>
-                <Skeleton className="mt-4 h-8 w-full" />
-              </div>
-            ) : (
+              );
+            }
+            return (
               <div key={i} className="flex items-center gap-3 rounded-md border border-border bg-card px-3 py-2">
                 <Skeleton className="size-3.5 shrink-0 rounded-full" />
                 <Skeleton className="h-4 w-1/3" />
                 <Skeleton className="ml-auto h-8 w-20" />
               </div>
-            ),
-          )}
+            );
+          })}
         </section>
       )}
       {repos.isError && (
