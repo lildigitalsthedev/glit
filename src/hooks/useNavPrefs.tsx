@@ -16,6 +16,17 @@ export type NavPosition = "bottom" | "floating-bottom" | "left" | "right";
 
 export type NavSize = "sm" | "md" | "lg";
 
+/**
+ * The animation style applied to the active nav item.
+ *
+ * - "glow": the active icon pulses with a soft glow (the default).
+ * - "blink": a blinking terminal-cursor glyph renders next to the active
+ *   label (the original, more attention-grabbing style).
+ * - "none": the active item gets a static highlight with no animation at
+ *   all — the calmest option.
+ */
+export type NavAnimation = "glow" | "blink" | "none";
+
 export interface FloatingOffset {
   x: number;
   y: number;
@@ -27,6 +38,7 @@ export interface NavPrefsState {
   autoHide: boolean;
   collapsed: boolean;
   floatingOffset: FloatingOffset | null;
+  activeAnimation: NavAnimation;
 }
 
 interface NavPrefsContextValue extends NavPrefsState {
@@ -35,6 +47,7 @@ interface NavPrefsContextValue extends NavPrefsState {
   setAutoHide: (autoHide: boolean) => void;
   setCollapsed: (collapsed: boolean) => void;
   setFloatingOffset: (offset: FloatingOffset | null) => void;
+  setActiveAnimation: (animation: NavAnimation) => void;
   reset: () => void;
 }
 
@@ -50,6 +63,7 @@ export const DEFAULT_NAV_PREFS: NavPrefsState = {
   autoHide: false,
   collapsed: false,
   floatingOffset: null,
+  activeAnimation: "glow",
 };
 
 function isNavPosition(value: unknown): value is NavPosition {
@@ -58,6 +72,10 @@ function isNavPosition(value: unknown): value is NavPosition {
 
 function isNavSize(value: unknown): value is NavSize {
   return value === "sm" || value === "md" || value === "lg";
+}
+
+function isNavAnimation(value: unknown): value is NavAnimation {
+  return value === "glow" || value === "blink" || value === "none";
 }
 
 // Tablet/desktop-sized viewports default to a persistent side rail (an
@@ -88,6 +106,9 @@ function loadStoredPrefs(): NavPrefsState {
           typeof parsed.floatingOffset.y === "number"
             ? { x: parsed.floatingOffset.x, y: parsed.floatingOffset.y }
             : null,
+        activeAnimation: isNavAnimation(parsed.activeAnimation)
+          ? parsed.activeAnimation
+          : DEFAULT_NAV_PREFS.activeAnimation,
       };
     }
 
@@ -151,6 +172,7 @@ export function NavPrefsProvider({ children }: { children: ReactNode }) {
       setAutoHide: (autoHide) => update({ autoHide }),
       setCollapsed: (collapsed) => update({ collapsed }),
       setFloatingOffset: (floatingOffset) => update({ floatingOffset }),
+      setActiveAnimation: (activeAnimation) => update({ activeAnimation }),
       reset: () => {
         const next = { ...DEFAULT_NAV_PREFS, position: deviceDefaultPosition() };
         setState(next);

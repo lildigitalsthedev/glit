@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, ty
 import { ChevronUp, ChevronDown, LayoutGrid, Code2, History, Settings, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useNavPrefs, type NavPosition, type NavSize, type FloatingOffset } from "@/hooks/useNavPrefs";
+import { useNavPrefs, type NavPosition, type NavSize, type NavAnimation, type FloatingOffset } from "@/hooks/useNavPrefs";
 
 const NAV = [
   { to: "/app", label: "Repos", icon: LayoutGrid },
@@ -70,7 +70,7 @@ function snapFloatingOffset(offset: FloatingOffset, width: number): FloatingOffs
   return { x: snappedX, y: offset.y };
 }
 
-/** Blinking terminal-cursor glyph rendered next to the active label. Purely decorative. */
+/** Blinking terminal-cursor glyph rendered next to the active label. Purely decorative. Only used when the "Blink" nav animation is selected. */
 function BlinkCursor({ className }: { className?: string }) {
   return (
     <span
@@ -80,11 +80,24 @@ function BlinkCursor({ className }: { className?: string }) {
   );
 }
 
+/** Icon transition classes for the active nav item, driven by the user's chosen nav animation. Inactive items just get a hover scale bump. */
+function activeIconClass(active: boolean, animation: NavAnimation, translate?: string) {
+  if (!active) return "transition-transform duration-200 group-hover:scale-105";
+  const lift = translate ? `${translate} ` : "";
+  if (animation === "glow") {
+    return `${lift}animate-[nav-glow_1.8s_ease-in-out_infinite]`;
+  }
+  // "blink" and "none" both render a static (non-animated) icon glow — the
+  // blink style gets its motion from the cursor glyph next to the label instead.
+  return `${lift}transition-transform duration-200 drop-shadow-[0_0_6px_currentColor]`;
+}
+
 export function BottomDock() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isMobile = useIsMobile();
   const [mounted, setMounted] = useState(false);
-  const { position, size, autoHide, collapsed, floatingOffset, setCollapsed, setFloatingOffset } = useNavPrefs();
+  const { position, size, autoHide, collapsed, floatingOffset, activeAnimation, setCollapsed, setFloatingOffset } =
+    useNavPrefs();
 
   useEffect(() => setMounted(true), []);
 
@@ -257,16 +270,10 @@ export function BottomDock() {
                   )}
                   aria-hidden="true"
                 />
-                <item.icon
-                  className={cn(
-                    sizing.icon,
-                    "transition-transform duration-200",
-                    active ? "drop-shadow-[0_0_6px_currentColor]" : "group-hover:scale-105",
-                  )}
-                />
+                <item.icon className={cn(sizing.icon, activeIconClass(active, activeAnimation))} />
                 <span className="flex max-w-full items-center gap-0.5 truncate font-semibold">
                   {item.label}
-                  {active && <BlinkCursor className="h-2.5" />}
+                  {active && activeAnimation === "blink" && <BlinkCursor className="h-2.5" />}
                 </span>
               </Link>
             );
@@ -308,16 +315,10 @@ export function BottomDock() {
               )}
               aria-hidden="true"
             />
-            <item.icon
-              className={cn(
-                sizing.icon,
-                "transition-transform duration-200",
-                active ? "-translate-y-0.5 drop-shadow-[0_0_6px_currentColor]" : "group-hover:scale-105",
-              )}
-            />
+            <item.icon className={cn(sizing.icon, activeIconClass(active, activeAnimation, "-translate-y-0.5"))} />
             <span className="flex max-w-full items-center gap-0.5 truncate font-semibold">
               {item.label}
-              {active && <BlinkCursor className="h-2.5" />}
+              {active && activeAnimation === "blink" && <BlinkCursor className="h-2.5" />}
             </span>
           </Link>
         );

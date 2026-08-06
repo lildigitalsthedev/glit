@@ -32,7 +32,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { usePlan } from "@/hooks/usePlan";
 import { useRole } from "@/hooks/useRole";
-import { useNavPrefs, type NavPosition, type NavSize } from "@/hooks/useNavPrefs";
+import { useNavPrefs, type NavPosition, type NavSize, type NavAnimation } from "@/hooks/useNavPrefs";
 import { supabase } from "@/integrations/supabase/client";
 import { AccountRow, ConnectGithubDialog, useAccounts } from "@/components/connect-github";
 import { RequestFeatureDialog } from "@/components/request-feature-dialog";
@@ -85,6 +85,12 @@ const NAV_SIZES: { value: NavSize; label: string }[] = [
   { value: "sm", label: "Small" },
   { value: "md", label: "Medium" },
   { value: "lg", label: "Large" },
+];
+
+const NAV_ANIMATIONS: { value: NavAnimation; label: string; description: string }[] = [
+  { value: "glow", label: "Glow", description: "The active icon pulses with a soft glow." },
+  { value: "blink", label: "Blink", description: "A blinking cursor sits next to the active label." },
+  { value: "none", label: "None", description: "Static highlight — no animation." },
 ];
 
 const TABS = [
@@ -743,6 +749,33 @@ function Settings() {
                         type="button"
                         onClick={() => navPrefs.setSize(option.value)}
                         aria-pressed={active}
+                        className={cn(
+                          "rounded-md border px-3 py-2 text-xs font-medium transition-colors",
+                          active
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border text-muted-foreground hover:bg-secondary hover:text-foreground",
+                        )}
+                      >
+                        {option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="border-t border-border pt-4">
+                <Label className="text-sm">Animation</Label>
+                <p className="text-xs text-muted-foreground">How the active item is highlighted.</p>
+                <div className="mt-2 grid grid-cols-3 gap-2">
+                  {NAV_ANIMATIONS.map((option) => {
+                    const active = navPrefs.activeAnimation === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => navPrefs.setActiveAnimation(option.value)}
+                        aria-pressed={active}
+                        title={option.description}
                         className={cn(
                           "rounded-md border px-3 py-2 text-xs font-medium transition-colors",
                           active
