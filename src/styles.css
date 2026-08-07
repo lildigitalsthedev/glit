@@ -67,11 +67,79 @@
   --color-code-string: var(--code-string);
   --color-code-comment: var(--code-comment);
   --color-line-number: var(--line-number);
+  --color-accent-muted: var(--accent-muted);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-border: var(--accent-border);
+  --color-accent-background: var(--accent-background);
 }
 
+/*
+ * Accent color system.
+ *
+ * `--primary` (and its contrast partner `--primary-foreground`) is the one
+ * value the accent-color picker in Settings actually overrides at runtime
+ * (see src/lib/theme.ts). Every token below is derived FROM `--primary`
+ * rather than hardcoded, so changing the accent automatically cascades into
+ * buttons, active nav/tab states, focus rings, the sidebar, selected
+ * file/folder rows, code-key syntax highlighting, and chart-1 — without
+ * touching a single component. `--accent`/`--accent-foreground` stay as
+ * direct aliases of primary (unchanged from before); `--accent-muted`,
+ * `--accent-hover`, `--accent-border` and `--accent-background` are new,
+ * lighter-touch variants for hover states, subtle borders, and tinted
+ * backgrounds (e.g. `bg-accent-background`, `border-accent-border`).
+ */
 :root {
-  /* Terminal Pro — near-black surfaces, cyan accent */
+  /* Terminal Pro — light surfaces, cyan accent */
+  color-scheme: light;
   --radius: 0.375rem;
+  --background: oklch(0.99 0 0);
+  --foreground: oklch(0.18 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.18 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.18 0 0);
+  --primary: oklch(0.52 0.15 205.5);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.95 0 0);
+  --secondary-foreground: oklch(0.18 0 0);
+  --muted: oklch(0.95 0 0);
+  --muted-foreground: oklch(0.46 0 0);
+  --accent: var(--primary);
+  --accent-foreground: var(--primary-foreground);
+  --accent-muted: color-mix(in oklab, var(--primary) 12%, transparent);
+  --accent-hover: color-mix(in oklab, var(--primary) 88%, black 12%);
+  --accent-border: color-mix(in oklab, var(--primary) 45%, transparent);
+  --accent-background: color-mix(in oklab, var(--primary) 6%, transparent);
+  --destructive: oklch(0.58 0.21 25);
+  --destructive-foreground: oklch(0.99 0 0);
+  --success: oklch(0.55 0.15 155);
+  --success-foreground: oklch(0.99 0 0);
+  --border: oklch(0.9 0 0);
+  --input: oklch(0.9 0 0);
+  --ring: var(--primary);
+  --code-key: var(--primary);
+  --code-string: oklch(0.5 0.14 155);
+  --code-comment: oklch(0.55 0 0);
+  --line-number: oklch(0.75 0 0);
+  --chart-1: var(--primary);
+  --chart-2: oklch(0.55 0.15 155);
+  --chart-3: oklch(0.62 0.15 85);
+  --chart-4: oklch(0.46 0 0);
+  --chart-5: oklch(0.58 0.19 25);
+  --sidebar: oklch(0.97 0 0);
+  --sidebar-foreground: oklch(0.18 0 0);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: oklch(0.93 0 0);
+  --sidebar-accent-foreground: oklch(0.18 0 0);
+  --sidebar-border: oklch(0.9 0 0);
+  --sidebar-ring: var(--primary);
+}
+
+.dark {
+  /* Terminal Pro — near-black surfaces, cyan accent (the app's original,
+     and still default, look). */
+  color-scheme: dark;
   --background: oklch(0.16 0 0);
   --foreground: oklch(0.98 0 0);
   --card: oklch(0.192 0 0);
@@ -84,36 +152,36 @@
   --secondary-foreground: oklch(0.98 0 0);
   --muted: oklch(0.24 0 0);
   --muted-foreground: oklch(0.63 0 0);
-  --accent: oklch(0.872 0.148 205.5);
-  --accent-foreground: oklch(0.16 0 0);
+  --accent: var(--primary);
+  --accent-foreground: var(--primary-foreground);
+  --accent-muted: color-mix(in oklab, var(--primary) 16%, transparent);
+  --accent-hover: color-mix(in oklab, var(--primary) 88%, white 12%);
+  --accent-border: color-mix(in oklab, var(--primary) 40%, transparent);
+  --accent-background: color-mix(in oklab, var(--primary) 8%, transparent);
   --destructive: oklch(0.62 0.21 25);
   --destructive-foreground: oklch(0.98 0 0);
   --success: oklch(0.72 0.17 155);
   --success-foreground: oklch(0.16 0 0);
   --border: oklch(0.253 0 0);
   --input: oklch(0.253 0 0);
-  --ring: oklch(0.872 0.148 205.5);
-  --code-key: oklch(0.872 0.148 205.5);
+  --ring: var(--primary);
+  --code-key: var(--primary);
   --code-string: oklch(0.78 0.16 155);
   --code-comment: oklch(0.42 0 0);
   --line-number: oklch(0.38 0 0);
-  --chart-1: oklch(0.872 0.148 205.5);
+  --chart-1: var(--primary);
   --chart-2: oklch(0.72 0.17 155);
   --chart-3: oklch(0.8 0.16 85);
   --chart-4: oklch(0.63 0 0);
   --chart-5: oklch(0.62 0.21 25);
   --sidebar: oklch(0.16 0 0);
   --sidebar-foreground: oklch(0.98 0 0);
-  --sidebar-primary: oklch(0.872 0.148 205.5);
-  --sidebar-primary-foreground: oklch(0.16 0 0);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
   --sidebar-accent: oklch(0.24 0 0);
   --sidebar-accent-foreground: oklch(0.98 0 0);
   --sidebar-border: oklch(0.253 0 0);
-  --sidebar-ring: oklch(0.872 0.148 205.5);
-}
-
-.dark {
-  color-scheme: dark;
+  --sidebar-ring: var(--primary);
 }
 
 @layer base {

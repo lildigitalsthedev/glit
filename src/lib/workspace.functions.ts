@@ -2,12 +2,21 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 export interface Preferences {
+  /** App-wide appearance: "light" | "dark" | "system". */
   theme: string;
+  /** Hex color (e.g. "#3b82f6"), or null for the built-in default cyan accent. */
+  accentColor: string | null;
   editorFontSize: number;
   tabWidth: number;
   wordWrap: boolean;
   autoSave: boolean;
   notifications: boolean;
+  /** Monaco theme id — see EDITOR_THEMES in src/lib/theme.ts. */
+  editorTheme: string;
+  /** Editor font id — see EDITOR_FONTS in src/lib/theme.ts. */
+  editorFont: string;
+  editorLineHeight: number;
+  editorMinimap: boolean;
   defaultBranch: string | null;
   defaultFolder: string | null;
   activeAccountId: string | null;
@@ -27,11 +36,16 @@ export const getPreferences = createServerFn({ method: "GET" })
       await context.supabase.from("user_preferences").insert({ user_id: context.userId });
       return {
         theme: "dark",
+        accentColor: null,
         editorFontSize: 13,
         tabWidth: 2,
         wordWrap: true,
         autoSave: true,
         notifications: true,
+        editorTheme: "dark",
+        editorFont: "jetbrains-mono",
+        editorLineHeight: 1.5,
+        editorMinimap: false,
         defaultBranch: null,
         defaultFolder: null,
         activeAccountId: null,
@@ -40,11 +54,16 @@ export const getPreferences = createServerFn({ method: "GET" })
     }
     return {
       theme: data.theme as string,
+      accentColor: data.accent_color as string | null,
       editorFontSize: data.editor_font_size as number,
       tabWidth: data.tab_width as number,
       wordWrap: data.word_wrap as boolean,
       autoSave: data.auto_save as boolean,
       notifications: data.notifications as boolean,
+      editorTheme: data.editor_theme as string,
+      editorFont: data.editor_font as string,
+      editorLineHeight: Number(data.editor_line_height),
+      editorMinimap: data.editor_minimap as boolean,
       defaultBranch: data.default_branch as string | null,
       defaultFolder: data.default_folder as string | null,
       activeAccountId: data.active_account_id as string | null,
@@ -58,11 +77,16 @@ export const updatePreferences = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const patch: Record<string, unknown> = { user_id: context.userId };
     if (data.theme !== undefined) patch["theme"] = data.theme;
+    if (data.accentColor !== undefined) patch["accent_color"] = data.accentColor;
     if (data.editorFontSize !== undefined) patch["editor_font_size"] = data.editorFontSize;
     if (data.tabWidth !== undefined) patch["tab_width"] = data.tabWidth;
     if (data.wordWrap !== undefined) patch["word_wrap"] = data.wordWrap;
     if (data.autoSave !== undefined) patch["auto_save"] = data.autoSave;
     if (data.notifications !== undefined) patch["notifications"] = data.notifications;
+    if (data.editorTheme !== undefined) patch["editor_theme"] = data.editorTheme;
+    if (data.editorFont !== undefined) patch["editor_font"] = data.editorFont;
+    if (data.editorLineHeight !== undefined) patch["editor_line_height"] = data.editorLineHeight;
+    if (data.editorMinimap !== undefined) patch["editor_minimap"] = data.editorMinimap;
     if (data.defaultBranch !== undefined) patch["default_branch"] = data.defaultBranch;
     if (data.defaultFolder !== undefined) patch["default_folder"] = data.defaultFolder;
     if (data.activeAccountId !== undefined) patch["active_account_id"] = data.activeAccountId;

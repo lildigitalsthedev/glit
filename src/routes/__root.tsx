@@ -12,6 +12,8 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AuthProvider } from "@/hooks/useAuth";
+import { AppThemeProvider } from "@/hooks/useAppTheme";
+import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
@@ -115,9 +117,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className="dark">
+    // suppressHydrationWarning: the inline script below can flip the
+    // "dark" class / set the --primary override before React hydrates
+    // (reading the visitor's stored theme + accent color), which will
+    // legitimately differ from this server-rendered markup. That's the
+    // whole point — it's what avoids a flash of the wrong theme on load.
+    <html lang="en" className="dark" suppressHydrationWarning>
       <head>
         <HeadContent />
+        {/* Must run before paint so the correct theme/accent are applied
+            immediately, instead of flashing the default and then snapping
+            to the stored preference once React hydrates. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
       <body>
         {children}
@@ -133,9 +144,11 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-        <Outlet />
-        <Toaster />
+        <AppThemeProvider>
+          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+          <Outlet />
+          <Toaster />
+        </AppThemeProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

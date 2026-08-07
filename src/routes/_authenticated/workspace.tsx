@@ -122,6 +122,11 @@ import { usePlan } from "@/hooks/usePlan";
 import { useAccounts } from "@/components/connect-github";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import {
+  defineCustomEditorThemes,
+  editorFontStack,
+  monacoThemeName,
+} from "@/lib/theme";
 
 export const Route = createFileRoute("/_authenticated/workspace")({
   head: () => ({
@@ -1627,19 +1632,21 @@ function Workspace() {
           </pre>
         ) : (
           <Editor
-            theme="vs-dark"
+            theme={monacoThemeName(prefs.data?.editorTheme ?? "dark")}
             language={languageFor(path)}
             value={content}
             onChange={(value) => setContent(value ?? "")}
+            beforeMount={(monaco) => defineCustomEditorThemes(monaco)}
             onMount={(editorInstance) => {
               editorInstanceRef.current = editorInstance;
             }}
             options={{
-              fontFamily: "JetBrains Mono, ui-monospace, monospace",
+              fontFamily: editorFontStack(prefs.data?.editorFont ?? "jetbrains-mono"),
               fontSize: prefs.data?.editorFontSize ?? 13,
+              lineHeight: (prefs.data?.editorFontSize ?? 13) * (prefs.data?.editorLineHeight ?? 1.5),
               tabSize: prefs.data?.tabWidth ?? 2,
               wordWrap: prefs.data?.wordWrap ? "on" : "off",
-              minimap: { enabled: false },
+              minimap: { enabled: prefs.data?.editorMinimap ?? false },
               scrollBeyondLastLine: false,
               padding: { top: 12 },
             }}

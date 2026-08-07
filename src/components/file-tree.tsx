@@ -360,8 +360,7 @@ function FileRow({
         }}
         style={{ paddingLeft }}
         className={cn(
-          "flex w-full min-w-0 items-center gap-2 truncate rounded py-1 text-left font-mono text-[11px] transition-colors duration-150",
-          onToggleFavorite ? "pr-12" : "pr-7",
+          "flex w-full min-w-0 items-center gap-2 truncate rounded py-1 pr-7 text-left font-mono text-[11px] transition-colors duration-150",
           isActive
             ? "bg-secondary text-foreground"
             : "text-muted-foreground hover:bg-secondary/40 hover:text-foreground",
@@ -377,26 +376,6 @@ function FileRow({
           )}
         </span>
       </button>
-
-      {onToggleFavorite && (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleFavorite(path, !isFavorite);
-          }}
-          aria-label={isFavorite ? `Remove ${name} from Favorites` : `Favorite ${name}`}
-          title={isFavorite ? "Remove Favorite" : "Favorite this file"}
-          className={cn(
-            "absolute right-7 flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground transition-opacity duration-150 hover:bg-secondary hover:text-foreground",
-            isFavorite
-              ? "opacity-100"
-              : "opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100",
-          )}
-        >
-          <Star className={cn("size-3.5", isFavorite && "fill-primary text-primary")} />
-        </button>
-      )}
 
       <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
         <DropdownMenuTrigger asChild>

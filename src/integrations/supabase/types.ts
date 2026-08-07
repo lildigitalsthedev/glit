@@ -510,6 +510,7 @@ export type Database = {
       }
       user_preferences: {
         Row: {
+          accent_color: string | null
           active_account_id: string | null
           active_repo: string | null
           active_workspace_id: string | null
@@ -517,7 +518,11 @@ export type Database = {
           created_at: string
           default_branch: string | null
           default_folder: string | null
+          editor_font: string
           editor_font_size: number
+          editor_line_height: number
+          editor_minimap: boolean
+          editor_theme: string
           notifications: boolean
           plan: string
           plan_updated_at: string | null
@@ -528,6 +533,7 @@ export type Database = {
           word_wrap: boolean
         }
         Insert: {
+          accent_color?: string | null
           active_account_id?: string | null
           active_repo?: string | null
           active_workspace_id?: string | null
@@ -535,7 +541,11 @@ export type Database = {
           created_at?: string
           default_branch?: string | null
           default_folder?: string | null
+          editor_font?: string
           editor_font_size?: number
+          editor_line_height?: number
+          editor_minimap?: boolean
+          editor_theme?: string
           notifications?: boolean
           plan?: string
           plan_updated_at?: string | null
@@ -546,6 +556,7 @@ export type Database = {
           word_wrap?: boolean
         }
         Update: {
+          accent_color?: string | null
           active_account_id?: string | null
           active_repo?: string | null
           active_workspace_id?: string | null
@@ -553,7 +564,11 @@ export type Database = {
           created_at?: string
           default_branch?: string | null
           default_folder?: string | null
+          editor_font?: string
           editor_font_size?: number
+          editor_line_height?: number
+          editor_minimap?: boolean
+          editor_theme?: string
           notifications?: boolean
           plan?: string
           plan_updated_at?: string | null

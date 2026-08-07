@@ -28,17 +28,32 @@ import {
   Bot,
   Trash2,
   AlertTriangle,
+  Sun,
+  Moon,
+  Palette,
+  Minus,
+  Plus,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { usePlan } from "@/hooks/usePlan";
 import { useRole } from "@/hooks/useRole";
 import { useNavPrefs, type NavPosition, type NavSize, type NavAnimation } from "@/hooks/useNavPrefs";
+import { useAppTheme } from "@/hooks/useAppTheme";
 import { supabase } from "@/integrations/supabase/client";
 import { AccountRow, ConnectGithubDialog, useAccounts } from "@/components/connect-github";
 import { RequestFeatureDialog } from "@/components/request-feature-dialog";
 import { AiProvidersSection } from "@/components/ai-providers-section";
+import { AccentColorPicker } from "@/components/accent-color-picker";
 import { getPreferences, updatePreferences, type Preferences } from "@/lib/workspace.functions";
 import { deleteUserAccount } from "@/lib/accounts.functions";
+import {
+  ACCENT_PRESETS,
+  EDITOR_FONTS,
+  EDITOR_FONT_SIZES,
+  EDITOR_LINE_HEIGHTS,
+  EDITOR_THEMES,
+  type AppTheme,
+} from "@/lib/theme";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
@@ -123,8 +138,13 @@ export const Route = createFileRoute("/_authenticated/settings")({
   component: Settings,
 });
 
-const FONT_SIZES = [12, 13, 14, 15, 16, 18];
 const TAB_WIDTHS = [2, 4, 8];
+
+const APP_THEMES: { value: AppTheme; label: string; icon: typeof Sun }[] = [
+  { value: "light", label: "Light", icon: Sun },
+  { value: "dark", label: "Dark", icon: Moon },
+  { value: "system", label: "System", icon: Monitor },
+];
 
 /** Change-password dialog. Talks to Supabase auth directly on the client —
  * there's no server function involved, so it works even if the caller
@@ -317,6 +337,7 @@ function Settings() {
   const { plan, isPro } = usePlan();
   const { isOwner, isDeveloper } = useRole();
   const navPrefs = useNavPrefs();
+  const appTheme = useAppTheme();
   const search = Route.useSearch();
 
   const prefsFn = useServerFn(getPreferences);
@@ -546,8 +567,87 @@ function Settings() {
           )}
         </TabsContent>
 
-        {/* Preferences: editor, defaults, navigation */}
+        {/* Preferences: appearance, editor, defaults, navigation */}
         <TabsContent value="preferences" className="mt-4 space-y-6">
+          <section>
+            <div className="flex items-center gap-2">
+              <Palette className="size-4 text-muted-foreground" />
+              <h2 className="text-sm font-semibold">Appearance</h2>
+            </div>
+
+            <div className="mt-3 space-y-4 rounded-md border border-border bg-card p-4">
+              <div>
+                <Label className="text-sm">Theme</Label>
+                <p className="text-xs text-muted-foreground">
+                  Light, dark, or match your device's setting. Applies immediately.
+                </p>
+                <div className="mt-2 grid grid-cols-3 gap-2">
+                  {APP_THEMES.map((option) => {
+                    const active = appTheme.appTheme === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => appTheme.setAppTheme(option.value)}
+                        aria-pressed={active}
+                        className={cn(
+                          "flex flex-col items-center gap-1.5 rounded-md border px-3 py-3 text-center transition-colors",
+                          active
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border text-muted-foreground hover:bg-secondary hover:text-foreground",
+                        )}
+                      >
+                        <option.icon className="size-4" />
+                        <span className="text-xs font-medium">{option.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="border-t border-border pt-4">
+                <Label className="text-sm">Accent color</Label>
+                <p className="text-xs text-muted-foreground">
+                  Controls buttons, active states, focus rings, and selected rows throughout the app.
+                </p>
+                <div className="mt-2">
+                  <AccentColorPicker
+                    value={appTheme.accentColor ?? "#22d3ee"}
+                    onChange={(hex) => appTheme.setAccentColor(hex)}
+                  />
+                </div>
+              </div>
+
+              <div className="border-t border-border pt-4">
+                <Label className="text-sm">Presets</Label>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {ACCENT_PRESETS.map((preset) => {
+                    const active = preset.hex === null ? appTheme.accentColor === null : appTheme.accentColor === preset.hex;
+                    return (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        title={preset.label}
+                        aria-label={preset.label}
+                        aria-pressed={active}
+                        onClick={() => appTheme.setAccentColor(preset.hex)}
+                        className={cn(
+                          "flex size-8 shrink-0 items-center justify-center rounded-full border-2 transition-transform",
+                          active ? "border-foreground scale-110" : "border-transparent hover:scale-105",
+                        )}
+                      >
+                        <span
+                          className="size-6 rounded-full ring-1 ring-border"
+                          style={{ backgroundColor: preset.hex ?? "oklch(0.872 0.148 205.5)" }}
+                        />
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </section>
+
           <section>
             <div className="flex items-center gap-2">
               <SlidersHorizontal className="size-4 text-muted-foreground" />
@@ -557,20 +657,126 @@ function Settings() {
             <div className="mt-3 divide-y divide-border rounded-md border border-border bg-card">
               <div className="flex items-center justify-between gap-4 px-4 py-3">
                 <div>
-                  <Label className="text-sm">Font size</Label>
-                  <p className="text-xs text-muted-foreground">Editor text size in pixels.</p>
+                  <Label className="text-sm">Editor theme</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Independent from the app theme — pick any combination.
+                  </p>
                 </div>
                 <Select
-                  value={String(prefs.data?.editorFontSize ?? 13)}
-                  onValueChange={(value) => setPref({ editorFontSize: Number(value) })}
+                  value={prefs.data?.editorTheme ?? "dark"}
+                  onValueChange={(value) => setPref({ editorTheme: value })}
                 >
-                  <SelectTrigger className="h-8 w-24 font-mono text-xs">
+                  <SelectTrigger className="h-8 w-40 text-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {FONT_SIZES.map((size) => (
-                      <SelectItem key={size} value={String(size)} className="font-mono text-xs">
-                        {size}px
+                    <p className="px-2 pb-1 pt-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Light
+                    </p>
+                    {EDITOR_THEMES.filter((t) => t.kind === "light").map((t) => (
+                      <SelectItem key={t.id} value={t.id} className="text-xs">
+                        <span
+                          className="mr-1.5 inline-block size-2.5 rounded-full ring-1 ring-border"
+                          style={{ backgroundColor: t.previewAccent }}
+                        />
+                        {t.label}
+                      </SelectItem>
+                    ))}
+                    <p className="px-2 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Dark
+                    </p>
+                    {EDITOR_THEMES.filter((t) => t.kind === "dark").map((t) => (
+                      <SelectItem key={t.id} value={t.id} className="text-xs">
+                        <span
+                          className="mr-1.5 inline-block size-2.5 rounded-full ring-1 ring-border"
+                          style={{ backgroundColor: t.previewAccent }}
+                        />
+                        {t.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-center justify-between gap-4 px-4 py-3">
+                <div>
+                  <Label className="text-sm">Font</Label>
+                  <p className="text-xs text-muted-foreground">Typeface used in the code editor.</p>
+                </div>
+                <Select
+                  value={prefs.data?.editorFont ?? "jetbrains-mono"}
+                  onValueChange={(value) => setPref({ editorFont: value })}
+                >
+                  <SelectTrigger className="h-8 w-40 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {EDITOR_FONTS.map((font) => (
+                      <SelectItem key={font.id} value={font.id} className="text-xs" style={{ fontFamily: font.stack }}>
+                        {font.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-center justify-between gap-4 px-4 py-3">
+                <div>
+                  <Label className="text-sm">Font size</Label>
+                  <p className="text-xs text-muted-foreground">Editor text size in pixels.</p>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="size-8"
+                    aria-label="Decrease font size"
+                    disabled={(prefs.data?.editorFontSize ?? 13) <= EDITOR_FONT_SIZES[0]!}
+                    onClick={() => {
+                      const sizes = EDITOR_FONT_SIZES;
+                      const current = prefs.data?.editorFontSize ?? 13;
+                      const idx = Math.max(0, sizes.indexOf(current) - 1);
+                      setPref({ editorFontSize: sizes[idx === -1 ? 0 : idx] ?? current });
+                    }}
+                  >
+                    <Minus className="size-3.5" />
+                  </Button>
+                  <span className="w-10 text-center font-mono text-xs">{prefs.data?.editorFontSize ?? 13}px</span>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="size-8"
+                    aria-label="Increase font size"
+                    disabled={(prefs.data?.editorFontSize ?? 13) >= EDITOR_FONT_SIZES[EDITOR_FONT_SIZES.length - 1]!}
+                    onClick={() => {
+                      const sizes = EDITOR_FONT_SIZES;
+                      const current = prefs.data?.editorFontSize ?? 13;
+                      const idx = sizes.indexOf(current);
+                      const next = idx === -1 ? sizes[0]! : (sizes[Math.min(sizes.length - 1, idx + 1)] ?? current);
+                      setPref({ editorFontSize: next });
+                    }}
+                  >
+                    <Plus className="size-3.5" />
+                  </Button>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between gap-4 px-4 py-3">
+                <div>
+                  <Label className="text-sm">Line height</Label>
+                  <p className="text-xs text-muted-foreground">Vertical spacing between lines.</p>
+                </div>
+                <Select
+                  value={String(prefs.data?.editorLineHeight ?? 1.5)}
+                  onValueChange={(value) => setPref({ editorLineHeight: Number(value) })}
+                >
+                  <SelectTrigger className="h-8 w-28 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {EDITOR_LINE_HEIGHTS.map((option) => (
+                      <SelectItem key={option.value} value={String(option.value)} className="text-xs">
+                        {option.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -610,6 +816,20 @@ function Settings() {
                   id="word-wrap"
                   checked={prefs.data?.wordWrap ?? true}
                   onCheckedChange={(checked) => setPref({ wordWrap: checked })}
+                />
+              </div>
+
+              <div className="flex items-center justify-between gap-4 px-4 py-3">
+                <div>
+                  <Label htmlFor="minimap" className="text-sm">
+                    Minimap
+                  </Label>
+                  <p className="text-xs text-muted-foreground">Show a zoomed-out code overview on the right.</p>
+                </div>
+                <Switch
+                  id="minimap"
+                  checked={prefs.data?.editorMinimap ?? false}
+                  onCheckedChange={(checked) => setPref({ editorMinimap: checked })}
                 />
               </div>
 
