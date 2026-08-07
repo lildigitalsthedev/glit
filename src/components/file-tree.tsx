@@ -676,7 +676,7 @@ function FileTreeInner({
             isActive={match.path === activePath}
             paddingLeft={8}
             highlight={{ start: match.highlightStart, length: match.highlightLength }}
-            isFavorite={favoritePaths?.has(match.path)}
+            isFavorite={favoritePaths?.has(match.path) ?? false}
             onOpenFile={onOpenFile}
             onCopyPath={onCopyPath}
             onDeleteFile={onDeleteFile}
@@ -746,7 +746,7 @@ function FileTreeInner({
           label={entry.name}
           isActive={isActiveFile}
           paddingLeft={indent + 14}
-          isFavorite={favoritePaths?.has(entry.path)}
+          isFavorite={favoritePaths?.has(entry.path) ?? false}
           onOpenFile={onOpenFile}
           onCopyPath={onCopyPath}
           onDeleteFile={onDeleteFile}

@@ -109,7 +109,7 @@ export function ProductPreview() {
     if (reducedMotion) return;
     const timeout = setTimeout(() => {
       setPhase((current) => {
-        const next = PHASE_ORDER[(PHASE_ORDER.indexOf(current) + 1) % PHASE_ORDER.length];
+        const next = PHASE_ORDER[(PHASE_ORDER.indexOf(current) + 1) % PHASE_ORDER.length] ?? current;
         if (next !== "typing-commit") setTyped("");
         return next;
       });
