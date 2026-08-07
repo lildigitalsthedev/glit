@@ -8,6 +8,7 @@ import { diffLines } from "diff";
 import {
   FilePlus,
   FilePlus2,
+  FileCode2,
   FolderGit2,
   GitBranch,
   Loader2,
@@ -1009,12 +1010,15 @@ function Workspace() {
 
   const editorPanel = (
     <section className="flex min-h-0 flex-1 flex-col">
-      <div className="flex items-center gap-1.5 border-b border-border p-1.5">
+      <div className="flex items-center gap-1.5 border-b border-border p-1.5 md:justify-end">
+        {/* Shown on mobile only — desktop/tablet get this same field up in
+            the main toolbar instead, to avoid a second row eating vertical
+            space above the editor. */}
         <Input
           value={path}
           onChange={(e) => setPath(e.target.value)}
           placeholder="src/components/Button.tsx"
-          className="h-8 font-mono text-xs"
+          className="h-8 font-mono text-xs md:hidden"
         />
         {path && !showDiff && (
           <DropdownMenu>
@@ -1230,6 +1234,20 @@ function Workspace() {
             <span className="truncate">{latestCommit.data.message}</span>
           </span>
         )}
+        {/* Current-file indicator: lives here (not in its own row above the
+            editor) so desktop/tablet get one compact toolbar instead of two.
+            Takes the leftover space between the branch/commit info and the
+            action buttons; mobile keeps its own path box in the editor
+            header instead, where a full-width field reads better. */}
+        <div className="hidden min-w-0 flex-1 items-center gap-1.5 md:flex">
+          <FileCode2 className="size-3.5 shrink-0 text-muted-foreground" />
+          <Input
+            value={path}
+            onChange={(e) => setPath(e.target.value)}
+            placeholder="src/components/Button.tsx"
+            className="h-8 min-w-0 font-mono text-xs"
+          />
+        </div>
         <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
           <Button
             variant="outline"
@@ -1242,14 +1260,14 @@ function Workspace() {
             <span className="sm:hidden">{showDiff ? "Hide" : "Diff"}</span>
           </Button>
 
-          {/* On narrow screens, five separate icon-only buttons here would
-              wrap into a cramped, hard-to-tap row. Instead, collapse Upload /
-              Bulk upload / Upload folder / Upload ZIP / New file into one
-              "Add" menu whose items get a full-width, comfortably-sized tap
-              target. The full row of individual buttons stays for sm+. */}
+          {/* All file/AI actions collapse into one "Add" menu at every
+              screen size — a row of eight separate buttons ate too much
+              width on desktop/tablet, leaving little room for the editor.
+              Menu items still get a full-width, comfortably-sized tap
+              target on mobile. */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon" className="h-9 w-9 shrink-0 sm:hidden">
+              <Button variant="outline" size="icon" className="h-9 w-9 shrink-0">
                 <Plus className="size-4" />
                 <span className="sr-only">Add files</span>
               </Button>
@@ -1322,90 +1340,6 @@ function Workspace() {
             onChange={(e) => onUpload(e.target.files)}
           />
 
-          <Button
-            variant="outline"
-            size="sm"
-            className="hidden sm:inline-flex"
-            onClick={() => uploadInputRef.current?.click()}
-          >
-            <Upload className="size-3.5" />
-            <span className="hidden sm:inline">Upload</span>
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="hidden sm:inline-flex"
-            onClick={openBulkUpload}
-          >
-            {isPro ? (
-              <UploadCloud className="size-3.5" />
-            ) : (
-              <Lock className="size-3.5" />
-            )}
-            <span className="hidden sm:inline">Bulk upload</span>
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="hidden sm:inline-flex"
-            onClick={openUploadFolder}
-          >
-            {isPro ? (
-              <FolderUp className="size-3.5" />
-            ) : (
-              <Lock className="size-3.5" />
-            )}
-            <span className="hidden sm:inline">Upload folder</span>
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="hidden sm:inline-flex"
-            onClick={openUploadZip}
-          >
-            {isPro ? (
-              <FileArchive className="size-3.5" />
-            ) : (
-              <Lock className="size-3.5" />
-            )}
-            <span className="hidden sm:inline">Upload ZIP</span>
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="hidden sm:inline-flex"
-            onClick={() => setNewFileOpen(true)}
-          >
-            <FilePlus className="size-3.5" />
-            <span className="hidden sm:inline">New file</span>
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="hidden sm:inline-flex"
-            onClick={openAiGenerate}
-          >
-            {isPro ? <Sparkles className="size-3.5" /> : <Lock className="size-3.5" />}
-            <span className="hidden sm:inline">Generate</span>
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="hidden sm:inline-flex"
-            onClick={openAiEdit}
-          >
-            {isPro ? <Wand2 className="size-3.5" /> : <Lock className="size-3.5" />}
-            <span className="hidden sm:inline">Edit with AI</span>
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="hidden sm:inline-flex"
-            onClick={openAiChat}
-          >
-            {isPro ? <MessageSquare className="size-3.5" /> : <Lock className="size-3.5" />}
-            <span className="hidden sm:inline">Ask repo</span>
-          </Button>
           <Button
             size="sm"
             className="relative h-9 md:hidden"
