@@ -288,6 +288,30 @@ function Workspace() {
   // only a handful of well-known editor methods are used here.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const editorInstanceRef = useRef<any>(null);
+  // The monaco namespace itself (captured in beforeMount), needed to force
+  // a font re-measurement — see the effect below.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const monacoRef = useRef<any>(null);
+
+  // Monaco caches character-width measurements per font signature and
+  // reuses them until told otherwise. Two related gotchas this works
+  // around: (1) if a webfont (e.g. Fira Code) is still loading the moment
+  // Monaco first measures it, the browser silently measures the fallback
+  // and never re-checks once the real font arrives; (2) switching the
+  // font-family preference alone doesn't reliably trigger Monaco to
+  // recompute glyph widths / line height metrics in every browser. Calling
+  // `remeasureFonts()` after the target webfont has actually finished
+  // loading (and once more as a fallback) fixes both.
+  useEffect(() => {
+    const monaco = monacoRef.current;
+    if (!monaco) return;
+    const remeasure = () => monaco.editor.remeasureFonts();
+    if (typeof document !== "undefined" && "fonts" in document) {
+      void document.fonts.ready.then(remeasure);
+    }
+    const timeout = setTimeout(remeasure, 150);
+    return () => clearTimeout(timeout);
+  }, [prefs.data?.editorFont, prefs.data?.editorFontSize, prefs.data?.editorTheme]);
   // Tracks which repo we've already tried to auto-reopen the last file
   // for, so the restore effect below fires once per repo visit rather
   // than re-triggering on every render or fighting the user's own clicks.
@@ -1636,7 +1660,10 @@ function Workspace() {
             language={languageFor(path)}
             value={content}
             onChange={(value) => setContent(value ?? "")}
-            beforeMount={(monaco) => defineCustomEditorThemes(monaco)}
+            beforeMount={(monaco) => {
+              monacoRef.current = monaco;
+              defineCustomEditorThemes(monaco);
+            }}
             onMount={(editorInstance) => {
               editorInstanceRef.current = editorInstance;
             }}
