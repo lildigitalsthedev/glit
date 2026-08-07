@@ -119,6 +119,8 @@ import { FileTree } from "@/components/file-tree";
 import { FileBreadcrumbs } from "@/components/breadcrumb-nav";
 import { EmptyState } from "@/components/empty-state";
 import { usePlan } from "@/hooks/usePlan";
+import { useAccounts } from "@/components/connect-github";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/workspace")({
@@ -183,6 +185,14 @@ function Workspace() {
   const prefs = useQuery({ queryKey: ["prefs"], queryFn: () => prefsFn() });
   const accountId = prefs.data?.activeAccountId ?? null;
   const fullName = prefs.data?.activeRepo ?? null;
+
+  // Reads off the shared ["accounts"] cache (same one the settings page
+  // populates), so this doesn't trigger an extra fetch on its own — just
+  // gives us the connected account's avatar to show next to the repo name.
+  const accounts = useAccounts();
+  const activeAccount = accounts.data?.find((a) => a.id === accountId) ?? null;
+  const repoOwner = fullName?.split("/")[0] ?? null;
+  const repoShortName = fullName ? (fullName.split("/").slice(1).join("/") || fullName) : null;
 
   // Reads off the same ["prefs"] cache already populated above, so this
   // doesn't trigger an extra fetch — see usePlan for the shared plan logic.
@@ -1422,7 +1432,18 @@ function Workspace() {
         >
           <Menu className="size-4" />
         </Button>
-        <span className="min-w-0 truncate font-mono text-sm">{fullName}</span>
+        <Avatar className="size-6 shrink-0" title={fullName ?? undefined}>
+          <AvatarImage src={activeAccount?.avatarUrl ?? undefined} alt={repoOwner ?? ""} />
+          <AvatarFallback className="text-[10px]">
+            {(repoOwner ?? "?").slice(0, 1).toUpperCase()}
+          </AvatarFallback>
+        </Avatar>
+        <span
+          className="min-w-0 truncate font-mono text-sm"
+          title={fullName ?? undefined}
+        >
+          {repoShortName ?? "No repository"}
+        </span>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
