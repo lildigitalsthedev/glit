@@ -208,7 +208,7 @@ export async function updateWorkspace(
   if (patch.defaultFolder !== undefined) update["default_folder"] = patch.defaultFolder?.trim() || null;
 
   if (Object.keys(update).length > 0) {
-    const { error } = await supabaseAdmin.from("workspaces").update(update).eq("id", workspaceId);
+    const { error } = await supabaseAdmin.from("workspaces").update(update as never).eq("id", workspaceId);
     if (error) throw new Error(error.message);
   }
   return getWorkspace(userId, workspaceId);
