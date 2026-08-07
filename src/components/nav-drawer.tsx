@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
-import { LayoutGrid, Code2, History, Settings, Sparkles, Crown, Wrench } from "lucide-react";
+import { LayoutGrid, Code2, History, Settings, Sparkles, Crown, Wrench, Users } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { WorkspaceSwitcher } from "@/components/workspace-switcher";
 import { useRole } from "@/hooks/useRole";
 import { cn } from "@/lib/utils";
 
@@ -8,6 +9,7 @@ const PRIMARY = [
   { to: "/app", label: "Repositories", icon: LayoutGrid },
   { to: "/workspace", label: "Workspace", icon: Code2 },
   { to: "/activity", label: "Activity", icon: History },
+  { to: "/team", label: "Team & workspaces", icon: Users },
 ] as const;
 
 const ACCOUNT = [
@@ -74,6 +76,9 @@ export function NavDrawer({
         <SheetHeader className="space-y-0 text-left">
           <SheetTitle className="font-mono text-sm">gitpush</SheetTitle>
         </SheetHeader>
+        <div className="mt-4">
+          <WorkspaceSwitcher onNavigate={() => onOpenChange(false)} />
+        </div>
         <div className="mt-4">
           {renderGroup("Navigate", PRIMARY)}
           {renderGroup("Account", ACCOUNT)}
