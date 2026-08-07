@@ -397,6 +397,14 @@ function Workspace() {
   const diff = useMemo(() => (showDiff ? diffLines(original, content) : []), [showDiff, original, content]);
   const dirty = content !== original;
 
+  // The diff toggle only renders while dirty is true (it's a floating
+  // button above the editor). If changes get reverted/saved while the
+  // diff view is open, drop back to the normal editor instead of leaving
+  // showDiff stuck true with no visible way to turn it off.
+  useEffect(() => {
+    if (!dirty) setShowDiff(false);
+  }, [dirty]);
+
   // --- Repository actions menu handlers -------------------------------
   function handleDownloadZip() {
     if (!accountId || !fullName) return;
@@ -1009,90 +1017,19 @@ function Workspace() {
   );
 
   const editorPanel = (
-    <section className="flex min-h-0 flex-1 flex-col">
-      <div className="flex items-center gap-1.5 border-b border-border p-1.5 md:justify-end">
-        {/* Shown on mobile only — desktop/tablet get this same field up in
-            the main toolbar instead, to avoid a second row eating vertical
-            space above the editor. */}
-        <Input
-          value={path}
-          onChange={(e) => setPath(e.target.value)}
-          placeholder="src/components/Button.tsx"
-          className="h-8 font-mono text-xs md:hidden"
-        />
-        {path && !showDiff && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                size="icon"
-                className="size-8 shrink-0 text-muted-foreground hover:text-foreground"
-                aria-label="Editor edit actions"
-                title="Edit actions"
-              >
-                <Pencil className="size-3.5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={handleEditorUndo}>
-                <Undo2 className="size-3.5" />
-                Undo
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={handleEditorRedo}>
-                <Redo2 className="size-3.5" />
-                Redo
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={handleEditorSelectAll}>
-                <TextSelect className="size-3.5" />
-                Select all
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => void handleEditorCopyAll()}>
-                <Copy className="size-3.5" />
-                Copy all
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => void handleEditorPaste()}>
-                <ClipboardPaste className="size-3.5" />
-                Paste
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={handleEditorFindReplace}>
-                <Search className="size-3.5" />
-                Find &amp; replace
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={handleEditorGotoLine}>
-                <Hash className="size-3.5" />
-                Go to line
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={handleEditorFormatDocument}>
-                <AlignLeft className="size-3.5" />
-                Format document
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={handleEditorToggleComment}>
-                <Slash className="size-3.5" />
-                Toggle comment
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={handleEditorTrimWhitespace}>
-                <Eraser className="size-3.5" />
-                Trim trailing whitespace
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={() => void handleEditorCutAll()}>
-                <Scissors className="size-3.5" />
-                Cut all
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onSelect={handleEditorClearAll}
-                className="text-destructive focus:text-destructive"
-              >
-                <Trash2 className="size-3.5" />
-                Clear all
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-      </div>
+    <section className="relative flex min-h-0 flex-1 flex-col">
+      {/* Floating instead of a permanent row — it only takes up space
+          above the editor when there's actually something to diff. */}
+      {path && dirty && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="absolute right-2 top-2 z-10 h-8 shadow-md"
+          onClick={() => setShowDiff((v) => !v)}
+        >
+          {showDiff ? "Hide diff" : "View diff"}
+        </Button>
+      )}
       <div className="min-h-0 flex-1 overflow-auto">
         {!path ? (
           <div className="flex h-full items-center justify-center">
@@ -1234,12 +1171,10 @@ function Workspace() {
             <span className="truncate">{latestCommit.data.message}</span>
           </span>
         )}
-        {/* Current-file indicator: lives here (not in its own row above the
-            editor) so desktop/tablet get one compact toolbar instead of two.
-            Takes the leftover space between the branch/commit info and the
-            action buttons; mobile keeps its own path box in the editor
-            header instead, where a full-width field reads better. */}
-        <div className="hidden min-w-0 flex-1 items-center gap-1.5 md:flex">
+        {/* Current-file indicator: lives here at every size now, filling
+            the leftover space in this row instead of leaving it empty
+            when mobile wraps the action buttons onto a second line. */}
+        <div className="flex min-w-0 flex-1 items-center gap-1.5">
           <FileCode2 className="size-3.5 shrink-0 text-muted-foreground" />
           <Input
             value={path}
@@ -1249,16 +1184,81 @@ function Workspace() {
           />
         </div>
         <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-9 sm:h-8"
-            onClick={() => setShowDiff((v) => !v)}
-            disabled={!dirty}
-          >
-            <span className="hidden sm:inline">{showDiff ? "Hide diff" : "View diff"}</span>
-            <span className="sm:hidden">{showDiff ? "Hide" : "Diff"}</span>
-          </Button>
+          {/* Mobile-only edit-actions menu, in the slot the diff toggle
+              used to occupy — diff itself is now a floating button that
+              only appears above the editor once there are changes. */}
+          {path && !showDiff && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="size-9 shrink-0 text-muted-foreground hover:text-foreground md:hidden"
+                  aria-label="Editor edit actions"
+                  title="Edit actions"
+                >
+                  <Pencil className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={handleEditorUndo}>
+                  <Undo2 className="size-3.5" />
+                  Undo
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={handleEditorRedo}>
+                  <Redo2 className="size-3.5" />
+                  Redo
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={handleEditorSelectAll}>
+                  <TextSelect className="size-3.5" />
+                  Select all
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => void handleEditorCopyAll()}>
+                  <Copy className="size-3.5" />
+                  Copy all
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => void handleEditorPaste()}>
+                  <ClipboardPaste className="size-3.5" />
+                  Paste
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={handleEditorFindReplace}>
+                  <Search className="size-3.5" />
+                  Find &amp; replace
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={handleEditorGotoLine}>
+                  <Hash className="size-3.5" />
+                  Go to line
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={handleEditorFormatDocument}>
+                  <AlignLeft className="size-3.5" />
+                  Format document
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={handleEditorToggleComment}>
+                  <Slash className="size-3.5" />
+                  Toggle comment
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={handleEditorTrimWhitespace}>
+                  <Eraser className="size-3.5" />
+                  Trim trailing whitespace
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={() => void handleEditorCutAll()}>
+                  <Scissors className="size-3.5" />
+                  Cut all
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={handleEditorClearAll}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="size-3.5" />
+                  Clear all
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
 
           {/* All file/AI actions collapse into one "Add" menu at every
               screen size — a row of eight separate buttons ate too much
