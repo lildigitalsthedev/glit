@@ -1236,19 +1236,31 @@ function Workspace() {
   );
 
   const editorPanel = (
-    <section className="relative flex min-h-0 flex-1 flex-col">
-      {/* Floating instead of a permanent row — it only takes up space
-          above the editor when there's actually something to diff. */}
-      {path && dirty && (
-        <Button
-          variant="outline"
-          size="sm"
-          className="absolute right-2 top-2 z-10 h-8 shadow-md"
-          onClick={() => setShowDiff((v) => !v)}
-        >
-          {showDiff ? "Hide diff" : "View diff"}
-        </Button>
-      )}
+    <section className="flex min-h-0 flex-1 flex-col">
+      {/* Lives above the editor at every screen size now — one compact
+          row instead of trying to also cram the path field into the main
+          toolbar, which left it squeezed to nothing next to the branch
+          selector and repo actions on narrow screens. */}
+      <div className="flex items-center gap-1.5 border-b border-border p-1.5">
+        <FileCode2 className="size-3.5 shrink-0 text-muted-foreground" />
+        <Input
+          value={path}
+          onChange={(e) => setPath(e.target.value)}
+          placeholder="src/components/Button.tsx"
+          className="h-8 min-w-0 flex-1 font-mono text-xs"
+        />
+        {path && dirty && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 shrink-0"
+            onClick={() => setShowDiff((v) => !v)}
+          >
+            <span className="hidden sm:inline">{showDiff ? "Hide diff" : "View diff"}</span>
+            <span className="sm:hidden">{showDiff ? "Hide" : "Diff"}</span>
+          </Button>
+        )}
+      </div>
       <div className="min-h-0 flex-1 overflow-auto">
         {!path ? (
           <div className="flex h-full items-center justify-center">
@@ -1370,7 +1382,7 @@ function Workspace() {
           loading={repoDetails.isLoading}
         />
         <Select value={branch} onValueChange={setBranch}>
-          <SelectTrigger className="h-8 w-28 font-mono text-xs sm:w-48">
+          <SelectTrigger className="h-8 w-24 font-mono text-xs sm:w-36">
             <GitBranch className="size-3.5" />
             <SelectValue placeholder="branch" />
           </SelectTrigger>
@@ -1385,11 +1397,14 @@ function Workspace() {
         </Select>
         {/* Keyboard shortcut works everywhere regardless of screen size;
             this is just a discoverability hint, so it's fine to hide it
-            on mobile where toolbar space is already tight. */}
+            on mobile where toolbar space is already tight. Same md
+            breakpoint as the rest of this toolbar's mobile/desktop
+            splits, rather than sm, so it doesn't pop in on mid-width
+            phones and crowd the row. */}
         <Button
           variant="outline"
           size="sm"
-          className="hidden h-8 gap-1.5 px-2 text-xs text-muted-foreground hover:text-foreground sm:inline-flex"
+          className="hidden h-8 shrink-0 gap-1.5 px-2 text-xs text-muted-foreground hover:text-foreground md:inline-flex"
           onClick={() => setCommandPaletteOpen(true)}
         >
           <Command className="size-3.5" />
@@ -1399,28 +1414,15 @@ function Workspace() {
           </kbd>
         </Button>
         {latestCommit.data && (
-          <span className="hidden max-w-[280px] items-center gap-1.5 truncate text-xs text-muted-foreground lg:inline-flex">
+          <span className="hidden max-w-[200px] items-center gap-1.5 truncate text-xs text-muted-foreground xl:inline-flex">
             <History className="size-3 shrink-0" />
             <span className="shrink-0 font-mono">{latestCommit.data.sha}</span>
             <span className="truncate">{latestCommit.data.message}</span>
           </span>
         )}
-        {/* Current-file indicator: lives here at every size now, filling
-            the leftover space in this row instead of leaving it empty
-            when mobile wraps the action buttons onto a second line. */}
-        <div className="flex min-w-0 flex-1 items-center gap-1.5">
-          <FileCode2 className="size-3.5 shrink-0 text-muted-foreground" />
-          <Input
-            value={path}
-            onChange={(e) => setPath(e.target.value)}
-            placeholder="src/components/Button.tsx"
-            className="h-8 min-w-0 font-mono text-xs"
-          />
-        </div>
         <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
-          {/* Mobile-only edit-actions menu, in the slot the diff toggle
-              used to occupy — diff itself is now a floating button that
-              only appears above the editor once there are changes. */}
+          {/* Mobile-only edit-actions menu — diff itself now lives in its
+              own row directly above the editor, next to the path field. */}
           {path && !showDiff && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
