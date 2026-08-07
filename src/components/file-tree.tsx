@@ -313,12 +313,12 @@ function FileRow({
   isActive: boolean;
   paddingLeft: number;
   /** Optional matched-substring span (in `label` coordinates) to highlight. */
-  highlight?: { start: number; length: number };
+  highlight?: { start: number; length: number } | undefined;
   isFavorite?: boolean;
   onOpenFile: (path: string) => void;
   onCopyPath: (path: string) => void;
   onDeleteFile: (path: string) => void;
-  onToggleFavorite?: (path: string, next: boolean) => void;
+  onToggleFavorite?: ((path: string, next: boolean) => void) | undefined;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
