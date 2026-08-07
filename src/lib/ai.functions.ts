@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { CHAT_SYSTEM, EDIT_SYSTEM, GENERATE_SYSTEM } from "./ai/prompts";
+import { CHAT_SYSTEM, COMMIT_MESSAGE_SYSTEM, EDIT_SYSTEM, GENERATE_SYSTEM } from "./ai/prompts";
 
 /**
  * Bring Your Own AI + AI code generation / file editing.
@@ -166,6 +166,57 @@ export const editFileWithAi = createServerFn({ method: "POST" })
     const code = stripCodeFences(raw);
     if (!code) throw new Error("The provider returned an empty response. Try again.");
     return { code, model: credential.model, provider: credential.provider };
+  });
+
+/**
+ * AI-generated commit messages (Pro). Summarizes the diff between the file
+ * as it was opened and its current in-editor contents into a conventional
+ * commit message, so the user can review/edit it before pushing rather
+ * than typing one from scratch every time.
+ */
+export const generateCommitMessage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    (data: { path: string; before: string; after: string; providerId?: string | null }) => data,
+  )
+  .handler(async ({ data, context }) => {
+    const { assertPro } = await import("./ai/gate.server");
+    await assertPro(context.userId);
+    const { assertRateLimit } = await import("./rate-limit.server");
+    await assertRateLimit(context.userId, {
+      bucket: "ai_commit_message",
+      limit: 20,
+      windowSeconds: 300,
+    });
+    const { resolveProviderForUser } = await import("./ai/store.server");
+    const { chat } = await import("./ai/call.server");
+
+    if (!data.path) throw new Error("Open a file first.");
+    if (data.before === data.after) throw new Error("No changes to summarize.");
+
+    const credential = await resolveProviderForUser(context.userId, data.providerId ?? null);
+
+    // A line-level diff is enough context for a good summary and keeps the
+    // prompt bounded even for large files, unlike sending the whole file.
+    const { diffLines } = await import("diff");
+    const diffText = diffLines(data.before, data.after)
+      .map((part) => {
+        const prefix = part.added ? "+" : part.removed ? "-" : " ";
+        return part.value
+          .split("\n")
+          .filter(Boolean)
+          .map((line) => `${prefix} ${line}`)
+          .join("\n");
+      })
+      .join("\n")
+      .slice(0, 6000);
+
+    const prompt = [`File: ${data.path}`, `Diff:\n${diffText}`].join("\n\n");
+
+    const reply = await chat({ credential, system: COMMIT_MESSAGE_SYSTEM, prompt, maxTokens: 300 });
+    const message = reply.trim();
+    if (!message) throw new Error("The provider returned an empty response. Try again.");
+    return { message, model: credential.model, provider: credential.provider };
   });
 
 /**

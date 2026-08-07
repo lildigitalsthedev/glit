@@ -17,6 +17,14 @@ export const EDIT_SYSTEM = [
   "Preserve unrelated code, formatting and comments exactly as-is.",
 ].join(" ");
 
+export const COMMIT_MESSAGE_SYSTEM = [
+  "You write a single Git commit message summarizing a code diff for one file.",
+  "Return ONLY the commit message text — no markdown fences, no explanation, no surrounding quotes.",
+  "First line: a concise conventional-commit-style summary (type(scope): summary), imperative mood, under 72 characters.",
+  "If the change is substantial, add one blank line then up to 3 short bullet points (each starting with '- ') covering what changed and why.",
+  "If the change is small or purely mechanical, return only the first line.",
+].join(" ");
+
 export const CHAT_SYSTEM = [
   "You are answering questions about a specific GitHub repository.",
   "You will be given a partial file tree and the contents of a handful of files selected as likely relevant.",

@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -47,6 +47,12 @@ import {
   PanelLeftOpen,
   PanelRightClose,
   PanelRightOpen,
+  Command,
+  LayoutDashboard,
+  Activity,
+  Settings,
+  CreditCard,
+  Eye,
 } from "lucide-react";
 import {
   listRepoBranches,
@@ -60,6 +66,7 @@ import {
   listRepoCommits,
   getRepoDetails,
 } from "@/lib/github.functions";
+import { generateCommitMessage } from "@/lib/ai.functions";
 import {
   getPreferences,
   updatePreferences,
@@ -107,6 +114,7 @@ import { ProUpgradeDialog } from "@/components/pro-upgrade-dialog";
 import { AiGenerateDialog } from "@/components/ai-generate-dialog";
 import { AiEditDialog } from "@/components/ai-edit-dialog";
 import { AiRepoChatDialog } from "@/components/ai-repo-chat-dialog";
+import { CommandPalette, type CommandPaletteGroup } from "@/components/command-palette";
 import { FileTree } from "@/components/file-tree";
 import { FileBreadcrumbs } from "@/components/breadcrumb-nav";
 import { EmptyState } from "@/components/empty-state";
@@ -151,6 +159,7 @@ function languageFor(path: string) {
 }
 
 function Workspace() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const prefsFn = useServerFn(getPreferences);
   const updatePrefsFn = useServerFn(updatePreferences);
@@ -169,6 +178,7 @@ function Workspace() {
   const clearRecentFilesFn = useServerFn(clearRecentFiles);
   const favoritePathsFn = useServerFn(listFavoritePaths);
   const setPathFavoriteFn = useServerFn(setPathFavorite);
+  const generateCommitMessageFn = useServerFn(generateCommitMessage);
 
   const prefs = useQuery({ queryKey: ["prefs"], queryFn: () => prefsFn() });
   const accountId = prefs.data?.activeAccountId ?? null;
@@ -214,6 +224,7 @@ function Workspace() {
   const [deleteFolderTarget, setDeleteFolderTarget] = useState<string | null>(null);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [mobileCommitOpen, setMobileCommitOpen] = useState(false);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   // Desktop & tablet only: lets the persistent file-tree / commit side
   // panes be closed to give the editor the full width, mirroring the
   // collapse affordance code editors like VS Code offer. Global (not
@@ -256,6 +267,20 @@ function Workspace() {
   useEffect(() => {
     if (!branch && prefs.data?.defaultBranch) setBranch(prefs.data.defaultBranch);
   }, [branch, prefs.data?.defaultBranch]);
+
+  // Global Cmd/Ctrl+K launcher, the way editors like VS Code and apps like
+  // Linear do it — works from anywhere in the workspace, including while
+  // focus is inside the Monaco editor or a text field.
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key.toLowerCase() === "k" && (event.metaKey || event.ctrlKey)) {
+        event.preventDefault();
+        setCommandPaletteOpen((open) => !open);
+      }
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   const branches = useQuery({
     queryKey: ["branches", accountId, fullName],
@@ -393,6 +418,30 @@ function Workspace() {
     },
     onError: (error: Error) => toast.error(error.message),
   });
+
+  const generateCommitMessageMutation = useMutation({
+    mutationFn: () => generateCommitMessageFn({ data: { path, before: original, after: content } }),
+    onSuccess: (result) => {
+      const [first, ...rest] = result.message.split("\n\n");
+      setMessage(first.trim());
+      if (rest.length) setDescription(rest.join("\n\n").trim());
+      toast.success("Commit message drafted — review before pushing.");
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  /** AI commit message drafting (Pro) — needs an actual diff to summarize. */
+  function handleGenerateCommitMessage() {
+    if (!isPro) {
+      setAiUpgradeOpen(true);
+      return;
+    }
+    if (!path || !dirty) {
+      toast.error("Make some changes first — nothing to summarize yet.");
+      return;
+    }
+    generateCommitMessageMutation.mutate();
+  }
 
   const diff = useMemo(() => (showDiff ? diffLines(original, content) : []), [showDiff, original, content]);
   const dirty = content !== original;
@@ -907,6 +956,158 @@ function Workspace() {
 
   const filePaths = (tree.data?.nodes ?? []).filter((n) => n.type === "blob").map((n) => n.path);
 
+  // Command palette: data-driven groups, recomputed whenever the things
+  // they depend on change. File list is capped so an enormous repo can't
+  // make the palette sluggish to filter — cmdk itself is fast, but there's
+  // no reason to hand it thousands of DOM nodes it'll never all show.
+  const commandPaletteGroups: CommandPaletteGroup[] = useMemo(() => {
+    const groups: CommandPaletteGroup[] = [];
+
+    const fileItems = filePaths.slice(0, 500).map((filePath) => ({
+      id: `file:${filePath}`,
+      label: filePath,
+      icon: FileCode2,
+      keywords: filePath.split("/"),
+      onSelect: () => openFile.mutate(filePath),
+    }));
+    if (fileItems.length) groups.push({ heading: "Files", items: fileItems });
+
+    const actionItems = [
+      {
+        id: "action:new-file",
+        label: "New file",
+        icon: FilePlus,
+        shortcut: "N",
+        onSelect: () => setNewFileOpen(true),
+      },
+      dirty
+        ? {
+            id: "action:toggle-diff",
+            label: showDiff ? "Hide diff" : "View diff",
+            icon: Eye,
+            onSelect: () => setShowDiff((v) => !v),
+          }
+        : null,
+      {
+        id: "action:commit",
+        label: "Commit & push",
+        icon: GitCommitHorizontal,
+        shortcut: "⏎",
+        disabled: !path || !message.trim() || !branch || commit.isPending,
+        onSelect: () => commit.mutate(),
+      },
+      {
+        id: "action:generate-commit-message",
+        label: "Generate commit message with AI",
+        icon: Sparkles,
+        disabled: !path || !dirty,
+        onSelect: handleGenerateCommitMessage,
+      },
+      {
+        id: "action:ai-generate",
+        label: "Generate code with AI",
+        icon: Sparkles,
+        onSelect: openAiGenerate,
+      },
+      {
+        id: "action:ai-edit",
+        label: "Edit file with AI",
+        icon: Wand2,
+        onSelect: openAiEdit,
+      },
+      {
+        id: "action:ai-chat",
+        label: "Ask AI about this repo",
+        icon: MessageSquare,
+        onSelect: openAiChat,
+      },
+      {
+        id: "action:download-zip",
+        label: "Download repository ZIP",
+        icon: Download,
+        onSelect: handleDownloadZip,
+      },
+      {
+        id: "action:refresh-repo",
+        label: "Refresh repository",
+        icon: RefreshCw,
+        onSelect: handleRefreshRepository,
+      },
+      {
+        id: "action:copy-repo-url",
+        label: "Copy repository URL",
+        icon: Copy,
+        onSelect: () => void handleCopyRepositoryUrl(),
+      },
+      {
+        id: "action:toggle-left-pane",
+        label: leftPaneCollapsed ? "Show file tree panel" : "Hide file tree panel",
+        icon: leftPaneCollapsed ? PanelLeftOpen : PanelLeftClose,
+        onSelect: () => setLeftPaneCollapsed((v) => !v),
+      },
+      {
+        id: "action:toggle-right-pane",
+        label: rightPaneCollapsed ? "Show commit panel" : "Hide commit panel",
+        icon: rightPaneCollapsed ? PanelRightOpen : PanelRightClose,
+        onSelect: () => setRightPaneCollapsed((v) => !v),
+      },
+    ].filter((item): item is NonNullable<typeof item> => item !== null);
+    groups.push({ heading: "Actions", items: actionItems });
+
+    const branchItems = (branches.data ?? []).map((b) => ({
+      id: `branch:${b.name}`,
+      label: b.name === branch ? `${b.name} (current)` : b.name,
+      icon: GitBranch,
+      onSelect: () => setBranch(b.name),
+    }));
+    if (branchItems.length) groups.push({ heading: "Branches", items: branchItems });
+
+    groups.push({
+      heading: "Navigate",
+      items: [
+        {
+          id: "nav:dashboard",
+          label: "Dashboard",
+          icon: LayoutDashboard,
+          onSelect: () => void navigate({ to: "/app" }),
+        },
+        {
+          id: "nav:activity",
+          label: "Activity",
+          icon: Activity,
+          onSelect: () => void navigate({ to: "/activity" }),
+        },
+        {
+          id: "nav:settings",
+          label: "Settings",
+          icon: Settings,
+          onSelect: () => void navigate({ to: "/settings" }),
+        },
+        {
+          id: "nav:pricing",
+          label: "Pricing & plan",
+          icon: CreditCard,
+          onSelect: () => void navigate({ to: "/pricing" }),
+        },
+      ],
+    });
+
+    return groups;
+  }, [
+    filePaths,
+    dirty,
+    showDiff,
+    path,
+    message,
+    branch,
+    commit.isPending,
+    commit,
+    branches.data,
+    leftPaneCollapsed,
+    rightPaneCollapsed,
+    navigate,
+  ]);
+
   const fileTreePanel = (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="relative z-10 border-b border-border p-1">
@@ -964,7 +1165,25 @@ function Workspace() {
           off-screen; the button below is pinned instead of relying on
           leftover flex space. */}
       <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-2.5">
-        <p className="label-caps">Commit</p>
+        <div className="flex items-center justify-between gap-2">
+          <p className="label-caps">Commit</p>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 gap-1 px-1.5 text-[11px] text-muted-foreground hover:text-foreground"
+            disabled={!path || !dirty || generateCommitMessageMutation.isPending}
+            onClick={handleGenerateCommitMessage}
+            title="Draft a commit message from your changes"
+          >
+            {generateCommitMessageMutation.isPending ? (
+              <Loader2 className="size-3 animate-spin" />
+            ) : (
+              <Sparkles className="size-3" />
+            )}
+            Generate
+            {!isPro && <Lock className="size-2.5" />}
+          </Button>
+        </div>
         <Input
           value={message}
           onChange={(e) => setMessage(e.target.value)}
@@ -1164,6 +1383,21 @@ function Workspace() {
             ))}
           </SelectContent>
         </Select>
+        {/* Keyboard shortcut works everywhere regardless of screen size;
+            this is just a discoverability hint, so it's fine to hide it
+            on mobile where toolbar space is already tight. */}
+        <Button
+          variant="outline"
+          size="sm"
+          className="hidden h-8 gap-1.5 px-2 text-xs text-muted-foreground hover:text-foreground sm:inline-flex"
+          onClick={() => setCommandPaletteOpen(true)}
+        >
+          <Command className="size-3.5" />
+          <span className="hidden lg:inline">Command menu</span>
+          <kbd className="rounded border border-border bg-muted px-1 font-mono text-[10px]">
+            ⌘K
+          </kbd>
+        </Button>
         {latestCommit.data && (
           <span className="hidden max-w-[280px] items-center gap-1.5 truncate text-xs text-muted-foreground lg:inline-flex">
             <History className="size-3 shrink-0" />
@@ -1604,6 +1838,13 @@ function Workspace() {
           {commitPanel}
         </SheetContent>
       </Sheet>
+
+      <CommandPalette
+        open={commandPaletteOpen}
+        onOpenChange={setCommandPaletteOpen}
+        groups={commandPaletteGroups}
+        placeholder="Jump to a file, run a command…"
+      />
     </main>
   );
 }

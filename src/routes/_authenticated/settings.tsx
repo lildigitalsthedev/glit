@@ -410,14 +410,6 @@ function Settings() {
                 {copied ? <Check className="size-3" /> : <Copy className="size-3" />}
               </button>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void signOut().then(() => void navigate({ to: "/auth" }))}
-            >
-              <LogOut className="size-3.5" />
-              Log out
-            </Button>
           </section>
 
           <section className="rounded-md border border-border bg-card p-4">
@@ -482,6 +474,21 @@ function Settings() {
                 </AlertDialogContent>
               </AlertDialog>
             </div>
+          </section>
+
+          <section className="flex items-center justify-between gap-3 rounded-md border border-border bg-card p-4">
+            <div>
+              <p className="text-sm font-medium">Log out</p>
+              <p className="text-xs text-muted-foreground">Sign out of GitPush on this device.</p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void signOut().then(() => void navigate({ to: "/auth" }))}
+            >
+              <LogOut className="size-3.5" />
+              Log out
+            </Button>
           </section>
 
           <section className="rounded-md border border-destructive/30 bg-destructive/5 p-4">
