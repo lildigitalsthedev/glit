@@ -1262,6 +1262,78 @@ function Workspace() {
             </button>
           )}
         </div>
+        {path && !showDiff && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                className="size-8 shrink-0 text-muted-foreground hover:text-foreground md:hidden"
+                aria-label="Editor edit actions"
+                title="Edit actions"
+              >
+                <Pencil className="size-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={handleEditorUndo}>
+                <Undo2 className="size-3.5" />
+                Undo
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={handleEditorRedo}>
+                <Redo2 className="size-3.5" />
+                Redo
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={handleEditorSelectAll}>
+                <TextSelect className="size-3.5" />
+                Select all
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => void handleEditorCopyAll()}>
+                <Copy className="size-3.5" />
+                Copy all
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => void handleEditorPaste()}>
+                <ClipboardPaste className="size-3.5" />
+                Paste
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={handleEditorFindReplace}>
+                <Search className="size-3.5" />
+                Find &amp; replace
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={handleEditorGotoLine}>
+                <Hash className="size-3.5" />
+                Go to line
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={handleEditorFormatDocument}>
+                <AlignLeft className="size-3.5" />
+                Format document
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={handleEditorToggleComment}>
+                <Slash className="size-3.5" />
+                Toggle comment
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={handleEditorTrimWhitespace}>
+                <Eraser className="size-3.5" />
+                Trim trailing whitespace
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => void handleEditorCutAll()}>
+                <Scissors className="size-3.5" />
+                Cut all
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={handleEditorClearAll}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash2 className="size-3.5" />
+                Clear all
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
         {path && dirty && (
           <Button
             variant="outline"
@@ -1444,81 +1516,6 @@ function Workspace() {
         )}
         </div>
         <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-          {/* Mobile-only edit-actions menu — diff itself now lives in its
-              own row directly above the editor, next to the path field. */}
-          {path && !showDiff && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="size-9 shrink-0 text-muted-foreground hover:text-foreground md:hidden"
-                  aria-label="Editor edit actions"
-                  title="Edit actions"
-                >
-                  <Pencil className="size-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onSelect={handleEditorUndo}>
-                  <Undo2 className="size-3.5" />
-                  Undo
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={handleEditorRedo}>
-                  <Redo2 className="size-3.5" />
-                  Redo
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onSelect={handleEditorSelectAll}>
-                  <TextSelect className="size-3.5" />
-                  Select all
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => void handleEditorCopyAll()}>
-                  <Copy className="size-3.5" />
-                  Copy all
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => void handleEditorPaste()}>
-                  <ClipboardPaste className="size-3.5" />
-                  Paste
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onSelect={handleEditorFindReplace}>
-                  <Search className="size-3.5" />
-                  Find &amp; replace
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={handleEditorGotoLine}>
-                  <Hash className="size-3.5" />
-                  Go to line
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onSelect={handleEditorFormatDocument}>
-                  <AlignLeft className="size-3.5" />
-                  Format document
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={handleEditorToggleComment}>
-                  <Slash className="size-3.5" />
-                  Toggle comment
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={handleEditorTrimWhitespace}>
-                  <Eraser className="size-3.5" />
-                  Trim trailing whitespace
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onSelect={() => void handleEditorCutAll()}>
-                  <Scissors className="size-3.5" />
-                  Cut all
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onSelect={handleEditorClearAll}
-                  className="text-destructive focus:text-destructive"
-                >
-                  <Trash2 className="size-3.5" />
-                  Clear all
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-
           {/* All file/AI actions collapse into one "Add" menu at every
               screen size — a row of eight separate buttons ate too much
               width on desktop/tablet, leaving little room for the editor.
