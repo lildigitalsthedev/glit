@@ -313,12 +313,12 @@ function FileRow({
   isActive: boolean;
   paddingLeft: number;
   /** Optional matched-substring span (in `label` coordinates) to highlight. */
-  highlight?: { start: number; length: number };
+  highlight?: { start: number; length: number } | undefined;
   isFavorite?: boolean;
   onOpenFile: (path: string) => void;
   onCopyPath: (path: string) => void;
   onDeleteFile: (path: string) => void;
-  onToggleFavorite?: (path: string, next: boolean) => void;
+  onToggleFavorite?: ((path: string, next: boolean) => void) | undefined;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -676,7 +676,7 @@ function FileTreeInner({
             isActive={match.path === activePath}
             paddingLeft={8}
             highlight={{ start: match.highlightStart, length: match.highlightLength }}
-            isFavorite={favoritePaths?.has(match.path)}
+            isFavorite={favoritePaths?.has(match.path) ?? false}
             onOpenFile={onOpenFile}
             onCopyPath={onCopyPath}
             onDeleteFile={onDeleteFile}
@@ -746,7 +746,7 @@ function FileTreeInner({
           label={entry.name}
           isActive={isActiveFile}
           paddingLeft={indent + 14}
-          isFavorite={favoritePaths?.has(entry.path)}
+          isFavorite={favoritePaths?.has(entry.path) ?? false}
           onOpenFile={onOpenFile}
           onCopyPath={onCopyPath}
           onDeleteFile={onDeleteFile}

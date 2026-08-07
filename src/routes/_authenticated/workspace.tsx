@@ -479,6 +479,7 @@ function Workspace() {
       if (opened.length === 0) return;
       setTabs(opened);
       const active = opened.find((tab) => tab.path === activeTarget) ?? opened[0];
+      if (!active) return;
       setPath(active.path);
       setContent(active.content);
       setOriginal(active.original);
@@ -501,6 +502,7 @@ function Workspace() {
       const idx = prev.findIndex((tab) => tab.path === path);
       if (idx === -1) return [...prev, { path, content, original, baseSha }];
       const existing = prev[idx];
+      if (!existing) return prev;
       if (existing.content === content && existing.original === original && existing.baseSha === baseSha) {
         return prev;
       }
@@ -609,7 +611,7 @@ function Workspace() {
     mutationFn: () => generateCommitMessageFn({ data: { path, before: original, after: content } }),
     onSuccess: (result) => {
       const [first, ...rest] = result.message.split("\n\n");
-      setMessage(first.trim());
+      setMessage((first ?? "").trim());
       if (rest.length) setDescription(rest.join("\n\n").trim());
       toast.success("Commit message drafted — review before pushing.");
     },

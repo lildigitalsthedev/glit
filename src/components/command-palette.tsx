@@ -55,8 +55,8 @@ export function CommandPalette({ open, onOpenChange, groups, placeholder }: Comm
                 <CommandItem
                   key={item.id}
                   value={item.id}
-                  disabled={item.disabled}
-                  keywords={item.keywords}
+                  disabled={item.disabled ?? false}
+                  keywords={item.keywords ?? []}
                   onSelect={() => {
                     onOpenChange(false);
                     item.onSelect();
