@@ -3,21 +3,27 @@ import { useEffect } from "react";
 import {
   ArrowRight,
   Check,
+  Clock,
   FolderOpen,
   GitBranch,
   GitCommit,
   Github,
+  HelpCircle,
   Search,
   ShieldCheck,
   Sparkles,
   Terminal,
   UploadCloud,
+  Users,
   Zap,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { ProductPreview } from "@/components/marketing/product-preview";
+import { AnimatedCounter } from "@/components/marketing/animated-counter";
+import { SiteFooter } from "@/components/marketing/site-footer";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -56,6 +62,54 @@ const PRO_TEASERS = [
   "Unlimited connected GitHub accounts",
 ];
 
+// Illustrative, rounded figures for the stats strip below — swap these for
+// real numbers once product analytics are wired up. Kept as a small config
+// array so that's a one-line change when the time comes.
+const STATS = [
+  { icon: UploadCloud, value: 15000, suffix: "+", label: "Files pushed" },
+  { icon: GitCommit, value: 4200, suffix: "+", label: "Commits shipped" },
+  { icon: Clock, value: 1000, suffix: "+", label: "Hours saved" },
+  { icon: Users, value: 900, suffix: "+", label: "Repos connected" },
+];
+
+const FAQS = [
+  {
+    question: "Is my GitHub token safe?",
+    answer:
+      "Yes. Your GitHub access token is encrypted at rest and only ever used server-side — it never touches the browser, so it can't be read from your device or leaked through a browser extension.",
+  },
+  {
+    question: "Do I need to install anything?",
+    answer:
+      "No. gitpush runs entirely in the browser. There's no CLI to install and no need to clone a repo locally — connect GitHub, open a repo, and start editing.",
+  },
+  {
+    question: "What's included on the Free plan?",
+    answer:
+      "The full editor, diff view, and unlimited repositories — the core experience isn't gated. Free covers everything you need for quick edits and one-off pushes.",
+  },
+  {
+    question: "What do I get with Pro?",
+    answer:
+      "Pro adds AI code generation and natural-language file edits, AI repository chat, AI-generated commit messages, and unlimited connected GitHub accounts.",
+  },
+  {
+    question: "Can I use it on my phone?",
+    answer:
+      "Yes — the editor, file tree, and commit flow are all optimized for touch and small screens, so you can push a quick fix from your phone just as easily as from a desktop.",
+  },
+  {
+    question: "Which repos and branches does it work with?",
+    answer:
+      "Any repository your connected GitHub account has access to, and any branch on it. You can also set a default working folder to jump straight into the right place.",
+  },
+  {
+    question: "Can I cancel a paid plan anytime?",
+    answer:
+      "Yes, cancel anytime from Settings — you'll keep Pro features until the end of your current billing period, then drop back to Free automatically.",
+  },
+];
+
 function Index() {
   const { session, loading } = useAuth();
   const navigate = useNavigate();
@@ -65,13 +119,20 @@ function Index() {
   }, [loading, session, navigate]);
 
   return (
-    <main className="mx-auto max-w-5xl overflow-x-hidden px-4 py-16 sm:py-24">
+    <>
+      <main className="mx-auto max-w-5xl overflow-x-hidden px-4 py-16 sm:py-24">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-2 font-mono text-sm">
           <Terminal className="size-4 text-primary" />
           <span className="font-semibold tracking-tight">gitpush</span>
         </div>
         <nav className="flex items-center gap-4 text-sm text-muted-foreground">
+          <a href="#features" className="hidden transition-colors hover:text-foreground sm:inline">
+            Features
+          </a>
+          <a href="#faq" className="hidden transition-colors hover:text-foreground sm:inline">
+            FAQ
+          </a>
           <Link to="/pricing" className="hidden transition-colors hover:text-foreground sm:inline">
             Pricing
           </Link>
@@ -124,6 +185,26 @@ function Index() {
         </div>
       </div>
 
+      <section className="mt-20 sm:mt-28">
+        <div className="grid grid-cols-2 gap-px overflow-hidden rounded-md border border-border bg-border sm:grid-cols-4">
+          {STATS.map((stat, index) => (
+            <div
+              key={stat.label}
+              className="animate-in fade-in slide-in-from-bottom-1 flex flex-col items-center gap-1.5 bg-card px-4 py-6 text-center duration-500"
+              style={{ animationDelay: `${index * 80}ms` }}
+            >
+              <stat.icon className="size-4 text-primary" aria-hidden="true" />
+              <AnimatedCounter
+                value={stat.value}
+                suffix={stat.suffix}
+                className="font-mono text-2xl font-semibold tracking-tight tabular-nums sm:text-3xl"
+              />
+              <p className="text-xs text-muted-foreground">{stat.label}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
       <section className="mt-24 sm:mt-32">
         <p className="label-caps">What to expect</p>
         <h2 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
@@ -149,7 +230,7 @@ function Index() {
         </div>
       </section>
 
-      <section className="mt-24 sm:mt-32">
+      <section className="mt-24 sm:mt-32" id="features">
         <p className="label-caps">Everything you need</p>
         <h2 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
           A genuinely useful GitHub manager
@@ -213,6 +294,30 @@ function Index() {
         </pre>
       </section>
 
+      <section className="mt-16 sm:mt-20" id="faq">
+        <p className="label-caps">Questions</p>
+        <h2 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
+          Frequently asked questions
+        </h2>
+        <div className="mt-6 rounded-md border border-border bg-card px-5">
+          <Accordion type="single" collapsible className="w-full">
+            {FAQS.map((faq) => (
+              <AccordionItem key={faq.question} value={faq.question}>
+                <AccordionTrigger className="gap-3 text-sm">
+                  <span className="flex items-center gap-2.5">
+                    <HelpCircle className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                    {faq.question}
+                  </span>
+                </AccordionTrigger>
+                <AccordionContent className="pl-6 text-xs text-muted-foreground">
+                  {faq.answer}
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        </div>
+      </section>
+
       <section className="mt-16 mb-8 flex flex-col items-center gap-4 rounded-md border border-border bg-card px-6 py-12 text-center sm:mt-20">
         <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
           Connect a repo and push your first commit
@@ -228,5 +333,7 @@ function Index() {
         </Button>
       </section>
     </main>
+      <SiteFooter />
+    </>
   );
 }
