@@ -160,6 +160,19 @@ function languageFor(path: string) {
   return map[ext] ?? "plaintext";
 }
 
+/**
+ * One open editor tab. Mirrors the same fields the "active file" state
+ * (`path`/`content`/`original`/`baseSha`) already tracks — a tab is just a
+ * saved snapshot of those for a file that isn't necessarily the one on
+ * screen right now.
+ */
+type OpenTab = {
+  path: string;
+  content: string;
+  original: string;
+  baseSha: string | null;
+};
+
 function Workspace() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -203,6 +216,20 @@ function Workspace() {
   const [content, setContent] = useState("");
   const [original, setOriginal] = useState("");
   const [baseSha, setBaseSha] = useState<string | null>(null);
+  // All currently-open editor tabs, active one included. `path`/`content`/
+  // `original`/`baseSha` above stay the single source of truth for
+  // *whatever tab is active* (everything else in this file that reads
+  // them keeps working unchanged); this array exists purely to remember
+  // the *other* open tabs so switching back to one restores in-progress
+  // edits instead of re-fetching and silently discarding them.
+  const [tabs, setTabs] = useState<OpenTab[]>([]);
+  // Persisted per-repo so open tabs survive a reload, same spirit as
+  // `lastFilePath` below — just remembers *which paths* were open, not
+  // their content, since content is always re-fetched fresh on restore.
+  const [persistedTabPaths, setPersistedTabPaths] = usePersistentState<string[]>(
+    fullName ? `gitpush:workspace:tabs:${fullName}` : null,
+    [],
+  );
   const [message, setMessage] = useState("");
   const [description, setDescription] = useState("");
   const [showDiff, setShowDiff] = useState(false);
@@ -387,20 +414,130 @@ function Workspace() {
     onError: (error: Error) => toast.error(error.message),
   });
 
-  // Restores the file the user was last editing in this repo, once per
-  // repo visit. Runs through the exact same `openFile` fetch a manual
-  // click would use, so the reopened file's content/sha are always fresh
-  // off GitHub — never the stale text that was on screen before the tab
-  // switch. If the file was since renamed or deleted, this fails the same
-  // way a manual open of a missing file would (a toast, nothing more).
+  // Restores every tab that was open in this repo last time, once per repo
+  // visit — not just the single active file. Falls back to `lastFilePath`
+  // alone for repos that only ever had the old single-file restore data.
+  // Fetches all of them fresh off GitHub in parallel (never restores from
+  // stale cached content), and re-activates whichever one was active
+  // before. A tab that fails to fetch (renamed/deleted since) is silently
+  // dropped rather than blocking the rest from opening.
   useEffect(() => {
-    if (!accountId || !fullName || !branch || !lastFilePath) return;
+    if (!accountId || !fullName || !branch) return;
     if (path || openFile.isPending) return;
     if (restoredFileRef.current === fullName) return;
+    const toRestore = persistedTabPaths.length > 0 ? persistedTabPaths : lastFilePath ? [lastFilePath] : [];
+    if (toRestore.length === 0) return;
     restoredFileRef.current = fullName;
-    openFile.mutate(lastFilePath);
+    const activeTarget = toRestore.includes(lastFilePath) ? lastFilePath : toRestore[0];
+    Promise.all(
+      toRestore.map((target) =>
+        readFn({ data: { accountId: accountId!, fullName: fullName!, branch, path: target } })
+          .then((file): OpenTab => ({ path: target, content: file.content, original: file.content, baseSha: file.sha }))
+          .catch(() => null),
+      ),
+    ).then((results) => {
+      const opened = results.filter((tab): tab is OpenTab => tab !== null);
+      if (opened.length === 0) return;
+      setTabs(opened);
+      const active = opened.find((tab) => tab.path === activeTarget) ?? opened[0];
+      setPath(active.path);
+      setContent(active.content);
+      setOriginal(active.original);
+      setBaseSha(active.baseSha);
+      const lastSlash = active.path.lastIndexOf("/");
+      setActiveFolder(lastSlash === -1 ? null : active.path.slice(0, lastSlash));
+      recordRecentFile(active.path);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accountId, fullName, branch, lastFilePath]);
+  }, [accountId, fullName, branch, lastFilePath, persistedTabPaths]);
+
+  // Mirrors whatever file is active into the matching tab entry — runs on
+  // every content/original/baseSha change (i.e. as the user types), not
+  // just on open/commit, so switching away and back never loses in-progress
+  // edits. New tabs are created here too: opening a file that isn't already
+  // a tab just falls out of this naturally once `path` points at it.
+  useEffect(() => {
+    if (!path) return;
+    setTabs((prev) => {
+      const idx = prev.findIndex((tab) => tab.path === path);
+      if (idx === -1) return [...prev, { path, content, original, baseSha }];
+      const existing = prev[idx];
+      if (existing.content === content && existing.original === original && existing.baseSha === baseSha) {
+        return prev;
+      }
+      const next = [...prev];
+      next[idx] = { path, content, original, baseSha };
+      return next;
+    });
+  }, [path, content, original, baseSha]);
+
+  // Keeps the persisted tab list in sync with which paths are actually
+  // open, without rewriting localStorage on every keystroke — only the
+  // ordered list of paths matters here, not their content, so this is
+  // keyed off a cheap joined string rather than the `tabs` array itself.
+  const openTabPathsKey = tabs.map((tab) => tab.path).join("\u0000");
+  useEffect(() => {
+    setPersistedTabPaths(tabs.map((tab) => tab.path));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openTabPathsKey]);
+
+  /** Activates an already-open tab without re-fetching — preserves whatever unsaved edits it has. */
+  function activateTab(target: OpenTab) {
+    if (target.path === path) return;
+    setPath(target.path);
+    setContent(target.content);
+    setOriginal(target.original);
+    setBaseSha(target.baseSha);
+    setShowDiff(false);
+    const lastSlash = target.path.lastIndexOf("/");
+    setActiveFolder(lastSlash === -1 ? null : target.path.slice(0, lastSlash));
+    setMobileSidebarOpen(false);
+    recordRecentFile(target.path);
+  }
+
+  /** Opens a file: switches to it if it's already a tab, otherwise fetches it fresh as a new one. */
+  function openOrActivateFile(target: string) {
+    const existing = tabs.find((tab) => tab.path === target);
+    if (existing) {
+      activateTab(existing);
+      return;
+    }
+    openFile.mutate(target);
+  }
+
+  /** Removes a tab (no confirmation) — used both by closeTab and by delete handlers, where the file is already gone so there's nothing left to confirm. */
+  function removeTab(targetPath: string) {
+    const idx = tabs.findIndex((tab) => tab.path === targetPath);
+    if (idx === -1) return;
+    const next = tabs.filter((tab) => tab.path !== targetPath);
+    setTabs(next);
+    if (targetPath !== path) return;
+    const fallback = next[idx] ?? next[idx - 1] ?? null;
+    setShowDiff(false);
+    if (fallback) {
+      setPath(fallback.path);
+      setContent(fallback.content);
+      setOriginal(fallback.original);
+      setBaseSha(fallback.baseSha);
+      const lastSlash = fallback.path.lastIndexOf("/");
+      setActiveFolder(lastSlash === -1 ? null : fallback.path.slice(0, lastSlash));
+    } else {
+      setPath("");
+      setContent("");
+      setOriginal("");
+      setBaseSha(null);
+      setLastFilePath("");
+    }
+  }
+
+  /** Closes a tab, confirming first if it has unsaved changes. */
+  function closeTab(targetPath: string) {
+    const target = tabs.find((tab) => tab.path === targetPath);
+    if (target && target.content !== target.original) {
+      if (!window.confirm(`Discard unsaved changes to ${targetPath}?`)) return;
+    }
+    removeTab(targetPath);
+  }
 
   const commit = useMutation({
     mutationFn: () =>
@@ -642,16 +779,9 @@ function Workspace() {
     },
     onSuccess: (_result, args) => {
       toast.success(`${args.targetPath.split("/").pop() ?? args.targetPath} deleted successfully.`);
-      // If the file that was just deleted is open in the editor, clear it out
-      // so the user isn't left editing content that no longer exists on GitHub.
-      if (args.targetPath === path) {
-        setPath("");
-        setContent("");
-        setOriginal("");
-        setBaseSha(null);
-        setShowDiff(false);
-        setLastFilePath("");
-      }
+      // If the file that was just deleted is open in a tab (active or not),
+      // close it — nothing left to edit or fall back to on GitHub.
+      removeTab(args.targetPath);
       setDeleteTarget(null);
       void queryClient.invalidateQueries({ queryKey: ["tree"] });
       void queryClient.invalidateQueries({ queryKey: ["commits"] });
@@ -693,16 +823,32 @@ function Workspace() {
       toast.success(
         `Deleted ${result.filesDeleted} file${result.filesDeleted === 1 ? "" : "s"} from ${args.targetPath}.`,
       );
-      // Clear the editor when the open file lived inside the deleted folder.
-      if (path.startsWith(`${args.targetPath}/`)) {
-        setPath("");
-        setContent("");
-        setOriginal("");
-        setBaseSha(null);
+      // Close every open tab that lived inside the deleted folder, and if
+      // the active tab was one of them, fall back to another remaining
+      // tab (or an empty editor if none are left) rather than editing
+      // content that no longer exists on GitHub.
+      const prefix = `${args.targetPath}/`;
+      const remainingTabs = tabs.filter((tab) => !tab.path.startsWith(prefix));
+      if (remainingTabs.length !== tabs.length) setTabs(remainingTabs);
+      if (path.startsWith(prefix)) {
+        const fallback = remainingTabs[0] ?? null;
         setShowDiff(false);
-        setLastFilePath("");
+        if (fallback) {
+          setPath(fallback.path);
+          setContent(fallback.content);
+          setOriginal(fallback.original);
+          setBaseSha(fallback.baseSha);
+          const lastSlash = fallback.path.lastIndexOf("/");
+          setActiveFolder(lastSlash === -1 ? null : fallback.path.slice(0, lastSlash));
+        } else {
+          setPath("");
+          setContent("");
+          setOriginal("");
+          setBaseSha(null);
+          setLastFilePath("");
+        }
       }
-      if (activeFolder === args.targetPath || activeFolder?.startsWith(`${args.targetPath}/`)) {
+      if (activeFolder === args.targetPath || activeFolder?.startsWith(prefix)) {
         setActiveFolder(null);
       }
       setDeleteFolderTarget(null);
@@ -721,6 +867,10 @@ function Workspace() {
    * upload can be dropped without clearing fields by hand or reloading.
    */
   function handleDiscardCommit() {
+    // Drops the tab outright rather than falling back to a neighboring one
+    // like closeTab does — discarding is meant to return to a clean,
+    // nothing-open state, not just switch focus elsewhere.
+    if (path) setTabs((prev) => prev.filter((tab) => tab.path !== path));
     setPath("");
     setContent("");
     setOriginal("");
@@ -978,7 +1128,7 @@ function Workspace() {
       label: filePath,
       icon: FileCode2,
       keywords: filePath.split("/"),
-      onSelect: () => openFile.mutate(filePath),
+      onSelect: () => openOrActivateFile(filePath),
     }));
     if (fileItems.length) groups.push({ heading: "Files", items: fileItems });
 
@@ -1141,7 +1291,7 @@ function Workspace() {
           recentFiles={recentFiles.data ?? []}
           recentFilesLoading={recentFiles.isLoading}
           activePath={path}
-          onOpenFile={(target) => openFile.mutate(target)}
+          onOpenFile={(target) => openOrActivateFile(target)}
           onClearRecentFiles={handleClearRecentFiles}
           favoritePaths={favoritePaths.data ?? []}
           favoritePathsLoading={favoritePaths.isLoading}
@@ -1158,7 +1308,7 @@ function Workspace() {
           filter={filter}
           activePath={path}
           activeFolder={activeFolder}
-          onOpenFile={(target) => openFile.mutate(target)}
+          onOpenFile={(target) => openOrActivateFile(target)}
           onSelectFolder={(target) => setActiveFolder(target)}
           onCopyPath={handleCopyPath}
           onDeleteFile={handleDeleteFile}
@@ -1247,6 +1397,52 @@ function Workspace() {
 
   const editorPanel = (
     <section className="flex min-h-0 flex-1 flex-col">
+      {/* Tab strip — only shows once there's actually more than one file
+          open, since with a single file the path row below (plus its
+          built-in clear button) already covers everything a lone tab
+          would. Horizontal-scrolls on mobile instead of wrapping, so it
+          never eats a second line of vertical space. */}
+      {tabs.length > 1 && (
+        <div className="flex shrink-0 items-center gap-1 overflow-x-auto border-b border-border bg-muted/30 px-1.5 py-1 [&::-webkit-scrollbar]:hidden">
+          {tabs.map((tab) => {
+            const isActive = tab.path === path;
+            const isDirty = tab.content !== tab.original;
+            const fileName = tab.path.split("/").pop() || tab.path;
+            return (
+              <div
+                key={tab.path}
+                className={cn(
+                  "group flex shrink-0 items-center gap-1 rounded-md py-1 pl-2 pr-1 font-mono text-[11px]",
+                  isActive
+                    ? "bg-background text-foreground"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                )}
+              >
+                <button
+                  type="button"
+                  onClick={() => activateTab(tab)}
+                  className="flex max-w-[8rem] shrink-0 items-center gap-1.5"
+                  title={tab.path}
+                >
+                  {isDirty && (
+                    <span className="size-1.5 shrink-0 rounded-full bg-success" />
+                  )}
+                  <span className="truncate">{fileName}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => closeTab(tab.path)}
+                  aria-label={`Close ${fileName}`}
+                  title="Close tab"
+                  className="flex size-4 shrink-0 items-center justify-center rounded text-muted-foreground opacity-70 hover:bg-muted hover:text-foreground hover:opacity-100"
+                >
+                  <X className="size-3" />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
       {/* Lives above the editor at every screen size now — one compact
           row instead of trying to also cram the path field into the main
           toolbar, which left it squeezed to nothing next to the branch
