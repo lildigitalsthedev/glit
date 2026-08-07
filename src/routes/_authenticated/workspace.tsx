@@ -366,14 +366,53 @@ function Workspace() {
   });
 
   const isActiveFolderFavorite = Boolean(
-    activeFolder && favoritePaths.data?.some((favorite) => favorite.path === activeFolder),
+    activeFolder &&
+      favoritePaths.data?.some(
+        (favorite) => favorite.kind === "folder" && favorite.path === activeFolder,
+      ),
   );
 
   function toggleFolderFavorite(target: string, next: boolean) {
     if (!fullName) return;
-    setPathFavoriteFn({ data: { fullName, path: target, isFavorite: next } })
+    setPathFavoriteFn({ data: { fullName, path: target, kind: "folder", isFavorite: next } })
       .then(() => void queryClient.invalidateQueries({ queryKey: ["favorite-paths", fullName] }))
       .catch((error: Error) => toast.error(error.message || "Couldn't update favorite paths."));
+  }
+
+  function toggleFileFavorite(target: string, next: boolean) {
+    if (!fullName) return;
+    setPathFavoriteFn({ data: { fullName, path: target, kind: "file", isFavorite: next } })
+      .then(() => void queryClient.invalidateQueries({ queryKey: ["favorite-paths", fullName] }))
+      .catch((error: Error) => toast.error(error.message || "Couldn't update favorite paths."));
+  }
+
+  const favoriteFilePaths = useMemo(
+    () =>
+      new Set(
+        (favoritePaths.data ?? [])
+          .filter((favorite) => favorite.kind === "file")
+          .map((favorite) => favorite.path),
+      ),
+    [favoritePaths.data],
+  );
+
+  // Routes a tap in the Favorites popup to the right place — a pinned
+  // folder navigates the file tree, a pinned file opens straight into the
+  // editor, matching how each kind is favorited in the first place.
+  function navigateFavorite(favorite: { path: string; kind: "file" | "folder" }) {
+    if (favorite.kind === "folder") {
+      setActiveFolder(favorite.path);
+    } else {
+      openOrActivateFile(favorite.path);
+    }
+  }
+
+  function removeFavorite(favorite: { path: string; kind: "file" | "folder" }) {
+    if (favorite.kind === "folder") {
+      toggleFolderFavorite(favorite.path, false);
+    } else {
+      toggleFileFavorite(favorite.path, false);
+    }
   }
 
   // Fire-and-forget: records that a file was just opened or edited so it
@@ -1296,8 +1335,8 @@ function Workspace() {
           favoritePaths={favoritePaths.data ?? []}
           favoritePathsLoading={favoritePaths.isLoading}
           activeFolder={activeFolder}
-          onNavigateFolder={setActiveFolder}
-          onRemoveFavorite={(target) => toggleFolderFavorite(target, false)}
+          onNavigateFavorite={navigateFavorite}
+          onRemoveFavorite={removeFavorite}
         />
       </div>
       <p className="label-caps px-2 pb-1 pt-1.5">Workspace Files</p>
@@ -1308,11 +1347,13 @@ function Workspace() {
           filter={filter}
           activePath={path}
           activeFolder={activeFolder}
+          favoritePaths={favoriteFilePaths}
           onOpenFile={(target) => openOrActivateFile(target)}
           onSelectFolder={(target) => setActiveFolder(target)}
           onCopyPath={handleCopyPath}
           onDeleteFile={handleDeleteFile}
           onDeleteFolder={(target) => setDeleteFolderTarget(target)}
+          onToggleFavorite={toggleFileFavorite}
         />
       </div>
     </div>

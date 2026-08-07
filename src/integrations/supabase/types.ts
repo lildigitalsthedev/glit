@@ -101,6 +101,7 @@ export type Database = {
           full_name: string | null
           id: string
           is_favorite: boolean
+          kind: string
           last_used_at: string
           path: string
           use_count: number
@@ -111,6 +112,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           is_favorite?: boolean
+          kind?: string
           last_used_at?: string
           path: string
           use_count?: number
@@ -121,6 +123,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           is_favorite?: boolean
+          kind?: string
           last_used_at?: string
           path?: string
           use_count?: number

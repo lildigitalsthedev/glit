@@ -140,6 +140,8 @@ export const saveRepoPref = createServerFn({ method: "POST" })
 export interface PathPref {
   fullName: string | null;
   path: string;
+  /** Whether this pref points at a single file or a whole folder. */
+  kind: "file" | "folder";
   isFavorite: boolean;
   useCount: number;
 }
@@ -149,13 +151,14 @@ export const listPaths = createServerFn({ method: "GET" })
   .handler(async ({ context }): Promise<PathPref[]> => {
     const { data, error } = await context.supabase
       .from("favorite_paths")
-      .select("full_name, path, is_favorite, use_count")
+      .select("full_name, path, kind, is_favorite, use_count")
       .order("last_used_at", { ascending: false })
       .limit(40);
     if (error) throw new Error(error.message);
     return (data ?? []).map((row) => ({
       fullName: row.full_name as string | null,
       path: row.path as string,
+      kind: (row.kind as "file" | "folder") ?? "folder",
       isFavorite: row.is_favorite as boolean,
       useCount: row.use_count as number,
     }));
@@ -163,7 +166,10 @@ export const listPaths = createServerFn({ method: "GET" })
 
 export const savePath = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { fullName: string; path: string; isFavorite?: boolean }) => data)
+  .inputValidator(
+    (data: { fullName: string; path: string; kind?: "file" | "folder"; isFavorite?: boolean }) =>
+      data,
+  )
   .handler(async ({ data, context }) => {
     const { data: existing } = await context.supabase
       .from("favorite_paths")
@@ -187,6 +193,7 @@ export const savePath = createServerFn({ method: "POST" })
       user_id: context.userId,
       full_name: data.fullName,
       path: data.path,
+      kind: data.kind ?? "folder",
       is_favorite: data.isFavorite ?? false,
     });
     if (error) throw new Error(error.message);
@@ -284,10 +291,11 @@ export const clearRecentFiles = createServerFn({ method: "POST" })
   });
 
 /**
- * Just the starred paths for a single repository, e.g. `src/components`,
- * `src/hooks`, `src/pages` — the shortcuts a developer jumps to constantly.
- * Kept separate from `listPaths` (which is ordered by recency across all
- * repos) so the favorites strip in the workspace stays small and stable.
+ * Just the starred paths for a single repository — both pinned folders
+ * (e.g. `src/components`, `src/hooks`) and individual pinned files — the
+ * shortcuts a developer jumps to constantly. Kept separate from `listPaths`
+ * (which is ordered by recency across all repos) so the favorites strip in
+ * the workspace stays small and stable.
  */
 export const listFavoritePaths = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -295,7 +303,7 @@ export const listFavoritePaths = createServerFn({ method: "GET" })
   .handler(async ({ data, context }): Promise<PathPref[]> => {
     const { data: rows, error } = await context.supabase
       .from("favorite_paths")
-      .select("full_name, path, is_favorite, use_count")
+      .select("full_name, path, kind, is_favorite, use_count")
       .eq("full_name", data.fullName)
       .eq("is_favorite", true)
       .order("path", { ascending: true })
@@ -304,19 +312,24 @@ export const listFavoritePaths = createServerFn({ method: "GET" })
     return (rows ?? []).map((row) => ({
       fullName: row.full_name as string | null,
       path: row.path as string,
+      kind: (row.kind as "file" | "folder") ?? "folder",
       isFavorite: row.is_favorite as boolean,
       useCount: row.use_count as number,
     }));
   });
 
 /**
- * Marks (or unmarks) a folder as a favorite path. Deliberately doesn't touch
- * `use_count` — that's reserved for actual navigation frequency — so simply
- * starring a folder you've never opened doesn't skew its usage stats.
+ * Marks (or unmarks) a file or folder as a favorite path. Deliberately
+ * doesn't touch `use_count` — that's reserved for actual navigation
+ * frequency — so simply starring something you've never opened doesn't skew
+ * its usage stats.
  */
 export const setPathFavorite = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { fullName: string; path: string; isFavorite: boolean }) => data)
+  .inputValidator(
+    (data: { fullName: string; path: string; kind: "file" | "folder"; isFavorite: boolean }) =>
+      data,
+  )
   .handler(async ({ data, context }) => {
     const { data: existing } = await context.supabase
       .from("favorite_paths")
@@ -327,7 +340,7 @@ export const setPathFavorite = createServerFn({ method: "POST" })
     if (existing) {
       const { error } = await context.supabase
         .from("favorite_paths")
-        .update({ is_favorite: data.isFavorite })
+        .update({ is_favorite: data.isFavorite, kind: data.kind })
         .eq("id", existing.id as string);
       if (error) throw new Error(error.message);
       return { ok: true };
@@ -336,6 +349,7 @@ export const setPathFavorite = createServerFn({ method: "POST" })
       user_id: context.userId,
       full_name: data.fullName,
       path: data.path,
+      kind: data.kind,
       is_favorite: data.isFavorite,
       use_count: 0,
     });

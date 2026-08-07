@@ -31,7 +31,7 @@ export function WorkspaceTools({
   favoritePaths,
   favoritePathsLoading,
   activeFolder,
-  onNavigateFolder,
+  onNavigateFavorite,
   onRemoveFavorite,
   className,
 }: {
@@ -45,8 +45,8 @@ export function WorkspaceTools({
   favoritePaths: PathPref[];
   favoritePathsLoading?: boolean;
   activeFolder: string | null;
-  onNavigateFolder: (path: string) => void;
-  onRemoveFavorite: (path: string) => void;
+  onNavigateFavorite: (favorite: PathPref) => void;
+  onRemoveFavorite: (favorite: PathPref) => void;
   className?: string;
 }) {
   const [toolsExpanded, setToolsExpanded] = useState(false);
@@ -158,7 +158,8 @@ export function WorkspaceTools({
             paths={favoritePaths}
             loading={favoritePathsLoading ?? false}
             activeFolder={activeFolder}
-            onNavigate={onNavigateFolder}
+            activeFile={activePath}
+            onNavigate={onNavigateFavorite}
             onRemove={onRemoveFavorite}
             onClose={() => setActivePopup(null)}
           />

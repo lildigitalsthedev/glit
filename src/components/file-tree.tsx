@@ -16,6 +16,7 @@ import {
   Loader2,
   MoreVertical,
   Pencil,
+  Star,
   Trash2,
 } from "lucide-react";
 import {
@@ -299,9 +300,11 @@ function FileRow({
   isActive,
   paddingLeft,
   highlight,
+  isFavorite,
   onOpenFile,
   onCopyPath,
   onDeleteFile,
+  onToggleFavorite,
 }: {
   path: string;
   name: string;
@@ -311,9 +314,11 @@ function FileRow({
   paddingLeft: number;
   /** Optional matched-substring span (in `label` coordinates) to highlight. */
   highlight?: { start: number; length: number };
+  isFavorite?: boolean;
   onOpenFile: (path: string) => void;
   onCopyPath: (path: string) => void;
   onDeleteFile: (path: string) => void;
+  onToggleFavorite?: (path: string, next: boolean) => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -355,7 +360,8 @@ function FileRow({
         }}
         style={{ paddingLeft }}
         className={cn(
-          "flex w-full min-w-0 items-center gap-2 truncate rounded py-1 pr-7 text-left font-mono text-[11px] transition-colors duration-150",
+          "flex w-full min-w-0 items-center gap-2 truncate rounded py-1 text-left font-mono text-[11px] transition-colors duration-150",
+          onToggleFavorite ? "pr-12" : "pr-7",
           isActive
             ? "bg-secondary text-foreground"
             : "text-muted-foreground hover:bg-secondary/40 hover:text-foreground",
@@ -372,6 +378,26 @@ function FileRow({
         </span>
       </button>
 
+      {onToggleFavorite && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleFavorite(path, !isFavorite);
+          }}
+          aria-label={isFavorite ? `Remove ${name} from Favorites` : `Favorite ${name}`}
+          title={isFavorite ? "Remove Favorite" : "Favorite this file"}
+          className={cn(
+            "absolute right-7 flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground transition-opacity duration-150 hover:bg-secondary hover:text-foreground",
+            isFavorite
+              ? "opacity-100"
+              : "opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100",
+          )}
+        >
+          <Star className={cn("size-3.5", isFavorite && "fill-primary text-primary")} />
+        </button>
+      )}
+
       <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
         <DropdownMenuTrigger asChild>
           <button
@@ -386,7 +412,7 @@ function FileRow({
             <MoreVertical className="size-3.5" />
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-40">
+        <DropdownMenuContent align="end" className="w-44">
           <DropdownMenuItem onSelect={() => onOpenFile(path)}>
             <Pencil className="size-3.5" />
             Edit
@@ -395,6 +421,12 @@ function FileRow({
             <Copy className="size-3.5" />
             Copy Path
           </DropdownMenuItem>
+          {onToggleFavorite && (
+            <DropdownMenuItem onSelect={() => onToggleFavorite(path, !isFavorite)}>
+              <Star className={cn("size-3.5", isFavorite && "fill-primary text-primary")} />
+              {isFavorite ? "Remove from Favorites" : "Add to Favorites"}
+            </DropdownMenuItem>
+          )}
           <DropdownMenuSeparator />
           <DropdownMenuItem
             onSelect={() => onDeleteFile(path)}
@@ -527,22 +559,27 @@ function FileTreeInner({
   filter,
   activePath,
   activeFolder,
+  favoritePaths,
   onOpenFile,
   onSelectFolder,
   onCopyPath,
   onDeleteFile,
   onDeleteFolder,
+  onToggleFavorite,
 }: {
   nodes: TreeNode[];
   loading?: boolean;
   filter: string;
   activePath: string;
   activeFolder: string | null;
+  /** Paths of currently-favorited files, for the inline star indicator. */
+  favoritePaths?: Set<string>;
   onOpenFile: (path: string) => void;
   onSelectFolder: (path: string | null) => void;
   onCopyPath: (path: string) => void;
   onDeleteFile: (path: string) => void;
   onDeleteFolder: (path: string) => void;
+  onToggleFavorite?: (path: string, next: boolean) => void;
 }) {
   const blobPaths = useMemo(
     () => nodes.filter((n) => n.type === "blob").map((n) => n.path),
@@ -639,9 +676,11 @@ function FileTreeInner({
             isActive={match.path === activePath}
             paddingLeft={8}
             highlight={{ start: match.highlightStart, length: match.highlightLength }}
+            isFavorite={favoritePaths?.has(match.path)}
             onOpenFile={onOpenFile}
             onCopyPath={onCopyPath}
             onDeleteFile={onDeleteFile}
+            onToggleFavorite={onToggleFavorite}
           />
         ))}
       </div>
@@ -707,9 +746,11 @@ function FileTreeInner({
           label={entry.name}
           isActive={isActiveFile}
           paddingLeft={indent + 14}
+          isFavorite={favoritePaths?.has(entry.path)}
           onOpenFile={onOpenFile}
           onCopyPath={onCopyPath}
           onDeleteFile={onDeleteFile}
+          onToggleFavorite={onToggleFavorite}
         />
       );
     });
