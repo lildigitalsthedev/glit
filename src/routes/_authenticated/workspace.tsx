@@ -1243,12 +1243,25 @@ function Workspace() {
           selector and repo actions on narrow screens. */}
       <div className="flex items-center gap-1.5 border-b border-border p-1.5">
         <FileCode2 className="size-3.5 shrink-0 text-muted-foreground" />
-        <Input
-          value={path}
-          onChange={(e) => setPath(e.target.value)}
-          placeholder="src/components/Button.tsx"
-          className="h-8 min-w-0 flex-1 font-mono text-xs"
-        />
+        <div className="relative min-w-0 flex-1">
+          <Input
+            value={path}
+            onChange={(e) => setPath(e.target.value)}
+            placeholder="src/components/Button.tsx"
+            className="h-8 min-w-0 pr-7 font-mono text-xs"
+          />
+          {path && (
+            <button
+              type="button"
+              onClick={() => setPath("")}
+              aria-label="Clear file path"
+              title="Clear"
+              className="absolute right-1 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <X className="size-3.5" />
+            </button>
+          )}
+        </div>
         {path && dirty && (
           <Button
             variant="outline"
