@@ -1331,7 +1331,16 @@ function Workspace() {
 
   return (
     <main className="flex h-[calc(100dvh-2.5rem-var(--dock-space,7rem))] flex-col">
-      <div className="flex flex-wrap items-center gap-1.5 border-b border-border px-2 py-1 sm:gap-2 sm:px-3">
+      {/* justify-between + two shrink-0-free clusters instead of a single
+          flex-wrap row with ml-auto: with ml-auto, the action-buttons
+          cluster wrapping onto its own line on narrow screens still gets
+          shoved flush right by its margin, leaving a wide dead strip of
+          empty space to its left. Splitting into two clusters means that
+          when the action cluster is alone on a line, justify-between has
+          nothing to distribute it against and it falls back to flush-left,
+          right under the repo/branch row above it. */}
+      <div className="flex flex-wrap items-center justify-between gap-x-1.5 gap-y-1.5 border-b border-border px-2 py-1 sm:gap-x-2 sm:px-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-1.5 sm:gap-2">
         <Button
           variant="outline"
           size="icon"
@@ -1433,7 +1442,8 @@ function Workspace() {
             <span className="truncate">{latestCommit.data.message}</span>
           </span>
         )}
-        <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
+        </div>
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
           {/* Mobile-only edit-actions menu — diff itself now lives in its
               own row directly above the editor, next to the path field. */}
           {path && !showDiff && (
