@@ -384,7 +384,7 @@ function Settings() {
       <h1 className="mt-1 text-2xl font-semibold tracking-tight">Settings</h1>
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="mt-6 w-full">
-        <TabsList className="h-auto w-full justify-start gap-1 overflow-x-auto p-1">
+        <TabsList className="h-auto w-full justify-start gap-1 overflow-x-auto p-1 scrollbar-none">
           {TABS.map((tab) => (
             <TabsTrigger key={tab.value} value={tab.value} className="gap-1.5 whitespace-nowrap px-3 py-1.5">
               <tab.icon className="size-3.5" />
