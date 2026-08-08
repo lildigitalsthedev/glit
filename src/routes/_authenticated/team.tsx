@@ -1,9 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useDeferredValue, useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Loader2, LogOut, Mail, Plus, Shield, Trash2, UserMinus, Users, X } from "lucide-react";
+import { Loader2, LogOut, Mail, Plus, Shield, SearchX, Trash2, Users, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,8 +20,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { EmptyState } from "@/components/empty-state";
+import { SearchInput } from "@/components/search-input";
+import { MemberProfileDrawer } from "@/components/member-profile-drawer";
 import { CreateWorkspaceDialog, WorkspaceSwitcher } from "@/components/workspace-switcher";
 import { useWorkspaces } from "@/hooks/useWorkspaces";
+import { useAuth } from "@/hooks/useAuth";
+import { getMemberStatus, presenceDotClass } from "@/lib/member-status";
+import { cn } from "@/lib/utils";
 import {
   deleteWorkspace,
   inviteWorkspaceMember,
@@ -36,6 +41,7 @@ import {
   setWorkspaceMemberRole,
   transferWorkspaceOwnership,
   updateWorkspace,
+  type MemberDto,
 } from "@/lib/workspaces.functions";
 import {
   assignableRoles,
@@ -187,11 +193,16 @@ function PendingInvitations() {
 
 function MembersTab({ workspaceId }: { workspaceId: string }) {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const { role, can, activeWorkspace } = useWorkspaces();
   const listFn = useServerFn(listWorkspaceMembers);
   const setRoleFn = useServerFn(setWorkspaceMemberRole);
   const removeFn = useServerFn(removeWorkspaceMember);
   const transferFn = useServerFn(transferWorkspaceOwnership);
+
+  const [search, setSearch] = useState("");
+  const deferredSearch = useDeferredValue(search);
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
 
   const query = useQuery({
     queryKey: ["workspace-members", workspaceId],
@@ -213,6 +224,7 @@ function MembersTab({ workspaceId }: { workspaceId: string }) {
     mutationFn: (targetUserId: string) => removeFn({ data: { workspaceId, targetUserId } }),
     onSuccess: async () => {
       toast.success("Member removed");
+      setSelectedMemberId(null);
       await queryClient.invalidateQueries({ queryKey: ["workspace-members", workspaceId] });
       await queryClient.invalidateQueries({ queryKey: ["workspaces"] });
     },
@@ -223,6 +235,7 @@ function MembersTab({ workspaceId }: { workspaceId: string }) {
     mutationFn: (targetUserId: string) => transferFn({ data: { workspaceId, targetUserId } }),
     onSuccess: async () => {
       toast.success("Ownership transferred");
+      setSelectedMemberId(null);
       await queryClient.invalidateQueries();
     },
     onError: (error: Error) => toast.error(error.message),
@@ -232,71 +245,75 @@ function MembersTab({ workspaceId }: { workspaceId: string }) {
   const members = query.data ?? [];
   const options = assignableRoles(role);
 
+  const trimmedSearch = deferredSearch.trim().toLowerCase();
+  const filteredMembers = trimmedSearch
+    ? members.filter((member) => {
+        const haystack = `${member.displayName ?? ""} ${member.email ?? ""}`.toLowerCase();
+        return haystack.includes(trimmedSearch);
+      })
+    : members;
+
+  const selectedMember: MemberDto | null =
+    members.find((member) => member.id === selectedMemberId) ?? null;
+
   return (
     <div className="space-y-2">
-      {members.map((member) => (
-        <div key={member.id} className="flex flex-wrap items-center gap-2 rounded-md border border-border p-2.5">
-          <Avatar className="size-8">
-            {member.avatarUrl ? <AvatarImage src={member.avatarUrl} alt="" /> : null}
-            <AvatarFallback className="text-xs">
-              {(member.displayName ?? member.email ?? "?").slice(0, 2).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm">{member.displayName ?? member.email ?? "Unknown"}</p>
-            <p className="truncate font-mono text-xs text-muted-foreground">{member.email ?? member.userId}</p>
-          </div>
+      {members.length > 1 ? (
+        <SearchInput
+          value={search}
+          onValueChange={setSearch}
+          placeholder="Search members by name or email…"
+          ariaLabel="Search members"
+        />
+      ) : null}
 
-          {member.role === "owner" || !can("members:setRole") || options.length === 0 ? (
-            <Badge variant="secondary" className="gap-1">
-              {member.role === "owner" ? <Shield className="size-3" /> : null}
-              {WORKSPACE_ROLE_LABELS[member.role]}
-            </Badge>
-          ) : (
-            <Select
-              value={member.role}
-              onValueChange={(value) =>
-                setRole.mutate({ targetUserId: member.userId, role: value as WorkspaceRole })
-              }
+      {filteredMembers.length === 0 ? (
+        <EmptyState
+          icon={SearchX}
+          title="No members match"
+          description={`Nothing found for "${deferredSearch}".`}
+          size="compact"
+        />
+      ) : (
+        filteredMembers.map((member) => {
+          const status = getMemberStatus(member.lastActiveAt);
+          const name = member.displayName ?? member.email ?? "Unknown";
+          return (
+            <button
+              key={member.id}
+              type="button"
+              onClick={() => setSelectedMemberId(member.id)}
+              className="flex w-full flex-wrap items-center gap-2 rounded-md border border-border p-2.5 text-left transition-colors hover:bg-white/5"
             >
-              <SelectTrigger className="h-8 w-32 text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {options.map((option) => (
-                  <SelectItem key={option} value={option} className="text-xs">
-                    {WORKSPACE_ROLE_LABELS[option]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
+              <span className="relative shrink-0">
+                <Avatar className="size-8">
+                  {member.avatarUrl ? <AvatarImage src={member.avatarUrl} alt="" /> : null}
+                  <AvatarFallback className="text-xs">{name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <span
+                  className={cn(
+                    "absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full border-2 border-background",
+                    presenceDotClass(status.presence),
+                  )}
+                  aria-hidden
+                />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm">{name}</p>
+                <p className="truncate font-mono text-xs text-muted-foreground">{member.email ?? member.userId}</p>
+              </div>
 
-          {can("workspace:transfer") && member.role !== "owner" ? (
-            <Button
-              size="sm"
-              variant="ghost"
-              title="Transfer ownership"
-              disabled={transfer.isPending}
-              onClick={() => transfer.mutate(member.userId)}
-            >
-              <Shield className="size-4" />
-            </Button>
-          ) : null}
-
-          {can("members:remove") && member.role !== "owner" ? (
-            <Button
-              size="sm"
-              variant="ghost"
-              title="Remove from workspace"
-              disabled={remove.isPending}
-              onClick={() => remove.mutate(member.userId)}
-            >
-              <UserMinus className="size-4 text-destructive" />
-            </Button>
-          ) : null}
-        </div>
-      ))}
+              <div className="flex flex-col items-end gap-1">
+                <Badge variant="secondary" className="gap-1">
+                  {member.role === "owner" ? <Shield className="size-3" /> : null}
+                  {WORKSPACE_ROLE_LABELS[member.role]}
+                </Badge>
+                <span className="text-[11px] text-muted-foreground">{status.label}</span>
+              </div>
+            </button>
+          );
+        })
+      )}
 
       {activeWorkspace?.isPersonal ? (
         <p className="text-xs text-muted-foreground">
@@ -315,6 +332,31 @@ function MembersTab({ workspaceId }: { workspaceId: string }) {
           </ul>
         </div>
       )}
+
+      <MemberProfileDrawer
+        member={selectedMember}
+        open={selectedMember !== null}
+        onOpenChange={(open) => {
+          if (!open) setSelectedMemberId(null);
+        }}
+        isSelf={selectedMember !== null && selectedMember.userId === user?.id}
+        roleOptions={options}
+        canSetRole={can("members:setRole")}
+        canRemove={can("members:remove")}
+        canTransfer={can("workspace:transfer")}
+        onSetRole={(nextRole) => {
+          if (selectedMember) setRole.mutate({ targetUserId: selectedMember.userId, role: nextRole });
+        }}
+        onRemove={() => {
+          if (selectedMember) remove.mutate(selectedMember.userId);
+        }}
+        onTransfer={() => {
+          if (selectedMember) transfer.mutate(selectedMember.userId);
+        }}
+        isSettingRole={setRole.isPending}
+        isRemoving={remove.isPending}
+        isTransferring={transfer.isPending}
+      />
     </div>
   );
 }
