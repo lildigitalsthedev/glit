@@ -64,6 +64,24 @@ export async function requireCapability(
   return role;
 }
 
+/**
+ * The guard every repo/AI/API-key server function goes through. GitHub
+ * accounts and AI provider credentials are still owned per-user (BYO
+ * token/BYO key), not per-workspace — but which of *your own* connections
+ * you're allowed to act with is scoped by your role in whichever workspace
+ * is currently active. Resolves the caller's active workspace server-side
+ * (never trusts a workspaceId the client could pass in) and throws unless
+ * their role there grants `capability`.
+ */
+export async function requireActiveWorkspaceCapability(
+  userId: string,
+  capability: WorkspaceCapability,
+): Promise<{ workspaceId: string; role: WorkspaceRole }> {
+  const workspaceId = await getActiveWorkspaceId(userId);
+  const role = await requireCapability(userId, workspaceId, capability);
+  return { workspaceId, role };
+}
+
 export async function getMemberRole(userId: string, workspaceId: string): Promise<WorkspaceRole | null> {
   const { data, error } = await supabaseAdmin
     .from("workspace_members")

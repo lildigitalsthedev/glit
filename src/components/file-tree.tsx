@@ -317,7 +317,7 @@ function FileRow({
   isFavorite?: boolean;
   onOpenFile: (path: string) => void;
   onCopyPath: (path: string) => void;
-  onDeleteFile: (path: string) => void;
+  onDeleteFile?: ((path: string) => void) | undefined;
   onToggleFavorite?: ((path: string, next: boolean) => void) | undefined;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -406,14 +406,18 @@ function FileRow({
               {isFavorite ? "Remove from Favorites" : "Add to Favorites"}
             </DropdownMenuItem>
           )}
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            onSelect={() => onDeleteFile(path)}
-            className="text-destructive focus:bg-destructive/10 focus:text-destructive"
-          >
-            <Trash2 className="size-3.5" />
-            Delete
-          </DropdownMenuItem>
+          {onDeleteFile && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onSelect={() => onDeleteFile(path)}
+                className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+              >
+                <Trash2 className="size-3.5" />
+                Delete
+              </DropdownMenuItem>
+            </>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
@@ -441,7 +445,7 @@ function FolderRow({
   paddingLeft: number;
   onToggle: () => void;
   onCopyPath: (path: string) => void;
-  onDeleteFolder: (path: string) => void;
+  onDeleteFolder?: ((path: string) => void) | undefined;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -518,14 +522,18 @@ function FolderRow({
             <Copy className="size-3.5" />
             Copy Path
           </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            onSelect={() => onDeleteFolder(path)}
-            className="text-destructive focus:bg-destructive/10 focus:text-destructive"
-          >
-            <Trash2 className="size-3.5" />
-            Delete folder
-          </DropdownMenuItem>
+          {onDeleteFolder && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onSelect={() => onDeleteFolder(path)}
+                className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+              >
+                <Trash2 className="size-3.5" />
+                Delete folder
+              </DropdownMenuItem>
+            </>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
@@ -556,8 +564,8 @@ function FileTreeInner({
   onOpenFile: (path: string) => void;
   onSelectFolder: (path: string | null) => void;
   onCopyPath: (path: string) => void;
-  onDeleteFile: (path: string) => void;
-  onDeleteFolder: (path: string) => void;
+  onDeleteFile?: ((path: string) => void) | undefined;
+  onDeleteFolder?: ((path: string) => void) | undefined;
   onToggleFavorite?: (path: string, next: boolean) => void;
 }) {
   const blobPaths = useMemo(

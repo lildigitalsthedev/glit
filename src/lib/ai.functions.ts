@@ -45,6 +45,8 @@ export const saveAiProvider = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<AiProviderDto> => {
     const { assertPro } = await import("./ai/gate.server");
     await assertPro(context.userId);
+    const { requireActiveWorkspaceCapability } = await import("./workspaces/store.server");
+    await requireActiveWorkspaceCapability(context.userId, "keys:manage");
     const { upsertProviderForUser } = await import("./ai/store.server");
     return upsertProviderForUser(context.userId, data);
   });
@@ -55,6 +57,8 @@ export const setAiProviderEnabled = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { assertPro } = await import("./ai/gate.server");
     await assertPro(context.userId);
+    const { requireActiveWorkspaceCapability } = await import("./workspaces/store.server");
+    await requireActiveWorkspaceCapability(context.userId, "keys:manage");
     const { upsertProviderForUser } = await import("./ai/store.server");
     await upsertProviderForUser(context.userId, {
       provider: data.provider,
@@ -69,6 +73,8 @@ export const setDefaultAiProvider = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { assertPro } = await import("./ai/gate.server");
     await assertPro(context.userId);
+    const { requireActiveWorkspaceCapability } = await import("./workspaces/store.server");
+    await requireActiveWorkspaceCapability(context.userId, "keys:manage");
     const { setDefaultProviderForUser } = await import("./ai/store.server");
     await setDefaultProviderForUser(context.userId, data.id);
     return { ok: true };
@@ -78,6 +84,8 @@ export const deleteAiProvider = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: { id: string }) => data)
   .handler(async ({ data, context }) => {
+    const { requireActiveWorkspaceCapability } = await import("./workspaces/store.server");
+    await requireActiveWorkspaceCapability(context.userId, "keys:manage");
     const { deleteProviderForUser } = await import("./ai/store.server");
     await deleteProviderForUser(context.userId, data.id);
     return { ok: true };
@@ -90,6 +98,8 @@ export const testAiProvider = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { assertPro } = await import("./ai/gate.server");
     await assertPro(context.userId);
+    const { requireActiveWorkspaceCapability } = await import("./workspaces/store.server");
+    await requireActiveWorkspaceCapability(context.userId, "ai:use");
     const { assertRateLimit } = await import("./rate-limit.server");
     await assertRateLimit(context.userId, { bucket: "ai_test", limit: 10, windowSeconds: 60 });
     const { resolveProviderForUser } = await import("./ai/store.server");
@@ -112,6 +122,8 @@ export const generateCode = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { assertPro } = await import("./ai/gate.server");
     await assertPro(context.userId);
+    const { requireActiveWorkspaceCapability } = await import("./workspaces/store.server");
+    await requireActiveWorkspaceCapability(context.userId, "ai:use");
     const { assertRateLimit } = await import("./rate-limit.server");
     await assertRateLimit(context.userId, { bucket: "ai_generate", limit: 20, windowSeconds: 300 });
     const { resolveProviderForUser } = await import("./ai/store.server");
@@ -146,6 +158,8 @@ export const editFileWithAi = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { assertPro } = await import("./ai/gate.server");
     await assertPro(context.userId);
+    const { requireActiveWorkspaceCapability } = await import("./workspaces/store.server");
+    await requireActiveWorkspaceCapability(context.userId, "ai:use");
     const { assertRateLimit } = await import("./rate-limit.server");
     await assertRateLimit(context.userId, { bucket: "ai_edit", limit: 20, windowSeconds: 300 });
     const { resolveProviderForUser } = await import("./ai/store.server");
@@ -182,6 +196,8 @@ export const generateCommitMessage = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { assertPro } = await import("./ai/gate.server");
     await assertPro(context.userId);
+    const { requireActiveWorkspaceCapability } = await import("./workspaces/store.server");
+    await requireActiveWorkspaceCapability(context.userId, "ai:use");
     const { assertRateLimit } = await import("./rate-limit.server");
     await assertRateLimit(context.userId, {
       bucket: "ai_commit_message",
@@ -243,6 +259,8 @@ export const chatWithRepo = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { assertPro } = await import("./ai/gate.server");
     await assertPro(context.userId);
+    const { requireActiveWorkspaceCapability } = await import("./workspaces/store.server");
+    await requireActiveWorkspaceCapability(context.userId, "ai:use");
     const { assertRateLimit } = await import("./rate-limit.server");
     await assertRateLimit(context.userId, { bucket: "ai_chat", limit: 20, windowSeconds: 300 });
 

@@ -112,6 +112,8 @@ export const pushFile = createServerFn({ method: "POST" })
     }) => data,
   )
   .handler(async ({ data, context }) => {
+    const { requireActiveWorkspaceCapability } = await import("./workspaces/store.server");
+    await requireActiveWorkspaceCapability(context.userId, "repos:push");
     const { assertRateLimit } = await import("./rate-limit.server");
     await assertRateLimit(context.userId, { bucket: "github_write", limit: 60, windowSeconds: 300 });
     const { pushSingleFile } = await import("./github/push.server");
@@ -131,6 +133,8 @@ export const pushFiles = createServerFn({ method: "POST" })
     }) => data,
   )
   .handler(async ({ data, context }) => {
+    const { requireActiveWorkspaceCapability } = await import("./workspaces/store.server");
+    await requireActiveWorkspaceCapability(context.userId, "repos:push");
     const { assertRateLimit } = await import("./rate-limit.server");
     await assertRateLimit(context.userId, { bucket: "github_write", limit: 60, windowSeconds: 300 });
     const { pushMultipleFiles } = await import("./github/push.server");
@@ -149,6 +153,8 @@ export const deleteFile = createServerFn({ method: "POST" })
     }) => data,
   )
   .handler(async ({ data, context }) => {
+    const { requireActiveWorkspaceCapability } = await import("./workspaces/store.server");
+    await requireActiveWorkspaceCapability(context.userId, "repos:push");
     const { assertRateLimit } = await import("./rate-limit.server");
     await assertRateLimit(context.userId, { bucket: "github_write", limit: 60, windowSeconds: 300 });
     const { deleteSingleFile } = await import("./github/push.server");
@@ -167,6 +173,8 @@ export const deleteFolder = createServerFn({ method: "POST" })
     }) => data,
   )
   .handler(async ({ data, context }) => {
+    const { requireActiveWorkspaceCapability } = await import("./workspaces/store.server");
+    await requireActiveWorkspaceCapability(context.userId, "repos:push");
     const { assertRateLimit } = await import("./rate-limit.server");
     await assertRateLimit(context.userId, { bucket: "github_write", limit: 60, windowSeconds: 300 });
     const { deleteFolderRecursive } = await import("./github/push.server");
@@ -187,6 +195,8 @@ export const createRepository = createServerFn({ method: "POST" })
     }) => data,
   )
   .handler(async ({ data, context }): Promise<RepoCard> => {
+    const { requireActiveWorkspaceCapability } = await import("./workspaces/store.server");
+    await requireActiveWorkspaceCapability(context.userId, "repos:create");
     const { assertRateLimit } = await import("./rate-limit.server");
     await assertRateLimit(context.userId, { bucket: "github_repo_admin", limit: 10, windowSeconds: 3600 });
     const name = data.name.trim();
@@ -273,6 +283,8 @@ export const renameRepository = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: { accountId: string; fullName: string; newName: string }) => data)
   .handler(async ({ data, context }): Promise<RenamedRepo> => {
+    const { requireActiveWorkspaceCapability } = await import("./workspaces/store.server");
+    await requireActiveWorkspaceCapability(context.userId, "repos:manage");
     const { assertRateLimit } = await import("./rate-limit.server");
     await assertRateLimit(context.userId, { bucket: "github_repo_admin", limit: 10, windowSeconds: 3600 });
     const { loadAccountToken } = await import("./github/tokens.server");

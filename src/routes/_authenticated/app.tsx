@@ -28,6 +28,7 @@ import { EmptyState } from "@/components/empty-state";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { usePersistentState } from "@/hooks/use-persistent-state";
+import { useWorkspaces } from "@/hooks/useWorkspaces";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/app")({
@@ -285,6 +286,7 @@ function Dashboard() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const accounts = useAccounts();
+  const { can } = useWorkspaces();
   const [query, setQuery] = useState("");
   const [onlyFavorites, setOnlyFavorites] = useState(false);
   const [view, setView] = usePersistentState<RepoView>("glit:repo-view", "grid");
@@ -400,7 +402,7 @@ function Dashboard() {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-base font-semibold tracking-tight">Repositories</h1>
         <div className="flex items-center gap-2">
-          <CreateRepositoryDialog accountId={accountId} onCreated={handleRepoCreated} />
+          <CreateRepositoryDialog accountId={accountId} onCreated={handleRepoCreated} disabled={!can("repos:create")} />
           <ConnectGithubDialog
             trigger={
               <Button variant="outline" size="sm">

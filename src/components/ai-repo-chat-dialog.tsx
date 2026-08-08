@@ -3,7 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { Loader2, MessageSquare, Send, FileCode } from "lucide-react";
+import { Loader2, MessageSquare, Send, FileCode, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { chatWithRepo } from "@/lib/ai.functions";
+import { useWorkspaces } from "@/hooks/useWorkspaces";
 
 interface Message {
   role: "user" | "assistant";
@@ -39,6 +40,8 @@ export function AiRepoChatDialog({
   branch: string;
 }) {
   const chatFn = useServerFn(chatWithRepo);
+  const { can } = useWorkspaces();
+  const canUseAi = can("ai:use");
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -131,6 +134,13 @@ export function AiRepoChatDialog({
           </DialogDescription>
         </DialogHeader>
 
+        {!canUseAi ? (
+          <p className="flex items-center gap-2 rounded-md border border-border bg-secondary/30 p-3 text-xs text-muted-foreground">
+            <ShieldAlert className="size-4 shrink-0" />
+            Your role in this workspace doesn't allow AI features. Ask an Admin or the Owner for
+            access.
+          </p>
+        ) : (
         <div className="flex flex-1 flex-col gap-3 overflow-hidden">
           <div
             ref={scrollRef}
@@ -204,6 +214,7 @@ export function AiRepoChatDialog({
             </div>
           </div>
         </div>
+        )}
       </DialogContent>
     </Dialog>
   );

@@ -53,6 +53,7 @@ import {
   Settings,
   CreditCard,
   Eye,
+  ShieldAlert,
 } from "lucide-react";
 import {
   listRepoBranches,
@@ -119,6 +120,7 @@ import { FileTree } from "@/components/file-tree";
 import { FileBreadcrumbs } from "@/components/breadcrumb-nav";
 import { EmptyState } from "@/components/empty-state";
 import { usePlan } from "@/hooks/usePlan";
+import { useWorkspaces } from "@/hooks/useWorkspaces";
 import { useAccounts } from "@/components/connect-github";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
@@ -215,6 +217,16 @@ function Workspace() {
   // Reads off the same ["prefs"] cache already populated above, so this
   // doesn't trigger an extra fetch — see usePlan for the shared plan logic.
   const { isPro } = usePlan();
+
+  // Workspace-role gates for Feature 3 (RBAC) — a Viewer can browse and
+  // read everything below, but every write/AI action gets hidden or
+  // disabled at its entry point. The server independently re-checks all
+  // of these (see github.functions.ts / ai.functions.ts), so this is
+  // strictly a UX layer, not the actual security boundary.
+  const { can } = useWorkspaces();
+  const canPush = can("repos:push");
+  const canManageRepo = can("repos:manage");
+  const canUseAi = can("ai:use");
 
   const [branch, setBranch] = useState<string>("");
   const [path, setPath] = useState("");
@@ -1382,8 +1394,8 @@ function Workspace() {
           onOpenFile={(target) => openOrActivateFile(target)}
           onSelectFolder={(target) => setActiveFolder(target)}
           onCopyPath={handleCopyPath}
-          onDeleteFile={handleDeleteFile}
-          onDeleteFolder={(target) => setDeleteFolderTarget(target)}
+          onDeleteFile={canPush ? handleDeleteFile : undefined}
+          onDeleteFolder={canPush ? (target) => setDeleteFolderTarget(target) : undefined}
           onToggleFavorite={toggleFileFavorite}
         />
       </div>
@@ -1397,15 +1409,26 @@ function Workspace() {
           off-screen; the button below is pinned instead of relying on
           leftover flex space. */}
       <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-2.5">
+        {!canPush && (
+          <p className="flex items-center gap-2 rounded-md border border-border bg-secondary/30 p-2.5 text-[11px] text-muted-foreground">
+            <ShieldAlert className="size-3.5 shrink-0" />
+            Your role in this workspace is read-only here — you can browse files but not push
+            changes.
+          </p>
+        )}
         <div className="flex items-center justify-between gap-2">
           <p className="label-caps">Commit</p>
           <Button
             variant="ghost"
             size="sm"
             className="h-6 gap-1 px-1.5 text-[11px] text-muted-foreground hover:text-foreground"
-            disabled={!path || !dirty || generateCommitMessageMutation.isPending}
+            disabled={!canUseAi || !path || !dirty || generateCommitMessageMutation.isPending}
             onClick={handleGenerateCommitMessage}
-            title="Draft a commit message from your changes"
+            title={
+              !canUseAi
+                ? "Your role in this workspace doesn't allow AI features"
+                : "Draft a commit message from your changes"
+            }
           >
             {generateCommitMessageMutation.isPending ? (
               <Loader2 className="size-3 animate-spin" />
@@ -1442,8 +1465,9 @@ function Workspace() {
       >
         <Button
           className="h-10 w-full sm:h-9"
-          disabled={!path || !message.trim() || !branch || commit.isPending}
+          disabled={!canPush || !path || !message.trim() || !branch || commit.isPending}
           onClick={() => commit.mutate()}
+          title={!canPush ? "Your role in this workspace doesn't allow pushing changes" : undefined}
         >
           {commit.isPending ? (
             <Loader2 className="size-4 animate-spin" />
@@ -1737,7 +1761,7 @@ function Workspace() {
               <Download className="size-3.5" />
               Download ZIP
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={handleRenameRepository}>
+            <DropdownMenuItem onSelect={handleRenameRepository} disabled={!canManageRepo}>
               <Pencil className="size-3.5" />
               Rename Repository
             </DropdownMenuItem>
@@ -1823,11 +1847,11 @@ function Workspace() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52">
-              <DropdownMenuItem onSelect={() => uploadInputRef.current?.click()}>
+              <DropdownMenuItem onSelect={() => uploadInputRef.current?.click()} disabled={!canPush}>
                 <Upload className="size-3.5" />
                 Upload
               </DropdownMenuItem>
-              <DropdownMenuItem onSelect={openBulkUpload}>
+              <DropdownMenuItem onSelect={openBulkUpload} disabled={!canPush}>
                 {isPro ? (
                   <UploadCloud className="size-3.5" />
                 ) : (
@@ -1838,7 +1862,7 @@ function Workspace() {
                   <span className="ml-auto text-[10px] text-muted-foreground">Pro</span>
                 )}
               </DropdownMenuItem>
-              <DropdownMenuItem onSelect={openUploadFolder}>
+              <DropdownMenuItem onSelect={openUploadFolder} disabled={!canPush}>
                 {isPro ? (
                   <FolderUp className="size-3.5" />
                 ) : (
@@ -1849,7 +1873,7 @@ function Workspace() {
                   <span className="ml-auto text-[10px] text-muted-foreground">Pro</span>
                 )}
               </DropdownMenuItem>
-              <DropdownMenuItem onSelect={openUploadZip}>
+              <DropdownMenuItem onSelect={openUploadZip} disabled={!canPush}>
                 {isPro ? (
                   <FileArchive className="size-3.5" />
                 ) : (
@@ -1861,22 +1885,22 @@ function Workspace() {
                 )}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={() => setNewFileOpen(true)}>
+              <DropdownMenuItem onSelect={() => setNewFileOpen(true)} disabled={!canPush}>
                 <FilePlus className="size-3.5" />
                 New file
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={openAiGenerate}>
+              <DropdownMenuItem onSelect={openAiGenerate} disabled={!canUseAi}>
                 {isPro ? <Sparkles className="size-3.5" /> : <Lock className="size-3.5" />}
                 Generate code
                 {!isPro && <span className="ml-auto text-[10px] text-muted-foreground">Pro</span>}
               </DropdownMenuItem>
-              <DropdownMenuItem onSelect={openAiEdit}>
+              <DropdownMenuItem onSelect={openAiEdit} disabled={!canUseAi}>
                 {isPro ? <Wand2 className="size-3.5" /> : <Lock className="size-3.5" />}
                 Edit with AI
                 {!isPro && <span className="ml-auto text-[10px] text-muted-foreground">Pro</span>}
               </DropdownMenuItem>
-              <DropdownMenuItem onSelect={openAiChat}>
+              <DropdownMenuItem onSelect={openAiChat} disabled={!canUseAi}>
                 {isPro ? <MessageSquare className="size-3.5" /> : <Lock className="size-3.5" />}
                 Ask about repo
                 {!isPro && <span className="ml-auto text-[10px] text-muted-foreground">Pro</span>}

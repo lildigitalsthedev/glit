@@ -3,7 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { Loader2, Sparkles, Wand2 } from "lucide-react";
+import { Loader2, ShieldAlert, Sparkles, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +16,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { generateCode } from "@/lib/ai.functions";
+import { useWorkspaces } from "@/hooks/useWorkspaces";
 
 const EXAMPLES = [
   "Create a ProductCard component",
@@ -41,6 +42,8 @@ export function AiGenerateDialog({
   onApply: (result: { path: string; code: string }) => void;
 }) {
   const generateFn = useServerFn(generateCode);
+  const { can } = useWorkspaces();
+  const canUseAi = can("ai:use");
   const [prompt, setPrompt] = useState("");
   const [targetPath, setTargetPath] = useState(path);
   const [code, setCode] = useState("");
@@ -82,6 +85,13 @@ export function AiGenerateDialog({
           </DialogDescription>
         </DialogHeader>
 
+        {!canUseAi ? (
+          <p className="flex items-center gap-2 rounded-md border border-border bg-secondary/30 p-3 text-xs text-muted-foreground">
+            <ShieldAlert className="size-4 shrink-0" />
+            Your role in this workspace doesn't allow AI features. Ask an Admin or the Owner for
+            access.
+          </p>
+        ) : (
         <div className="space-y-3">
           <div className="space-y-1.5">
             <Label className="text-xs">File path</Label>
@@ -148,6 +158,7 @@ export function AiGenerateDialog({
             </div>
           )}
         </div>
+        )}
       </DialogContent>
     </Dialog>
   );

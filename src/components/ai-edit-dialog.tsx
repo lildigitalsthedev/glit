@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { diffLines } from "diff";
-import { Loader2, Sparkles, Wand2 } from "lucide-react";
+import { Loader2, ShieldAlert, Sparkles, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { editFileWithAi } from "@/lib/ai.functions";
 import { cn } from "@/lib/utils";
+import { useWorkspaces } from "@/hooks/useWorkspaces";
 
 const PRESETS = [
   "Make responsive",
@@ -46,6 +47,8 @@ export function AiEditDialog({
   onApply: (code: string) => void;
 }) {
   const editFn = useServerFn(editFileWithAi);
+  const { can } = useWorkspaces();
+  const canUseAi = can("ai:use");
   const [instruction, setInstruction] = useState("");
   const [result, setResult] = useState("");
 
@@ -99,6 +102,13 @@ export function AiEditDialog({
           </DialogDescription>
         </DialogHeader>
 
+        {!canUseAi ? (
+          <p className="flex items-center gap-2 rounded-md border border-border bg-secondary/30 p-3 text-xs text-muted-foreground">
+            <ShieldAlert className="size-4 shrink-0" />
+            Your role in this workspace doesn't allow AI features. Ask an Admin or the Owner for
+            access.
+          </p>
+        ) : (
         <div className="space-y-3">
           <div className="space-y-1.5">
             <Label className="text-xs">What should change?</Label>
@@ -169,6 +179,7 @@ export function AiEditDialog({
             </div>
           )}
         </div>
+        )}
       </DialogContent>
     </Dialog>
   );

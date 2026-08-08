@@ -78,10 +78,12 @@ export function CreateRepositoryDialog({
   accountId,
   onCreated,
   trigger,
+  disabled,
 }: {
   accountId: string | undefined;
   onCreated: (repo: RepoCard) => void;
   trigger?: React.ReactNode;
+  disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -142,10 +144,10 @@ export function CreateRepositoryDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={(next) => !create.isPending && setOpen(next)}>
+    <Dialog open={!disabled && open} onOpenChange={(next) => !create.isPending && !disabled && setOpen(next)}>
       <DialogTrigger asChild>
         {trigger ?? (
-          <Button size="sm">
+          <Button size="sm" disabled={disabled} title={disabled ? "Your role can't create repositories" : undefined}>
             <FolderPlus className="size-3.5" />
             New repository
           </Button>

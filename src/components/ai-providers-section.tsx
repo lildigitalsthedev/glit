@@ -33,6 +33,7 @@ import {
   testAiProvider,
 } from "@/lib/ai.functions";
 import { usePlan } from "@/hooks/usePlan";
+import { useWorkspaces } from "@/hooks/useWorkspaces";
 import { cn } from "@/lib/utils";
 
 /**
@@ -44,6 +45,9 @@ import { cn } from "@/lib/utils";
 export function AiProvidersSection() {
   const queryClient = useQueryClient();
   const { isPro } = usePlan();
+  const { can } = useWorkspaces();
+  const canManageKeys = can("keys:manage");
+  const canUseAi = can("ai:use");
   const listFn = useServerFn(listAiProviders);
   const saveFn = useServerFn(saveAiProvider);
   const enableFn = useServerFn(setAiProviderEnabled);
@@ -136,7 +140,7 @@ export function AiProvidersSection() {
             Bring your own API keys. Keys are encrypted and never leave the server.
           </p>
         </div>
-        {isPro && (
+        {isPro && canManageKeys && (
           <Button size="sm" variant="outline" onClick={() => setAddOpen(true)}>
             <Plug className="size-3.5" />
             Add provider
@@ -152,6 +156,10 @@ export function AiProvidersSection() {
             OpenRouter, DeepSeek, Mistral, Together AI or any OpenAI-compatible endpoint.
           </p>
         </div>
+      ) : !canManageKeys ? (
+        <p className="mt-3 rounded-md border border-border bg-card p-4 text-xs text-muted-foreground">
+          Only Admins and the workspace Owner can add, enable or remove AI providers here.
+        </p>
       ) : providers.isLoading ? (
         <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
           <Loader2 className="size-3.5 animate-spin" /> Loading providers…
