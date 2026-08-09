@@ -142,6 +142,8 @@ export const saveRepoPref = createServerFn({ method: "POST" })
       preferredBranch?: string;
       workingFolder?: string;
       touch?: boolean;
+      /** Stamps the row with the caller's active workspace so it shows up on the Shared Repository Dashboard (Feature 4). Optional so existing callers keep working unchanged. */
+      workspaceId?: string;
     }) => data,
   )
   .handler(async ({ data, context }) => {
@@ -153,6 +155,7 @@ export const saveRepoPref = createServerFn({ method: "POST" })
     if (data.isFavorite !== undefined) patch["is_favorite"] = data.isFavorite;
     if (data.preferredBranch !== undefined) patch["preferred_branch"] = data.preferredBranch;
     if (data.workingFolder !== undefined) patch["working_folder"] = data.workingFolder;
+    if (data.workspaceId !== undefined) patch["workspace_id"] = data.workspaceId;
     if (data.touch) patch["last_used_at"] = new Date().toISOString();
     const { error } = await context.supabase
       .from("repo_prefs")

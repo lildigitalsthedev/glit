@@ -12,6 +12,14 @@ export interface RepoCard {
   defaultBranch: string;
   updatedAt: string;
   canPush: boolean;
+  /** The GitHub connection this card's data was fetched with. Always present so quick actions (push/rename/archive/favorite) know which token to use, even on the shared workspace dashboard where cards can span different members' connections. */
+  accountId: string;
+  language: string | null;
+  archived: boolean;
+  htmlUrl: string | null;
+  /** Only populated on the shared workspace dashboard (Feature 4) — workspace members who've opened/pushed this repo through GitPush, not raw GitHub commit history. */
+  contributors?: { userId: string; name: string; avatarUrl: string | null }[];
+  addedBy?: { userId: string; name: string; avatarUrl: string | null } | null;
 }
 
 export const listRepos = createServerFn({ method: "POST" })
@@ -33,6 +41,10 @@ export const listRepos = createServerFn({ method: "POST" })
       defaultBranch: repo.default_branch,
       updatedAt: repo.pushed_at ?? repo.updated_at,
       canPush: repo.permissions?.push ?? false,
+      accountId: data.accountId,
+      language: repo.language ?? null,
+      archived: repo.archived ?? false,
+      htmlUrl: repo.html_url ?? null,
     }));
   });
 
@@ -299,6 +311,21 @@ export const renameRepository = createServerFn({ method: "POST" })
     };
   });
 
+export const archiveRepository = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { accountId: string; fullName: string; archived: boolean }) => data)
+  .handler(async ({ data, context }): Promise<{ fullName: string; archived: boolean }> => {
+    const { requireActiveWorkspaceCapability } = await import("./workspaces/store.server");
+    await requireActiveWorkspaceCapability(context.userId, "repos:manage");
+    const { assertRateLimit } = await import("./rate-limit.server");
+    await assertRateLimit(context.userId, { bucket: "github_repo_admin", limit: 10, windowSeconds: 3600 });
+    const { loadAccountToken } = await import("./github/tokens.server");
+    const { setRepoArchived } = await import("./github/api.server");
+    const { token } = await loadAccountToken(context.supabase, data.accountId);
+    const repo = await setRepoArchived(token, data.fullName, data.archived);
+    return { fullName: repo.full_name, archived: repo.archived ?? data.archived };
+  });
+
 export interface RepoZipResult {
   filename: string;
   base64: string;
@@ -320,4 +347,76 @@ export const downloadRepoZip = createServerFn({ method: "POST" })
       filename: `${repoName}-${safeBranch}.zip`,
       base64: buffer.toString("base64"),
     };
+  });
+
+/**
+ * The Shared Repository Dashboard (Feature 4). Resolves the caller's active
+ * workspace server-side, aggregates every member's `repo_prefs` rows for it,
+ * then fetches live GitHub metadata one call per distinct connecting
+ * account (not one call per repo) to keep this bounded for larger teams.
+ * Repos whose connecting account's token has since been revoked, or that
+ * were deleted/renamed on GitHub since anyone last touched them here, are
+ * silently skipped rather than failing the whole dashboard.
+ */
+export const listWorkspaceRepoCards = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<RepoCard[]> => {
+    const { getActiveWorkspaceId, requireCapability } = await import("./workspaces/store.server");
+    const workspaceId = await getActiveWorkspaceId(context.userId);
+    await requireCapability(context.userId, workspaceId, "workspace:view");
+
+    const { listWorkspaceRepoRefs } = await import("./workspaces/repos.server");
+    const refs = await listWorkspaceRepoRefs(workspaceId, context.userId);
+    if (refs.length === 0) return [];
+
+    const byAccount = new Map<string, typeof refs>();
+    for (const ref of refs) {
+      const bucket = byAccount.get(ref.accountId);
+      if (bucket) bucket.push(ref);
+      else byAccount.set(ref.accountId, [ref]);
+    }
+
+    const { loadAccountToken } = await import("./github/tokens.server");
+    const { listAllRepos } = await import("./github/api.server");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const cards: RepoCard[] = [];
+    // Bound worst-case GitHub API usage for very large teams — beyond this,
+    // members should narrow down with search rather than the dashboard
+    // eagerly fetching dozens of accounts' full repo lists.
+    const accountEntries = Array.from(byAccount.entries()).slice(0, 25);
+
+    for (const [accountId, group] of accountEntries) {
+      let ghRepos;
+      try {
+        const { token } = await loadAccountToken(supabaseAdmin, accountId);
+        ghRepos = await listAllRepos(token);
+      } catch {
+        continue; // that connection's token was revoked/broken — skip its repos
+      }
+      const byFullName = new Map(ghRepos.map((r) => [r.full_name, r]));
+      for (const ref of group) {
+        const repo = byFullName.get(ref.fullName);
+        if (!repo) continue; // renamed/deleted/no longer visible to that token
+        cards.push({
+          id: repo.id,
+          name: repo.name,
+          fullName: repo.full_name,
+          owner: repo.owner.login,
+          ownerAvatar: repo.owner.avatar_url,
+          isPrivate: repo.private,
+          description: repo.description,
+          defaultBranch: repo.default_branch,
+          updatedAt: repo.pushed_at ?? repo.updated_at,
+          canPush: repo.permissions?.push ?? false,
+          accountId,
+          language: repo.language ?? null,
+          archived: repo.archived ?? false,
+          htmlUrl: repo.html_url ?? null,
+          contributors: ref.contributors,
+          addedBy: ref.addedBy,
+        });
+      }
+    }
+    return cards;
   });

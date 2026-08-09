@@ -69,6 +69,8 @@ export interface GhRepo {
   size?: number;
   visibility?: string;
   html_url?: string;
+  language?: string | null;
+  archived?: boolean;
   owner: { login: string; avatar_url: string };
   permissions?: { push?: boolean; admin?: boolean };
 }
@@ -108,6 +110,13 @@ export function renameRepo(token: string, fullName: string, newName: string) {
   return ghFetch<GhRepo>(token, `/repos/${fullName}`, {
     method: "PATCH",
     body: JSON.stringify({ name: newName }),
+  });
+}
+
+export function setRepoArchived(token: string, fullName: string, archived: boolean) {
+  return ghFetch<GhRepo>(token, `/repos/${fullName}`, {
+    method: "PATCH",
+    body: JSON.stringify({ archived }),
   });
 }
 

@@ -16,10 +16,21 @@ import {
   List,
   Settings2,
   Plus,
+  MoreVertical,
+  Pencil,
+  Archive,
+  ArchiveRestore,
+  ExternalLink,
+  Users,
+  Code2,
+  ArrowUpDown,
+  Filter,
+  UploadCloud,
 } from "lucide-react";
 import { ConnectGithubDialog, useAccounts } from "@/components/connect-github";
 import { CreateRepositoryDialog } from "@/components/create-repository-dialog";
-import { listRepos, type RepoCard } from "@/lib/github.functions";
+import { RenameRepositoryDialog } from "@/components/rename-repository-dialog";
+import { listRepos, listWorkspaceRepoCards, archiveRepository, type RepoCard } from "@/lib/github.functions";
 import { getPreferences, listRepoPrefs, saveRepoPref, updatePreferences } from "@/lib/workspace.functions";
 import { Button } from "@/components/ui/button";
 import { SearchInput } from "@/components/search-input";
@@ -27,6 +38,30 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/empty-state";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { usePersistentState } from "@/hooks/use-persistent-state";
 import { useWorkspaces } from "@/hooks/useWorkspaces";
 import { cn } from "@/lib/utils";
@@ -47,6 +82,7 @@ export const Route = createFileRoute("/_authenticated/app")({
 });
 
 type RepoView = "grid" | "compact" | "list";
+type SortKey = "updated" | "name" | "owner";
 
 function timeAgo(iso: string) {
   const diff = Date.now() - new Date(iso).getTime();
@@ -57,6 +93,101 @@ function timeAgo(iso: string) {
   return `${Math.round(hours / 24)}d ago`;
 }
 
+function initials(name: string) {
+  return name.slice(0, 2).toUpperCase();
+}
+
+/** Small avatar stack for "who's touched this repo through GitPush" — capped at 4 with a "+N" overflow chip. */
+function ContributorStack({ contributors }: { contributors: RepoCard["contributors"] }) {
+  if (!contributors || contributors.length === 0) return null;
+  const shown = contributors.slice(0, 4);
+  const overflow = contributors.length - shown.length;
+  return (
+    <div className="flex items-center -space-x-1.5" title={contributors.map((c) => c.name).join(", ")}>
+      {shown.map((c) => (
+        <Avatar key={c.userId} className="size-4 border border-background">
+          {c.avatarUrl ? <AvatarImage src={c.avatarUrl} alt="" /> : null}
+          <AvatarFallback className="text-[8px]">{initials(c.name || "?")}</AvatarFallback>
+        </Avatar>
+      ))}
+      {overflow > 0 && (
+        <span className="flex size-4 items-center justify-center rounded-full border border-background bg-secondary text-[8px] text-muted-foreground">
+          +{overflow}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** Quick-actions "⋮" menu shared by the grid and list cards. Push/Rename/Archive only appear when this card is backed by a GitHub connection the caller actually owns — everyone can still browse and favorite a teammate's repo, but editing it needs your own access to that connection. */
+function RepoQuickActions({
+  repo,
+  ownedByCaller,
+  canPush,
+  canManage,
+  onPush,
+  onRename,
+  onArchive,
+}: {
+  repo: RepoCard;
+  ownedByCaller: boolean;
+  canPush: boolean;
+  canManage: boolean;
+  onPush: () => void;
+  onRename: () => void;
+  onArchive: () => void;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          onClick={(e) => e.stopPropagation()}
+          aria-label="Repository quick actions"
+          className="flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground opacity-0 transition-opacity duration-150 hover:bg-secondary hover:text-foreground group-hover:opacity-100 group-focus-within:opacity-100 data-[state=open]:opacity-100"
+        >
+          <MoreVertical className="size-3.5" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-52">
+        {ownedByCaller && canPush && (
+          <DropdownMenuItem onSelect={onPush}>
+            <UploadCloud className="size-3.5" />
+            Push files…
+          </DropdownMenuItem>
+        )}
+        {ownedByCaller && canManage && (
+          <DropdownMenuItem onSelect={onRename}>
+            <Pencil className="size-3.5" />
+            Rename
+          </DropdownMenuItem>
+        )}
+        {ownedByCaller && canManage && (
+          <DropdownMenuItem
+            onSelect={onArchive}
+            className={repo.archived ? "" : "text-destructive focus:bg-destructive/10 focus:text-destructive"}
+          >
+            {repo.archived ? <ArchiveRestore className="size-3.5" /> : <Archive className="size-3.5" />}
+            {repo.archived ? "Unarchive" : "Archive"}
+          </DropdownMenuItem>
+        )}
+        {ownedByCaller && (canPush || canManage) && repo.htmlUrl && <DropdownMenuSeparator />}
+        {repo.htmlUrl && (
+          <DropdownMenuItem onSelect={() => window.open(repo.htmlUrl!, "_blank", "noreferrer")}>
+            <ExternalLink className="size-3.5" />
+            View on GitHub
+          </DropdownMenuItem>
+        )}
+        {!ownedByCaller && (
+          <p className="px-2 py-1.5 text-[11px] text-muted-foreground">
+            Added via a teammate's GitHub connection — connect that account yourself to push,
+            rename or archive it.
+          </p>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 interface RepoTileProps {
   repo: RepoCard;
   index: number;
@@ -64,16 +195,36 @@ interface RepoTileProps {
   onToggleFavorite: () => void;
   onOpen: () => void;
   opening: boolean;
+  shared?: boolean;
+  ownedByCaller?: boolean;
+  canPush?: boolean;
+  canManage?: boolean;
+  onRename?: () => void;
+  onArchive?: () => void;
 }
 
 /** A single repository card, used in the grid view. */
-function RepoGridCard({ repo, index, isFavorite, onToggleFavorite, onOpen, opening }: RepoTileProps) {
+function RepoGridCard({
+  repo,
+  index,
+  isFavorite,
+  onToggleFavorite,
+  onOpen,
+  opening,
+  shared,
+  ownedByCaller = true,
+  canPush = true,
+  canManage = false,
+  onRename,
+  onArchive,
+}: RepoTileProps) {
   return (
     <article
       style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
       className={cn(
         "group flex animate-in fade-in flex-col rounded-md border bg-card p-3 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md",
         isFavorite ? "border-primary/30" : "border-border",
+        repo.archived && "opacity-60",
       )}
     >
       <div className="flex items-start gap-2">
@@ -81,6 +232,17 @@ function RepoGridCard({ repo, index, isFavorite, onToggleFavorite, onOpen, openi
           <span className="text-muted-foreground">{repo.owner}/</span>
           {repo.name}
         </h2>
+        {shared && (
+          <RepoQuickActions
+            repo={repo}
+            ownedByCaller={ownedByCaller}
+            canPush={canPush}
+            canManage={canManage}
+            onPush={onOpen}
+            onRename={onRename ?? (() => {})}
+            onArchive={onArchive ?? (() => {})}
+          />
+        )}
         <button
           onClick={onToggleFavorite}
           aria-label={isFavorite ? "Remove Favorite" : "Favorite"}
@@ -98,7 +260,7 @@ function RepoGridCard({ repo, index, isFavorite, onToggleFavorite, onOpen, openi
       <p className="mt-1.5 line-clamp-2 text-xs text-muted-foreground">
         {repo.description ?? "No description"}
       </p>
-      <div className="mt-2 flex items-center gap-3 font-mono text-[11px] text-muted-foreground">
+      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[11px] text-muted-foreground">
         <span className="flex items-center gap-1">
           {repo.isPrivate ? <Lock className="size-3" /> : <Unlock className="size-3" />}
           {repo.isPrivate ? "private" : "public"}
@@ -107,8 +269,23 @@ function RepoGridCard({ repo, index, isFavorite, onToggleFavorite, onOpen, openi
           <GitBranch className="size-3" />
           {repo.defaultBranch}
         </span>
+        {repo.language && (
+          <span className="flex items-center gap-1">
+            <Code2 className="size-3" />
+            {repo.language}
+          </span>
+        )}
+        {repo.archived && <span className="text-destructive">archived</span>}
         <span className="ml-auto">{timeAgo(repo.updatedAt)}</span>
       </div>
+      {shared && repo.contributors && repo.contributors.length > 0 && (
+        <div className="mt-2 flex items-center gap-1.5">
+          <ContributorStack contributors={repo.contributors} />
+          <span className="text-[10px] text-muted-foreground">
+            {repo.contributors.length === 1 ? "1 contributor" : `${repo.contributors.length} contributors`}
+          </span>
+        </div>
+      )}
       <Button size="sm" className="mt-3" disabled={!repo.canPush || opening} onClick={onOpen}>
         {repo.canPush ? "Open in workspace" : "Read-only"}
       </Button>
@@ -124,6 +301,7 @@ function RepoCompactCard({ repo, index, isFavorite, onToggleFavorite, onOpen, op
       className={cn(
         "group flex animate-in fade-in flex-col rounded-md border bg-card p-2 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md",
         isFavorite ? "border-primary/30" : "border-border",
+        repo.archived && "opacity-60",
       )}
     >
       <div className="flex items-start gap-1">
@@ -161,13 +339,27 @@ function RepoCompactCard({ repo, index, isFavorite, onToggleFavorite, onOpen, op
 }
 
 /** A single repository row, used in the compact list view. */
-function RepoListRow({ repo, index, isFavorite, onToggleFavorite, onOpen, opening }: RepoTileProps) {
+function RepoListRow({
+  repo,
+  index,
+  isFavorite,
+  onToggleFavorite,
+  onOpen,
+  opening,
+  shared,
+  ownedByCaller = true,
+  canPush = true,
+  canManage = false,
+  onRename,
+  onArchive,
+}: RepoTileProps) {
   return (
     <article
       style={{ animationDelay: `${Math.min(index, 8) * 30}ms` }}
       className={cn(
         "group flex animate-in fade-in items-center gap-3 rounded-md border bg-card px-3 py-2 shadow-sm transition-all duration-200 hover:border-primary/50 hover:shadow-md",
         isFavorite ? "border-primary/30" : "border-border",
+        repo.archived && "opacity-60",
       )}
     >
       <button
@@ -198,11 +390,23 @@ function RepoListRow({ repo, index, isFavorite, onToggleFavorite, onOpen, openin
         {repo.description ?? "No description"}
       </p>
 
+      {shared && repo.contributors && repo.contributors.length > 0 && (
+        <div className="hidden shrink-0 md:block">
+          <ContributorStack contributors={repo.contributors} />
+        </div>
+      )}
+
       <div className="hidden shrink-0 items-center gap-3 font-mono text-[11px] text-muted-foreground md:flex">
         <span className="flex items-center gap-1">
           {repo.isPrivate ? <Lock className="size-3" /> : <Unlock className="size-3" />}
           {repo.isPrivate ? "private" : "public"}
         </span>
+        {repo.language && (
+          <span className="flex items-center gap-1">
+            <Code2 className="size-3" />
+            {repo.language}
+          </span>
+        )}
         <span className="flex items-center gap-1">
           <GitBranch className="size-3" />
           {repo.defaultBranch}
@@ -213,6 +417,18 @@ function RepoListRow({ repo, index, isFavorite, onToggleFavorite, onOpen, openin
       <Button size="sm" variant="secondary" className="shrink-0" disabled={!repo.canPush || opening} onClick={onOpen}>
         {repo.canPush ? "Open" : "Read-only"}
       </Button>
+
+      {shared && (
+        <RepoQuickActions
+          repo={repo}
+          ownedByCaller={ownedByCaller}
+          canPush={canPush}
+          canManage={canManage}
+          onPush={onOpen}
+          onRename={onRename ?? (() => {})}
+          onArchive={onArchive ?? (() => {})}
+        />
+      )}
     </article>
   );
 }
@@ -286,16 +502,27 @@ function Dashboard() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const accounts = useAccounts();
-  const { can } = useWorkspaces();
+  const { can, activeWorkspace, activeWorkspaceId } = useWorkspaces();
+  const shared = Boolean(activeWorkspace && !activeWorkspace.isPersonal);
+  const canPush = can("repos:push");
+  const canManageRepo = can("repos:manage");
+
   const [query, setQuery] = useState("");
   const [onlyFavorites, setOnlyFavorites] = useState(false);
   const [view, setView] = usePersistentState<RepoView>("glit:repo-view", "grid");
+  const [sortBy, setSortBy] = usePersistentState<SortKey>("glit:repo-sort", "updated");
+  const [visibilityFilter, setVisibilityFilter] = useState<"all" | "private" | "public">("all");
+  const [languageFilter, setLanguageFilter] = useState<string>("all");
+  const [renameTarget, setRenameTarget] = useState<RepoCard | null>(null);
+  const [archiveTarget, setArchiveTarget] = useState<RepoCard | null>(null);
 
   const prefsFn = useServerFn(getPreferences);
   const reposFn = useServerFn(listRepos);
+  const workspaceReposFn = useServerFn(listWorkspaceRepoCards);
   const repoPrefsFn = useServerFn(listRepoPrefs);
   const saveRepoPrefFn = useServerFn(saveRepoPref);
   const updatePrefsFn = useServerFn(updatePreferences);
+  const archiveFn = useServerFn(archiveRepository);
 
   const prefs = useQuery({ queryKey: ["prefs"], queryFn: () => prefsFn() });
   const repoPrefs = useQuery({ queryKey: ["repo-prefs"], queryFn: () => repoPrefsFn() });
@@ -305,12 +532,28 @@ function Dashboard() {
       ? prefs.data.activeAccountId
       : accounts.data?.[0]?.id;
 
-  const repos = useQuery({
+  const personalRepos = useQuery({
     queryKey: ["repos", accountId],
     queryFn: () => reposFn({ data: { accountId: accountId! } }),
-    enabled: Boolean(accountId),
+    enabled: Boolean(accountId) && !shared,
     placeholderData: keepPreviousData,
   });
+
+  const sharedRepos = useQuery({
+    queryKey: ["workspace-repo-cards", activeWorkspaceId],
+    queryFn: () => workspaceReposFn(),
+    enabled: shared && Boolean(activeWorkspaceId),
+    placeholderData: keepPreviousData,
+  });
+
+  const repos = shared ? sharedRepos : personalRepos;
+  const ownedAccountIds = useMemo(() => new Set((accounts.data ?? []).map((a) => a.id)), [accounts.data]);
+
+  const availableLanguages = useMemo(() => {
+    const langs = new Set<string>();
+    for (const repo of repos.data ?? []) if (repo.language) langs.add(repo.language);
+    return Array.from(langs).sort();
+  }, [repos.data]);
 
   const favorites = useMemo(
     () => new Set((repoPrefs.data ?? []).filter((p) => p.isFavorite).map((p) => p.fullName)),
@@ -318,9 +561,14 @@ function Dashboard() {
   );
 
   const toggleFavorite = useMutation({
-    mutationFn: (fullName: string) =>
+    mutationFn: (repo: RepoCard) =>
       saveRepoPrefFn({
-        data: { fullName, accountId: accountId!, isFavorite: !favorites.has(fullName) },
+        data: {
+          fullName: repo.fullName,
+          accountId: repo.accountId,
+          isFavorite: !favorites.has(repo.fullName),
+          workspaceId: activeWorkspaceId ?? undefined,
+        },
       }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["repo-prefs"] }),
     onError: (error: Error) => toast.error(error.message),
@@ -333,17 +581,18 @@ function Dashboard() {
   });
 
   const openRepo = useMutation({
-    mutationFn: async (repo: { fullName: string; defaultBranch: string }) => {
+    mutationFn: async (repo: { fullName: string; defaultBranch: string; accountId: string }) => {
       await saveRepoPrefFn({
         data: {
           fullName: repo.fullName,
-          accountId: accountId!,
+          accountId: repo.accountId,
           preferredBranch: repo.defaultBranch,
           touch: true,
+          workspaceId: activeWorkspaceId ?? undefined,
         },
       });
       await updatePrefsFn({
-        data: { activeRepo: repo.fullName, activeAccountId: accountId!, defaultBranch: repo.defaultBranch },
+        data: { activeRepo: repo.fullName, activeAccountId: repo.accountId, defaultBranch: repo.defaultBranch },
       });
     },
     onSuccess: () => {
@@ -358,15 +607,45 @@ function Dashboard() {
     onError: (error: Error) => toast.error(error.message),
   });
 
+  const archiveMutation = useMutation({
+    mutationFn: (args: { repo: RepoCard; archived: boolean }) =>
+      archiveFn({ data: { accountId: args.repo.accountId, fullName: args.repo.fullName, archived: args.archived } }),
+    onSuccess: (_result, args) => {
+      toast.success(args.archived ? `Archived ${args.repo.fullName}` : `Unarchived ${args.repo.fullName}`);
+      setArchiveTarget(null);
+      void queryClient.invalidateQueries({ queryKey: ["workspace-repo-cards"] });
+      void queryClient.invalidateQueries({ queryKey: ["repos", accountId] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "GitHub rejected that change.");
+    },
+  });
+
   function handleRepoCreated(repo: RepoCard) {
     void queryClient.invalidateQueries({ queryKey: ["repos", accountId] });
-    openRepo.mutate({ fullName: repo.fullName, defaultBranch: repo.defaultBranch });
+    void queryClient.invalidateQueries({ queryKey: ["workspace-repo-cards"] });
+    openRepo.mutate({ fullName: repo.fullName, defaultBranch: repo.defaultBranch, accountId: repo.accountId });
+  }
+
+  function handleRenamed(newFullName: string) {
+    void queryClient.invalidateQueries({ queryKey: ["workspace-repo-cards"] });
+    void queryClient.invalidateQueries({ queryKey: ["repos", accountId] });
+    toast.success(`Renamed to ${newFullName}`);
   }
 
   const deferredQuery = useDeferredValue(query);
   const filtered = (repos.data ?? [])
     .filter((repo) => (onlyFavorites ? favorites.has(repo.fullName) : true))
-    .filter((repo) => repo.fullName.toLowerCase().includes(deferredQuery.toLowerCase()));
+    .filter((repo) =>
+      visibilityFilter === "all" ? true : visibilityFilter === "private" ? repo.isPrivate : !repo.isPrivate,
+    )
+    .filter((repo) => (languageFilter === "all" ? true : repo.language === languageFilter))
+    .filter((repo) => repo.fullName.toLowerCase().includes(deferredQuery.toLowerCase()))
+    .sort((a, b) => {
+      if (sortBy === "name") return a.name.localeCompare(b.name);
+      if (sortBy === "owner") return a.owner.localeCompare(b.owner) || a.name.localeCompare(b.name);
+      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+    });
 
   // Pinned (favorited) repositories always float to the top of the grid,
   // in their own labeled section, regardless of the search term or the
@@ -397,6 +676,29 @@ function Dashboard() {
 
   const sectionClass = repoSectionClass(view);
 
+  function renderTile(repo: RepoCard, index: number, isFavorite: boolean) {
+    return (
+      <RepoTile
+        key={`${repo.accountId}:${repo.fullName}`}
+        repo={repo}
+        index={index}
+        view={view}
+        isFavorite={isFavorite}
+        shared={shared}
+        ownedByCaller={ownedAccountIds.has(repo.accountId)}
+        canPush={canPush}
+        canManage={canManageRepo}
+        onToggleFavorite={() => toggleFavorite.mutate(repo)}
+        onOpen={() =>
+          openRepo.mutate({ fullName: repo.fullName, defaultBranch: repo.defaultBranch, accountId: repo.accountId })
+        }
+        onRename={() => setRenameTarget(repo)}
+        onArchive={() => setArchiveTarget(repo)}
+        opening={openRepo.isPending}
+      />
+    );
+  }
+
   return (
     <main className="mx-auto max-w-6xl px-3 py-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -415,11 +717,19 @@ function Dashboard() {
       </div>
 
       <div className="mt-3">
-        <AccountStrip
-          accounts={accounts.data ?? []}
-          activeId={accountId}
-          onSelect={(id) => switchAccount.mutate(id)}
-        />
+        {shared ? (
+          <p className="text-xs text-muted-foreground">
+            <Users className="mr-1 inline size-3" />
+            Every repository anyone in <span className="text-foreground">{activeWorkspace?.name}</span> has opened
+            in GitPush, across everyone's connected GitHub accounts.
+          </p>
+        ) : (
+          <AccountStrip
+            accounts={accounts.data ?? []}
+            activeId={accountId}
+            onSelect={(id) => switchAccount.mutate(id)}
+          />
+        )}
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -438,6 +748,48 @@ function Dashboard() {
           <Star className="size-3.5" />
           Favorites
         </Button>
+
+        <Select value={visibilityFilter} onValueChange={(v) => setVisibilityFilter(v as typeof visibilityFilter)}>
+          <SelectTrigger className="h-9 w-32 text-xs">
+            <Filter className="size-3.5" />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All visibility</SelectItem>
+            <SelectItem value="private">Private</SelectItem>
+            <SelectItem value="public">Public</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {availableLanguages.length > 0 && (
+          <Select value={languageFilter} onValueChange={setLanguageFilter}>
+            <SelectTrigger className="h-9 w-32 text-xs">
+              <Code2 className="size-3.5" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All languages</SelectItem>
+              {availableLanguages.map((lang) => (
+                <SelectItem key={lang} value={lang}>
+                  {lang}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+
+        <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortKey)}>
+          <SelectTrigger className="h-9 w-36 text-xs">
+            <ArrowUpDown className="size-3.5" />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="updated">Last updated</SelectItem>
+            <SelectItem value="name">Name (A–Z)</SelectItem>
+            <SelectItem value="owner">Owner</SelectItem>
+          </SelectContent>
+        </Select>
+
         <ToggleGroup
           type="single"
           value={view}
@@ -519,18 +871,7 @@ function Dashboard() {
             Pinned
           </p>
           <div className={cn("mt-1.5", sectionClass)}>
-            {pinned.map((repo, index) => (
-              <RepoTile
-                key={repo.id}
-                repo={repo}
-                index={index}
-                view={view}
-                isFavorite
-                onToggleFavorite={() => toggleFavorite.mutate(repo.fullName)}
-                onOpen={() => openRepo.mutate({ fullName: repo.fullName, defaultBranch: repo.defaultBranch })}
-                opening={openRepo.isPending}
-              />
-            ))}
+            {pinned.map((repo, index) => renderTile(repo, index, true))}
           </div>
         </section>
       )}
@@ -539,18 +880,7 @@ function Dashboard() {
         <section className="mt-3">
           {pinned.length > 0 && <p className="label-caps text-muted-foreground">All repositories</p>}
           <div className={cn(sectionClass, pinned.length > 0 && "mt-1.5")}>
-            {unpinned.map((repo, index) => (
-              <RepoTile
-                key={repo.id}
-                repo={repo}
-                index={index}
-                view={view}
-                isFavorite={false}
-                onToggleFavorite={() => toggleFavorite.mutate(repo.fullName)}
-                onOpen={() => openRepo.mutate({ fullName: repo.fullName, defaultBranch: repo.defaultBranch })}
-                opening={openRepo.isPending}
-              />
-            ))}
+            {unpinned.map((repo, index) => renderTile(repo, index, false))}
           </div>
         </section>
       )}
@@ -564,10 +894,49 @@ function Dashboard() {
           description={
             onlyFavorites
               ? "You haven't favorited any repositories yet. Tap the star on a repo to pin it here."
-              : "Try a different search term or clear the favorites filter."
+              : shared
+                ? "No one in this workspace has opened a repository here yet. Open one from your own account to add it."
+                : "Try a different search term or clear the favorites filter."
           }
         />
       )}
+
+      {renameTarget && (
+        <RenameRepositoryDialog
+          open={Boolean(renameTarget)}
+          onOpenChange={(open) => !open && setRenameTarget(null)}
+          accountId={renameTarget.accountId}
+          fullName={renameTarget.fullName}
+          onRenamed={handleRenamed}
+        />
+      )}
+
+      <AlertDialog open={Boolean(archiveTarget)} onOpenChange={(open) => !open && setArchiveTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {archiveTarget?.archived ? "Unarchive" : "Archive"} {archiveTarget?.name}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {archiveTarget?.archived
+                ? "This makes the repository writable on GitHub again."
+                : "GitHub archives the repository as read-only. Nothing is deleted, and this can be undone at any time from here or on GitHub."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={archiveMutation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={archiveMutation.isPending}
+              onClick={() =>
+                archiveTarget && archiveMutation.mutate({ repo: archiveTarget, archived: !archiveTarget.archived })
+              }
+            >
+              {archiveMutation.isPending && <Loader2 className="size-4 animate-spin" />}
+              {archiveTarget?.archived ? "Unarchive" : "Archive"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </main>
   );
 }
