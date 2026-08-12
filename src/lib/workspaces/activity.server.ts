@@ -13,7 +13,9 @@ export type WorkspaceActivityAction =
   | "prompt_created"
   | "member_joined"
   | "member_removed"
-  | "workspace_updated";
+  | "workspace_updated"
+  | "team_key_added"
+  | "team_key_removed";
 
 export interface ActivityActor {
   userId: string;

@@ -126,13 +126,17 @@ export const generateCode = createServerFn({ method: "POST" })
     const { workspaceId } = await requireActiveWorkspaceCapability(context.userId, "ai:use");
     const { assertRateLimit } = await import("./rate-limit.server");
     await assertRateLimit(context.userId, { bucket: "ai_generate", limit: 20, windowSeconds: 300 });
-    const { resolveProviderForUser } = await import("./ai/store.server");
+    const { resolveAiCredential } = await import("./ai/resolve.server");
     const { chat, stripCodeFences } = await import("./ai/call.server");
 
     const prompt = data.prompt.trim();
     if (!prompt) throw new Error("Describe what you want generated.");
 
-    const credential = await resolveProviderForUser(context.userId, data.providerId ?? null);
+    const credential = await resolveAiCredential({
+      userId: context.userId,
+      workspaceId,
+      providerId: data.providerId ?? null,
+    });
     const parts = [
       data.path ? `Target file path: ${data.path}` : "No file path given; infer a suitable one.",
       data.context ? `Existing file contents for reference:\n${data.context.slice(0, 8000)}` : "",
@@ -183,14 +187,18 @@ export const editFileWithAi = createServerFn({ method: "POST" })
     const { workspaceId } = await requireActiveWorkspaceCapability(context.userId, "ai:use");
     const { assertRateLimit } = await import("./rate-limit.server");
     await assertRateLimit(context.userId, { bucket: "ai_edit", limit: 20, windowSeconds: 300 });
-    const { resolveProviderForUser } = await import("./ai/store.server");
+    const { resolveAiCredential } = await import("./ai/resolve.server");
     const { chat, stripCodeFences } = await import("./ai/call.server");
 
     const instruction = data.instruction.trim();
     if (!instruction) throw new Error("Describe what should change.");
     if (!data.content) throw new Error("No file content to edit.");
 
-    const credential = await resolveProviderForUser(context.userId, data.providerId ?? null);
+    const credential = await resolveAiCredential({
+      userId: context.userId,
+      workspaceId,
+      providerId: data.providerId ?? null,
+    });
     const prompt = [
       `File path: ${data.path || "unknown"}`,
       `Instruction: ${instruction}`,
@@ -239,20 +247,24 @@ export const generateCommitMessage = createServerFn({ method: "POST" })
     const { assertPro } = await import("./ai/gate.server");
     await assertPro(context.userId);
     const { requireActiveWorkspaceCapability } = await import("./workspaces/store.server");
-    await requireActiveWorkspaceCapability(context.userId, "ai:use");
+    const { workspaceId } = await requireActiveWorkspaceCapability(context.userId, "ai:use");
     const { assertRateLimit } = await import("./rate-limit.server");
     await assertRateLimit(context.userId, {
       bucket: "ai_commit_message",
       limit: 20,
       windowSeconds: 300,
     });
-    const { resolveProviderForUser } = await import("./ai/store.server");
+    const { resolveAiCredential } = await import("./ai/resolve.server");
     const { chat } = await import("./ai/call.server");
 
     if (!data.path) throw new Error("Open a file first.");
     if (data.before === data.after) throw new Error("No changes to summarize.");
 
-    const credential = await resolveProviderForUser(context.userId, data.providerId ?? null);
+    const credential = await resolveAiCredential({
+      userId: context.userId,
+      workspaceId,
+      providerId: data.providerId ?? null,
+    });
 
     // A line-level diff is enough context for a good summary and keeps the
     // prompt bounded even for large files, unlike sending the whole file.
@@ -302,7 +314,7 @@ export const chatWithRepo = createServerFn({ method: "POST" })
     const { assertPro } = await import("./ai/gate.server");
     await assertPro(context.userId);
     const { requireActiveWorkspaceCapability } = await import("./workspaces/store.server");
-    await requireActiveWorkspaceCapability(context.userId, "ai:use");
+    const { workspaceId } = await requireActiveWorkspaceCapability(context.userId, "ai:use");
     const { assertRateLimit } = await import("./rate-limit.server");
     await assertRateLimit(context.userId, { bucket: "ai_chat", limit: 20, windowSeconds: 300 });
 
@@ -311,14 +323,14 @@ export const chatWithRepo = createServerFn({ method: "POST" })
     if (!data.accountId) throw new Error("Select a connected GitHub account first.");
     if (!data.fullName || !data.branch) throw new Error("Select a repository and branch first.");
 
-    const { resolveProviderForUser } = await import("./ai/store.server");
+    const { resolveAiCredential } = await import("./ai/resolve.server");
     const { chat } = await import("./ai/call.server");
     const { loadAccountToken } = await import("./github/tokens.server");
     const { buildRepoContext } = await import("./ai/repo-context.server");
 
     const [{ token }, credential] = await Promise.all([
       loadAccountToken(context.supabase, data.accountId),
-      resolveProviderForUser(context.userId, data.providerId ?? null),
+      resolveAiCredential({ userId: context.userId, workspaceId, providerId: data.providerId ?? null }),
     ]);
 
     const { context: repoContext, filesUsed } = await buildRepoContext({

@@ -25,6 +25,7 @@ import {
   UserMinus,
   Settings2,
   ChevronDown,
+  KeyRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -511,6 +512,8 @@ const ACTIVITY_META: Record<WorkspaceActivityAction, { label: string; icon: type
   member_joined: { label: "Member joined", icon: UserPlus },
   member_removed: { label: "Member removed", icon: UserMinus },
   workspace_updated: { label: "Workspace updated", icon: Settings2 },
+  team_key_added: { label: "Team key added", icon: KeyRound },
+  team_key_removed: { label: "Team key removed", icon: Trash2 },
 };
 
 /** Feature 6: Team Activity Feed. Every workspace role — including Viewer — can see this, since `activity:view` is in every role's capability set. */

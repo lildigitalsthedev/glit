@@ -43,6 +43,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { AccountRow, ConnectGithubDialog, useAccounts } from "@/components/connect-github";
 import { RequestFeatureDialog } from "@/components/request-feature-dialog";
 import { AiProvidersSection } from "@/components/ai-providers-section";
+import { TeamAiProvidersSection } from "@/components/team-ai-providers-section";
 import { AccentColorPicker } from "@/components/accent-color-picker";
 import { getPreferences, updatePreferences, type Preferences } from "@/lib/workspace.functions";
 import { deleteUserAccount } from "@/lib/accounts.functions";
@@ -1071,6 +1072,7 @@ function Settings() {
 
         {/* AI providers */}
         <TabsContent value="ai" className="mt-4">
+          <TeamAiProvidersSection />
           <AiProvidersSection />
         </TabsContent>
 
