@@ -7,7 +7,7 @@
 // never gets to say what role it has; `@/lib/workspaces/permissions` is only
 // used to decide what to show.
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { can, type WorkspaceCapability, type WorkspaceRole } from "./permissions";
+import { can, WORKSPACE_ROLE_LABELS, type WorkspaceCapability, type WorkspaceRole } from "./permissions";
 
 export interface WorkspaceRecord {
   id: string;
@@ -228,6 +228,15 @@ export async function updateWorkspace(
   if (Object.keys(update).length > 0) {
     const { error } = await supabaseAdmin.from("workspaces").update(update as never).eq("id", workspaceId);
     if (error) throw new Error(error.message);
+
+    const { logActivity } = await import("./activity.server");
+    await logActivity({
+      workspaceId,
+      actorId: userId,
+      action: "workspace_updated",
+      summary: "Updated workspace settings",
+      metadata: { fields: Object.keys(update) },
+    });
   }
   return getWorkspace(userId, workspaceId);
 }
@@ -391,6 +400,15 @@ export async function removeMember(userId: string, workspaceId: string, targetUs
     .update({ active_workspace_id: null })
     .eq("user_id", targetUserId)
     .eq("active_workspace_id", workspaceId);
+
+  const { logActivity } = await import("./activity.server");
+  await logActivity({
+    workspaceId,
+    actorId: userId,
+    action: "member_removed",
+    summary: "Removed a member from the workspace",
+    metadata: { targetUserId },
+  });
 }
 
 export async function leaveWorkspace(userId: string, workspaceId: string): Promise<void> {
@@ -549,6 +567,16 @@ export async function respondToInvitation(
       { onConflict: "workspace_id,user_id" },
     );
   if (memberError) throw new Error(memberError.message);
+
+  const { logActivity } = await import("./activity.server");
+  await logActivity({
+    workspaceId: invitation.workspace_id,
+    actorId: userId,
+    action: "member_joined",
+    summary: `Joined the workspace as ${WORKSPACE_ROLE_LABELS[invitation.role as WorkspaceRole]}`,
+    metadata: { role: invitation.role },
+  });
+
   return { workspaceId: invitation.workspace_id };
 }
 

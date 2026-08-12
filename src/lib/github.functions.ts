@@ -125,11 +125,23 @@ export const pushFile = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { requireActiveWorkspaceCapability } = await import("./workspaces/store.server");
-    await requireActiveWorkspaceCapability(context.userId, "repos:push");
+    const { workspaceId } = await requireActiveWorkspaceCapability(context.userId, "repos:push");
     const { assertRateLimit } = await import("./rate-limit.server");
     await assertRateLimit(context.userId, { bucket: "github_write", limit: 60, windowSeconds: 300 });
     const { pushSingleFile } = await import("./github/push.server");
-    return pushSingleFile(context.supabase, context.userId, data);
+    const result = await pushSingleFile(context.supabase, context.userId, data);
+
+    const { logActivity } = await import("./workspaces/activity.server");
+    await logActivity({
+      workspaceId,
+      actorId: context.userId,
+      action: "push_completed",
+      repoFullName: data.fullName,
+      summary: `Pushed ${data.path} to ${data.fullName}`,
+      metadata: { branch: data.branch, path: data.path, commitSha: result.commitSha },
+    });
+
+    return result;
   });
 
 export const pushFiles = createServerFn({ method: "POST" })
@@ -146,11 +158,23 @@ export const pushFiles = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { requireActiveWorkspaceCapability } = await import("./workspaces/store.server");
-    await requireActiveWorkspaceCapability(context.userId, "repos:push");
+    const { workspaceId } = await requireActiveWorkspaceCapability(context.userId, "repos:push");
     const { assertRateLimit } = await import("./rate-limit.server");
     await assertRateLimit(context.userId, { bucket: "github_write", limit: 60, windowSeconds: 300 });
     const { pushMultipleFiles } = await import("./github/push.server");
-    return pushMultipleFiles(context.supabase, context.userId, data);
+    const result = await pushMultipleFiles(context.supabase, context.userId, data);
+
+    const { logActivity } = await import("./workspaces/activity.server");
+    await logActivity({
+      workspaceId,
+      actorId: context.userId,
+      action: "push_completed",
+      repoFullName: data.fullName,
+      summary: `Pushed ${result.filesPushed} file${result.filesPushed === 1 ? "" : "s"} to ${data.fullName}`,
+      metadata: { branch: data.branch, filesPushed: result.filesPushed, commitSha: result.commitSha },
+    });
+
+    return result;
   });
 
 export const deleteFile = createServerFn({ method: "POST" })
@@ -208,7 +232,7 @@ export const createRepository = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }): Promise<RepoCard> => {
     const { requireActiveWorkspaceCapability } = await import("./workspaces/store.server");
-    await requireActiveWorkspaceCapability(context.userId, "repos:create");
+    const { workspaceId } = await requireActiveWorkspaceCapability(context.userId, "repos:create");
     const { assertRateLimit } = await import("./rate-limit.server");
     await assertRateLimit(context.userId, { bucket: "github_repo_admin", limit: 10, windowSeconds: 3600 });
     const name = data.name.trim();
@@ -229,6 +253,16 @@ export const createRepository = createServerFn({ method: "POST" })
       gitignoreTemplate: data.gitignoreTemplate || undefined,
       licenseTemplate: data.licenseTemplate || undefined,
     });
+
+    const { logActivity } = await import("./workspaces/activity.server");
+    await logActivity({
+      workspaceId,
+      actorId: context.userId,
+      action: "repository_created",
+      repoFullName: repo.full_name,
+      summary: `Created repository ${repo.full_name}`,
+    });
+
     return {
       id: repo.id,
       name: repo.name,

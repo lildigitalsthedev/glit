@@ -37,7 +37,18 @@ export const createWorkspacePrompt = createServerFn({ method: "POST" })
     if (!data.title.trim()) throw new Error("Give the prompt a title.");
     if (!data.body.trim()) throw new Error("The prompt body can't be empty.");
     const { createPrompt } = await import("./workspaces/prompts.server");
-    return createPrompt({ workspaceId, callerId: context.userId, ...data });
+    const created = await createPrompt({ workspaceId, callerId: context.userId, ...data });
+
+    const { logActivity } = await import("./workspaces/activity.server");
+    await logActivity({
+      workspaceId,
+      actorId: context.userId,
+      action: "prompt_created",
+      summary: `Created prompt “${data.title.trim()}”`,
+      metadata: { promptId: created.id, category: data.category },
+    });
+
+    return created;
   });
 
 export const updateWorkspacePrompt = createServerFn({ method: "POST" })

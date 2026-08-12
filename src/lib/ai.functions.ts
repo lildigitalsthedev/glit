@@ -123,7 +123,7 @@ export const generateCode = createServerFn({ method: "POST" })
     const { assertPro } = await import("./ai/gate.server");
     await assertPro(context.userId);
     const { requireActiveWorkspaceCapability } = await import("./workspaces/store.server");
-    await requireActiveWorkspaceCapability(context.userId, "ai:use");
+    const { workspaceId } = await requireActiveWorkspaceCapability(context.userId, "ai:use");
     const { assertRateLimit } = await import("./rate-limit.server");
     await assertRateLimit(context.userId, { bucket: "ai_generate", limit: 20, windowSeconds: 300 });
     const { resolveProviderForUser } = await import("./ai/store.server");
@@ -142,6 +142,17 @@ export const generateCode = createServerFn({ method: "POST" })
     const raw = await chat({ credential, system: GENERATE_SYSTEM, prompt: parts.join("\n\n") });
     const code = stripCodeFences(raw);
     if (!code) throw new Error("The provider returned an empty response. Try again.");
+
+    const { logActivity } = await import("./workspaces/activity.server");
+    await logActivity({
+      workspaceId,
+      actorId: context.userId,
+      action: "ai_generation",
+      repoFullName: null,
+      summary: data.path ? `Generated ${data.path} with AI` : "Generated a file with AI",
+      metadata: { path: data.path ?? null, model: credential.model },
+    });
+
     return { code, model: credential.model, provider: credential.provider };
   });
 
@@ -159,7 +170,7 @@ export const editFileWithAi = createServerFn({ method: "POST" })
     const { assertPro } = await import("./ai/gate.server");
     await assertPro(context.userId);
     const { requireActiveWorkspaceCapability } = await import("./workspaces/store.server");
-    await requireActiveWorkspaceCapability(context.userId, "ai:use");
+    const { workspaceId } = await requireActiveWorkspaceCapability(context.userId, "ai:use");
     const { assertRateLimit } = await import("./rate-limit.server");
     await assertRateLimit(context.userId, { bucket: "ai_edit", limit: 20, windowSeconds: 300 });
     const { resolveProviderForUser } = await import("./ai/store.server");
@@ -179,6 +190,17 @@ export const editFileWithAi = createServerFn({ method: "POST" })
     const raw = await chat({ credential, system: EDIT_SYSTEM, prompt, maxTokens: 8192 });
     const code = stripCodeFences(raw);
     if (!code) throw new Error("The provider returned an empty response. Try again.");
+
+    const { logActivity } = await import("./workspaces/activity.server");
+    await logActivity({
+      workspaceId,
+      actorId: context.userId,
+      action: "ai_edit",
+      repoFullName: null,
+      summary: `Edited ${data.path || "a file"} with AI`,
+      metadata: { path: data.path || null, instruction, model: credential.model },
+    });
+
     return { code, model: credential.model, provider: credential.provider };
   });
 

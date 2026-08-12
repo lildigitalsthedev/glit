@@ -1,9 +1,31 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useDeferredValue, useEffect, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Loader2, LogOut, Mail, Plus, Shield, SearchX, Trash2, Users, X } from "lucide-react";
+import { formatDistanceToNowStrict } from "date-fns";
+import {
+  Loader2,
+  LogOut,
+  Mail,
+  Plus,
+  Shield,
+  SearchX,
+  Trash2,
+  Users,
+  X,
+  History,
+  FolderPlus,
+  FolderMinus,
+  GitCommitHorizontal,
+  Sparkles,
+  Wand2,
+  FileText,
+  UserPlus,
+  UserMinus,
+  Settings2,
+  ChevronDown,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -49,6 +71,8 @@ import {
   WORKSPACE_ROLE_LABELS,
   type WorkspaceRole,
 } from "@/lib/workspaces/permissions";
+import { listWorkspaceActivity } from "@/lib/activity.functions";
+import type { ActivityEntry, WorkspaceActivityAction } from "@/lib/activity.functions";
 
 export const Route = createFileRoute("/_authenticated/team")({
   head: () => ({
@@ -109,6 +133,7 @@ function TeamPage() {
           <TabsList>
             <TabsTrigger value="members">Members</TabsTrigger>
             <TabsTrigger value="invitations">Invitations</TabsTrigger>
+            <TabsTrigger value="activity">Activity</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
@@ -127,6 +152,9 @@ function TeamPage() {
                 Only Admins and the workspace Owner can manage invitations.
               </p>
             )}
+          </TabsContent>
+          <TabsContent value="activity" className="mt-3">
+            <ActivityTab workspaceId={activeWorkspace.id} />
           </TabsContent>
           <TabsContent value="settings" className="mt-3">
             <SettingsTab workspaceId={activeWorkspace.id} />
@@ -469,6 +497,146 @@ function InvitationsTab({ workspaceId }: { workspaceId: string }) {
         Invitations are matched to the invited email address when that person signs in — they'll see them on this
         page.
       </p>
+    </div>
+  );
+}
+
+const ACTIVITY_META: Record<WorkspaceActivityAction, { label: string; icon: typeof History }> = {
+  repository_created: { label: "Repository created", icon: FolderPlus },
+  repository_deleted: { label: "Repository deleted", icon: FolderMinus },
+  push_completed: { label: "Push completed", icon: GitCommitHorizontal },
+  ai_generation: { label: "AI generation", icon: Sparkles },
+  ai_edit: { label: "AI edit", icon: Wand2 },
+  prompt_created: { label: "Prompt created", icon: FileText },
+  member_joined: { label: "Member joined", icon: UserPlus },
+  member_removed: { label: "Member removed", icon: UserMinus },
+  workspace_updated: { label: "Workspace updated", icon: Settings2 },
+};
+
+/** Feature 6: Team Activity Feed. Every workspace role — including Viewer — can see this, since `activity:view` is in every role's capability set. */
+function ActivityTab({ workspaceId }: { workspaceId: string }) {
+  const listFn = useServerFn(listWorkspaceActivity);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const query = useInfiniteQuery({
+    queryKey: ["workspace-activity", workspaceId],
+    queryFn: ({ pageParam }: { pageParam: string | null }) =>
+      listFn({ data: { workspaceId, before: pageParam } }),
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => lastPage.nextBefore,
+  });
+
+  const entries: ActivityEntry[] = query.data?.pages.flatMap((page) => page.entries) ?? [];
+
+  if (query.isLoading) {
+    return (
+      <div className="space-y-2">
+        <Skeleton className="h-14 w-full" />
+        <Skeleton className="h-14 w-full" />
+        <Skeleton className="h-14 w-full" />
+      </div>
+    );
+  }
+
+  if (query.isError) {
+    return <p className="text-sm text-destructive">{(query.error as Error).message}</p>;
+  }
+
+  if (entries.length === 0) {
+    return (
+      <EmptyState
+        icon={History}
+        title="No activity yet"
+        description="Repository, push, AI and team events in this workspace will show up here."
+        size="compact"
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <ul className="divide-y divide-border rounded-md border border-border">
+        {entries.map((entry, index) => {
+          const meta = ACTIVITY_META[entry.action] ?? { label: entry.action, icon: History };
+          const Icon = meta.icon;
+          const name = entry.actor?.displayName ?? "Someone";
+          const hasDetails = entry.repoFullName || Object.keys(entry.metadata).length > 0;
+          const isExpanded = expandedId === entry.id;
+          return (
+            <li
+              key={entry.id}
+              style={{ animationDelay: `${Math.min(index, 10) * 30}ms` }}
+              className="animate-in fade-in px-3 py-2.5 transition-colors duration-300"
+            >
+              <div className="flex items-start gap-2.5">
+                <Avatar className="size-7 shrink-0">
+                  {entry.actor?.avatarUrl ? <AvatarImage src={entry.actor.avatarUrl} alt="" /> : null}
+                  <AvatarFallback className="text-[10px]">{name.slice(0, 2).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm">
+                    <span className="font-medium">{name}</span>{" "}
+                    <span className="text-muted-foreground">{entry.summary}</span>
+                  </p>
+                  <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+                    <Icon className="size-3" />
+                    <span>{meta.label}</span>
+                    {entry.repoFullName && (
+                      <>
+                        <span aria-hidden>·</span>
+                        <span className="font-mono">{entry.repoFullName}</span>
+                      </>
+                    )}
+                    <span aria-hidden>·</span>
+                    <span>{formatDistanceToNowStrict(new Date(entry.createdAt), { addSuffix: true })}</span>
+                    {hasDetails && (
+                      <button
+                        type="button"
+                        onClick={() => setExpandedId(isExpanded ? null : entry.id)}
+                        className="ml-auto flex items-center gap-0.5 text-primary hover:underline"
+                      >
+                        View details
+                        <ChevronDown className={cn("size-3 transition-transform", isExpanded && "rotate-180")} />
+                      </button>
+                    )}
+                  </div>
+                  {isExpanded && (
+                    <dl className="mt-2 space-y-1 rounded-md border border-border bg-card p-2 font-mono text-[11px]">
+                      {entry.repoFullName && (
+                        <div className="flex gap-2">
+                          <dt className="text-muted-foreground">repo</dt>
+                          <dd className="min-w-0 flex-1 truncate">{entry.repoFullName}</dd>
+                        </div>
+                      )}
+                      {Object.entries(entry.metadata).map(([key, value]) => (
+                        <div key={key} className="flex gap-2">
+                          <dt className="shrink-0 text-muted-foreground">{key}</dt>
+                          <dd className="min-w-0 flex-1 truncate">
+                            {typeof value === "string" ? value : JSON.stringify(value)}
+                          </dd>
+                        </div>
+                      ))}
+                    </dl>
+                  )}
+                </div>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+
+      {query.hasNextPage && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full"
+          disabled={query.isFetchingNextPage}
+          onClick={() => query.fetchNextPage()}
+        >
+          {query.isFetchingNextPage ? <Loader2 className="size-3.5 animate-spin" /> : null}
+          Load more
+        </Button>
+      )}
     </div>
   );
 }
