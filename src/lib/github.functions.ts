@@ -141,6 +141,17 @@ export const pushFile = createServerFn({ method: "POST" })
       metadata: { branch: data.branch, path: data.path, commitSha: result.commitSha },
     });
 
+    const { notifyUser } = await import("./notifications/store.server");
+    await notifyUser(context.userId, {
+      type: "push_completed",
+      title: "Push completed",
+      body: `Pushed ${data.path} to ${data.fullName}.`,
+      workspaceId,
+      repoFullName: data.fullName,
+      actorId: context.userId,
+      metadata: { branch: data.branch, path: data.path, commitSha: result.commitSha },
+    });
+
     return result;
   });
 
@@ -171,6 +182,17 @@ export const pushFiles = createServerFn({ method: "POST" })
       action: "push_completed",
       repoFullName: data.fullName,
       summary: `Pushed ${result.filesPushed} file${result.filesPushed === 1 ? "" : "s"} to ${data.fullName}`,
+      metadata: { branch: data.branch, filesPushed: result.filesPushed, commitSha: result.commitSha },
+    });
+
+    const { notifyUser } = await import("./notifications/store.server");
+    await notifyUser(context.userId, {
+      type: "push_completed",
+      title: "Push completed",
+      body: `Pushed ${result.filesPushed} file${result.filesPushed === 1 ? "" : "s"} to ${data.fullName}.`,
+      workspaceId,
+      repoFullName: data.fullName,
+      actorId: context.userId,
       metadata: { branch: data.branch, filesPushed: result.filesPushed, commitSha: result.commitSha },
     });
 
@@ -349,15 +371,33 @@ export const archiveRepository = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: { accountId: string; fullName: string; archived: boolean }) => data)
   .handler(async ({ data, context }): Promise<{ fullName: string; archived: boolean }> => {
-    const { requireActiveWorkspaceCapability } = await import("./workspaces/store.server");
-    await requireActiveWorkspaceCapability(context.userId, "repos:manage");
+    const { requireActiveWorkspaceCapability, listWorkspaceMemberIds } = await import("./workspaces/store.server");
+    const { workspaceId } = await requireActiveWorkspaceCapability(context.userId, "repos:manage");
     const { assertRateLimit } = await import("./rate-limit.server");
     await assertRateLimit(context.userId, { bucket: "github_repo_admin", limit: 10, windowSeconds: 3600 });
     const { loadAccountToken } = await import("./github/tokens.server");
     const { setRepoArchived } = await import("./github/api.server");
     const { token } = await loadAccountToken(context.supabase, data.accountId);
     const repo = await setRepoArchived(token, data.fullName, data.archived);
-    return { fullName: repo.full_name, archived: repo.archived ?? data.archived };
+    const archived = repo.archived ?? data.archived;
+
+    // Only the "archived" direction is notification-worthy — unarchiving
+    // is just restoring visibility, not something the rest of the team
+    // needs an alert about.
+    if (archived) {
+      const { notifyUsers } = await import("./notifications/store.server");
+      const otherMemberIds = await listWorkspaceMemberIds(workspaceId, context.userId);
+      await notifyUsers(otherMemberIds, {
+        type: "repository_archived",
+        title: "Repository archived",
+        body: `${repo.full_name} was archived.`,
+        workspaceId,
+        repoFullName: repo.full_name,
+        actorId: context.userId,
+      });
+    }
+
+    return { fullName: repo.full_name, archived };
   });
 
 export interface RepoZipResult {

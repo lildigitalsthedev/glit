@@ -3,6 +3,7 @@ import { useState, type ReactNode } from "react";
 import { Terminal } from "lucide-react";
 import { BottomDock } from "@/components/bottom-dock";
 import { NavDrawer } from "@/components/nav-drawer";
+import { NotificationBell } from "@/components/notification-bell";
 import { NavPrefsProvider } from "@/hooks/useNavPrefs";
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -28,7 +29,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           {/* Single slim row: the logo doubles as the navigation-drawer
               toggle, so no dedicated menu button is needed and the header
               costs the workspace as little vertical space as possible. */}
-          <div className="flex h-10 items-center px-3">
+          <div className="flex h-10 items-center justify-between px-3">
             <button
               type="button"
               onClick={() => setDrawerOpen((v) => !v)}
@@ -39,6 +40,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <Terminal className="size-4 text-primary" />
               gitpush
             </button>
+            <NotificationBell />
           </div>
         </header>
 

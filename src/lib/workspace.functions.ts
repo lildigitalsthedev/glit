@@ -147,6 +147,21 @@ export const saveRepoPref = createServerFn({ method: "POST" })
     }) => data,
   )
   .handler(async ({ data, context }) => {
+    // Read the prior row first so a "Repository shared" notification only
+    // fires the moment this repo is newly attached to a workspace — not on
+    // every subsequent touch (favoriting it, switching branch, etc.) once
+    // it's already shared there.
+    let wasSharedToWorkspace: string | null = null;
+    if (data.workspaceId !== undefined) {
+      const { data: existing } = await context.supabase
+        .from("repo_prefs")
+        .select("workspace_id")
+        .eq("user_id", context.userId)
+        .eq("full_name", data.fullName)
+        .maybeSingle();
+      wasSharedToWorkspace = (existing?.workspace_id as string | null | undefined) ?? null;
+    }
+
     const patch: Record<string, unknown> = {
       user_id: context.userId,
       full_name: data.fullName,
@@ -161,6 +176,21 @@ export const saveRepoPref = createServerFn({ method: "POST" })
       .from("repo_prefs")
       .upsert(patch as never, { onConflict: "user_id,full_name" });
     if (error) throw new Error(error.message);
+
+    if (data.workspaceId && data.workspaceId !== wasSharedToWorkspace) {
+      const { listWorkspaceMemberIds } = await import("./workspaces/store.server");
+      const { notifyUsers } = await import("./notifications/store.server");
+      const otherMemberIds = await listWorkspaceMemberIds(data.workspaceId, context.userId);
+      await notifyUsers(otherMemberIds, {
+        type: "repository_shared",
+        title: "Repository shared",
+        body: `${data.fullName} was shared with this workspace.`,
+        workspaceId: data.workspaceId,
+        repoFullName: data.fullName,
+        actorId: context.userId,
+      });
+    }
+
     return { ok: true };
   });
 

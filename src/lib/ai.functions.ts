@@ -153,6 +153,16 @@ export const generateCode = createServerFn({ method: "POST" })
       metadata: { path: data.path ?? null, model: credential.model },
     });
 
+    const { notifyUser } = await import("./notifications/store.server");
+    await notifyUser(context.userId, {
+      type: "ai_generation_completed",
+      title: "AI generation completed",
+      body: data.path ? `Generated ${data.path} with AI.` : "Generated a file with AI.",
+      workspaceId,
+      actorId: context.userId,
+      metadata: { path: data.path ?? null, model: credential.model },
+    });
+
     return { code, model: credential.model, provider: credential.provider };
   });
 
@@ -198,6 +208,16 @@ export const editFileWithAi = createServerFn({ method: "POST" })
       action: "ai_edit",
       repoFullName: null,
       summary: `Edited ${data.path || "a file"} with AI`,
+      metadata: { path: data.path || null, instruction, model: credential.model },
+    });
+
+    const { notifyUser } = await import("./notifications/store.server");
+    await notifyUser(context.userId, {
+      type: "ai_generation_completed",
+      title: "AI generation completed",
+      body: `Edited ${data.path || "a file"} with AI.`,
+      workspaceId,
+      actorId: context.userId,
       metadata: { path: data.path || null, instruction, model: credential.model },
     });
 

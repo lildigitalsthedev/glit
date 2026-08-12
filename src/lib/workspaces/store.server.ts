@@ -409,6 +409,26 @@ export async function removeMember(userId: string, workspaceId: string, targetUs
     summary: "Removed a member from the workspace",
     metadata: { targetUserId },
   });
+
+  const workspace = await getWorkspace(userId, workspaceId).catch(() => null);
+  const { notifyUser } = await import("../notifications/store.server");
+  await notifyUser(targetUserId, {
+    type: "workspace_removed",
+    title: "Removed from workspace",
+    body: workspace ? `You were removed from ${workspace.name}.` : "You were removed from a workspace.",
+    workspaceId,
+    actorId: userId,
+  });
+}
+
+/** Every member's user id for a workspace, optionally excluding one (typically the caller). */
+export async function listWorkspaceMemberIds(workspaceId: string, excludeUserId?: string): Promise<string[]> {
+  const { data, error } = await supabaseAdmin
+    .from("workspace_members")
+    .select("user_id")
+    .eq("workspace_id", workspaceId);
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((row) => row.user_id as string).filter((id) => id !== excludeUserId);
 }
 
 export async function leaveWorkspace(userId: string, workspaceId: string): Promise<void> {
@@ -458,6 +478,21 @@ export async function inviteMember(
       throw new Error("There's already a pending invitation for that email.");
     }
     throw new Error(error.message);
+  }
+
+  // Best-effort: only notifies if the invited email already belongs to a
+  // GitPush account. Otherwise the invitation still exists — they'll see
+  // it as a pending invite once they sign up with that email.
+  const { findUserIdByEmail, notifyUser } = await import("../notifications/store.server");
+  const invitedUserId = await findUserIdByEmail(normalized);
+  if (invitedUserId) {
+    await notifyUser(invitedUserId, {
+      type: "workspace_invited",
+      title: "Invited to workspace",
+      body: `You've been invited to join ${workspace.name} as ${WORKSPACE_ROLE_LABELS[role]}.`,
+      workspaceId,
+      actorId: userId,
+    });
   }
 }
 
