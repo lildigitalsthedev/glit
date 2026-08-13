@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useDeferredValue, useEffect, useState } from "react";
+import { useDeferredValue, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient, useInfiniteQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -35,6 +35,8 @@ import {
   GitBranch,
   ShieldCheck,
   FolderGit2,
+  RefreshCw,
+  WifiOff,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,6 +55,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { EmptyState } from "@/components/empty-state";
+import { PermissionDenied } from "@/components/permission-denied";
 import { SearchInput } from "@/components/search-input";
 import { MemberProfileDrawer } from "@/components/member-profile-drawer";
 import { CreateWorkspaceDialog, WorkspaceSwitcher } from "@/components/workspace-switcher";
@@ -74,7 +77,9 @@ import {
   setWorkspaceMemberRole,
   transferWorkspaceOwnership,
   updateWorkspace,
+  type InvitationDto,
   type MemberDto,
+  type WorkspaceDto,
 } from "@/lib/workspaces.functions";
 import {
   assignableRoles,
@@ -104,9 +109,42 @@ export const Route = createFileRoute("/_authenticated/team")({
   component: TeamPage,
 });
 
+const TEAM_TABS = ["members", "invitations", "activity", "settings"] as const;
+type TeamTab = (typeof TEAM_TABS)[number];
+
+/** True while focus is inside something that should swallow plain keystrokes. */
+function isTypingTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  const tag = target.tagName;
+  return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target.isContentEditable;
+}
+
 function TeamPage() {
   const { activeWorkspace, isLoading, can } = useWorkspaces();
   const [createOpen, setCreateOpen] = useState(false);
+  const [tab, setTab] = useState<TeamTab>("members");
+
+  // Lightweight keyboard shortcuts, scoped to this page: 1-4 jump between
+  // tabs and "c" opens the new-workspace dialog — mirrors the Cmd/Ctrl+K
+  // launcher pattern used in the workspace editor, but plain keys here since
+  // there's no editor surface fighting for single-character input.
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.metaKey || event.ctrlKey || event.altKey || isTypingTarget(event.target)) return;
+      const index = Number(event.key) - 1;
+      if (index >= 0 && index < TEAM_TABS.length) {
+        event.preventDefault();
+        setTab(TEAM_TABS[index]);
+        return;
+      }
+      if (event.key.toLowerCase() === "c" && !createOpen) {
+        event.preventDefault();
+        setCreateOpen(true);
+      }
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [createOpen]);
 
   return (
     <main className="mx-auto w-full max-w-3xl px-3 py-4">
@@ -117,7 +155,7 @@ function TeamPage() {
             Repositories, activity and AI settings are scoped to the active workspace.
           </p>
         </div>
-        <Button size="sm" variant="outline" onClick={() => setCreateOpen(true)} className="gap-1.5">
+        <Button size="sm" variant="outline" onClick={() => setCreateOpen(true)} className="gap-1.5" title="New workspace (c)">
           <Plus className="size-4" />
           New
         </Button>
@@ -130,7 +168,7 @@ function TeamPage() {
       <PendingInvitations />
 
       {isLoading ? (
-        <div className="mt-4 space-y-2">
+        <div className="mt-4 space-y-2" aria-label="Loading workspace" aria-busy="true">
           <Skeleton className="h-16 w-full" />
           <Skeleton className="h-16 w-full" />
         </div>
@@ -139,14 +177,28 @@ function TeamPage() {
           icon={Users}
           title="No workspace"
           description="Create a team workspace to collaborate with others."
+          action={
+            <Button size="sm" onClick={() => setCreateOpen(true)} className="gap-1.5">
+              <Plus className="size-4" />
+              New workspace
+            </Button>
+          }
         />
       ) : (
-        <Tabs defaultValue="members" className="mt-4">
-          <TabsList>
-            <TabsTrigger value="members">Members</TabsTrigger>
-            <TabsTrigger value="invitations">Invitations</TabsTrigger>
-            <TabsTrigger value="activity">Activity</TabsTrigger>
-            <TabsTrigger value="settings">Settings</TabsTrigger>
+        <Tabs value={tab} onValueChange={(value) => setTab(value as TeamTab)} className="mt-4">
+          <TabsList className="grid w-full grid-cols-4 sm:inline-flex sm:w-auto">
+            <TabsTrigger value="members" title="Members (1)">
+              Members
+            </TabsTrigger>
+            <TabsTrigger value="invitations" title="Invitations (2)">
+              Invitations
+            </TabsTrigger>
+            <TabsTrigger value="activity" title="Activity (3)">
+              Activity
+            </TabsTrigger>
+            <TabsTrigger value="settings" title="Settings (4)">
+              Settings
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="members" className="mt-3">
@@ -160,9 +212,7 @@ function TeamPage() {
             ) : can("members:invite") ? (
               <InvitationsTab workspaceId={activeWorkspace.id} />
             ) : (
-              <p className="text-sm text-muted-foreground">
-                Only Admins and the workspace Owner can manage invitations.
-              </p>
+              <PermissionDenied action="manage invitations" allowedRoles={["owner", "admin"]} size="compact" />
             )}
           </TabsContent>
           <TabsContent value="activity" className="mt-3">
@@ -184,6 +234,20 @@ function TeamPage() {
   );
 }
 
+/** Small inline error state with a retry action, used for any query in this page that fails. */
+function QueryErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div className="flex flex-col items-center gap-2 rounded-md border border-destructive/30 bg-destructive/5 px-4 py-6 text-center animate-in fade-in">
+      <WifiOff className="size-5 text-destructive" />
+      <p className="text-sm text-destructive">{message || "Something went wrong."}</p>
+      <Button size="sm" variant="outline" className="gap-1.5" onClick={onRetry}>
+        <RefreshCw className="size-3.5" />
+        Try again
+      </Button>
+    </div>
+  );
+}
+
 /** Invitations addressed to the signed-in user, matched server-side on email. */
 function PendingInvitations() {
   const queryClient = useQueryClient();
@@ -193,11 +257,26 @@ function PendingInvitations() {
 
   const respond = useMutation({
     mutationFn: (input: { invitationId: string; accept: boolean }) => respondFn({ data: input }),
-    onSuccess: async (_result, input) => {
+    // Optimistic: the banner disappears the instant you tap Accept/Decline
+    // instead of sitting there for a round trip — rolled back on failure.
+    onMutate: async (input) => {
+      await queryClient.cancelQueries({ queryKey: ["my-invitations"] });
+      const previous = queryClient.getQueryData<InvitationDto[]>(["my-invitations"]);
+      queryClient.setQueryData<InvitationDto[]>(["my-invitations"], (old) =>
+        (old ?? []).filter((invitation) => invitation.id !== input.invitationId),
+      );
+      return { previous };
+    },
+    onSuccess: (_result, input) => {
       toast.success(input.accept ? "Invitation accepted" : "Invitation declined");
+    },
+    onError: (error: Error, _input, context) => {
+      if (context?.previous) queryClient.setQueryData(["my-invitations"], context.previous);
+      toast.error(error.message);
+    },
+    onSettled: async () => {
       await queryClient.invalidateQueries();
     },
-    onError: (error: Error) => toast.error(error.message),
   });
 
   const invitations = query.data ?? [];
@@ -248,45 +327,116 @@ function MembersTab({ workspaceId }: { workspaceId: string }) {
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
+  const membersKey = ["workspace-members", workspaceId] as const;
   const query = useQuery({
-    queryKey: ["workspace-members", workspaceId],
+    queryKey: membersKey,
     queryFn: () => listFn({ data: { workspaceId } }),
   });
+
+  // "/" jumps straight into the member search, the way GitHub and Linear
+  // do it — only while this tab is mounted, so it never fights the file
+  // search elsewhere in the app.
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "/" && !isTypingTarget(event.target)) {
+        event.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   const setRole = useMutation({
     mutationFn: (input: { targetUserId: string; role: WorkspaceRole }) =>
       setRoleFn({ data: { workspaceId, ...input } }),
-    onSuccess: async () => {
-      toast.success("Role updated");
-      await queryClient.invalidateQueries({ queryKey: ["workspace-members", workspaceId] });
+    onMutate: async (input) => {
+      await queryClient.cancelQueries({ queryKey: membersKey });
+      const previous = queryClient.getQueryData<MemberDto[]>(membersKey);
+      queryClient.setQueryData<MemberDto[]>(membersKey, (old) =>
+        (old ?? []).map((member) =>
+          member.userId === input.targetUserId ? { ...member, role: input.role } : member,
+        ),
+      );
+      return { previous };
+    },
+    onSuccess: () => toast.success("Role updated"),
+    onError: (error: Error, _input, context) => {
+      if (context?.previous) queryClient.setQueryData(membersKey, context.previous);
+      toast.error(error.message);
+    },
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey: membersKey });
       await queryClient.invalidateQueries({ queryKey: ["workspaces"] });
     },
-    onError: (error: Error) => toast.error(error.message),
   });
 
   const remove = useMutation({
     mutationFn: (targetUserId: string) => removeFn({ data: { workspaceId, targetUserId } }),
-    onSuccess: async () => {
-      toast.success("Member removed");
+    onMutate: async (targetUserId) => {
+      await queryClient.cancelQueries({ queryKey: membersKey });
+      const previous = queryClient.getQueryData<MemberDto[]>(membersKey);
+      queryClient.setQueryData<MemberDto[]>(membersKey, (old) =>
+        (old ?? []).filter((member) => member.userId !== targetUserId),
+      );
       setSelectedMemberId(null);
-      await queryClient.invalidateQueries({ queryKey: ["workspace-members", workspaceId] });
+      return { previous };
+    },
+    onSuccess: () => toast.success("Member removed"),
+    onError: (error: Error, _input, context) => {
+      if (context?.previous) queryClient.setQueryData(membersKey, context.previous);
+      toast.error(error.message);
+    },
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey: membersKey });
       await queryClient.invalidateQueries({ queryKey: ["workspaces"] });
     },
-    onError: (error: Error) => toast.error(error.message),
   });
 
   const transfer = useMutation({
     mutationFn: (targetUserId: string) => transferFn({ data: { workspaceId, targetUserId } }),
-    onSuccess: async () => {
-      toast.success("Ownership transferred");
+    onMutate: async (targetUserId) => {
+      await queryClient.cancelQueries({ queryKey: membersKey });
+      const previous = queryClient.getQueryData<MemberDto[]>(membersKey);
+      queryClient.setQueryData<MemberDto[]>(membersKey, (old) =>
+        (old ?? []).map((member) => {
+          if (member.userId === targetUserId) return { ...member, role: "owner" as const };
+          if (member.role === "owner") return { ...member, role: "admin" as const };
+          return member;
+        }),
+      );
       setSelectedMemberId(null);
+      return { previous };
+    },
+    onSuccess: () => toast.success("Ownership transferred"),
+    onError: (error: Error, _input, context) => {
+      if (context?.previous) queryClient.setQueryData(membersKey, context.previous);
+      toast.error(error.message);
+    },
+    onSettled: async () => {
       await queryClient.invalidateQueries();
     },
-    onError: (error: Error) => toast.error(error.message),
   });
 
-  if (query.isLoading) return <Skeleton className="h-24 w-full" />;
+  if (query.isLoading) {
+    return (
+      <div className="space-y-2" aria-label="Loading members" aria-busy="true">
+        <Skeleton className="h-12 w-full" />
+        <Skeleton className="h-12 w-full" />
+        <Skeleton className="h-12 w-full" />
+      </div>
+    );
+  }
+  if (query.isError) {
+    return (
+      <QueryErrorState
+        message={(query.error as Error)?.message}
+        onRetry={() => queryClient.invalidateQueries({ queryKey: membersKey })}
+      />
+    );
+  }
   const members = query.data ?? [];
   const options = assignableRoles(role);
 
@@ -305,9 +455,10 @@ function MembersTab({ workspaceId }: { workspaceId: string }) {
     <div className="space-y-2">
       {members.length > 1 ? (
         <SearchInput
+          ref={searchInputRef}
           value={search}
           onValueChange={setSearch}
-          placeholder="Search members by name or email…"
+          placeholder="Search members by name or email… (press /)"
           ariaLabel="Search members"
         />
       ) : null}
@@ -318,9 +469,15 @@ function MembersTab({ workspaceId }: { workspaceId: string }) {
           title="No members match"
           description={`Nothing found for "${deferredSearch}".`}
           size="compact"
+          action={
+            <Button size="sm" variant="outline" onClick={() => setSearch("")}>
+              Clear search
+            </Button>
+          }
         />
       ) : (
-        filteredMembers.map((member) => {
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        {filteredMembers.map((member) => {
           const status = getMemberStatus(member.lastActiveAt);
           const name = member.displayName ?? member.email ?? "Unknown";
           return (
@@ -357,7 +514,8 @@ function MembersTab({ workspaceId }: { workspaceId: string }) {
               </div>
             </button>
           );
-        })
+        })}
+        </div>
       )}
 
       {activeWorkspace?.isPersonal ? (
@@ -417,29 +575,75 @@ function InvitationsTab({ workspaceId }: { workspaceId: string }) {
   const [email, setEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<WorkspaceRole>("developer");
 
+  const invitationsKey = ["workspace-invitations", workspaceId] as const;
   const query = useQuery({
-    queryKey: ["workspace-invitations", workspaceId],
+    queryKey: invitationsKey,
     queryFn: () => listFn({ data: { workspaceId } }),
   });
 
   const invite = useMutation({
-    mutationFn: () => inviteFn({ data: { workspaceId, email, role: inviteRole } }),
-    onSuccess: async () => {
-      toast.success(`Invitation created for ${email}`);
-      setEmail("");
-      await queryClient.invalidateQueries({ queryKey: ["workspace-invitations", workspaceId] });
+    mutationFn: (input: { email: string; role: WorkspaceRole }) =>
+      inviteFn({ data: { workspaceId, email: input.email, role: input.role } }),
+    // Optimistic: the invite appears in the list right away, tagged as
+    // "Sending…" via a temporary id, then gets replaced with the real row
+    // once the server confirms (or disappears again on failure).
+    onMutate: async (input) => {
+      await queryClient.cancelQueries({ queryKey: invitationsKey });
+      const previous = queryClient.getQueryData<InvitationDto[]>(invitationsKey);
+      const optimistic: InvitationDto = {
+        id: `optimistic-${crypto.randomUUID?.() ?? Date.now()}`,
+        workspaceId,
+        workspaceName: "",
+        email: input.email,
+        role: input.role,
+        status: "pending",
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        createdAt: new Date().toISOString(),
+      };
+      queryClient.setQueryData<InvitationDto[]>(invitationsKey, (old) => [optimistic, ...(old ?? [])]);
+      return { previous };
     },
-    onError: (error: Error) => toast.error(error.message),
+    onSuccess: (_result, input) => {
+      toast.success(`Invitation created for ${input.email}`);
+      setEmail("");
+    },
+    onError: (error: Error, _input, context) => {
+      if (context?.previous) queryClient.setQueryData(invitationsKey, context.previous);
+      toast.error(error.message);
+    },
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey: invitationsKey });
+    },
   });
 
   const revoke = useMutation({
     mutationFn: (invitationId: string) => revokeFn({ data: { invitationId } }),
-    onSuccess: async () => {
-      toast.success("Invitation revoked");
-      await queryClient.invalidateQueries({ queryKey: ["workspace-invitations", workspaceId] });
+    onMutate: async (invitationId) => {
+      await queryClient.cancelQueries({ queryKey: invitationsKey });
+      const previous = queryClient.getQueryData<InvitationDto[]>(invitationsKey);
+      queryClient.setQueryData<InvitationDto[]>(invitationsKey, (old) =>
+        (old ?? []).filter((invitation) => invitation.id !== invitationId),
+      );
+      return { previous };
     },
-    onError: (error: Error) => toast.error(error.message),
+    onSuccess: () => toast.success("Invitation revoked"),
+    onError: (error: Error, _input, context) => {
+      if (context?.previous) queryClient.setQueryData(invitationsKey, context.previous);
+      toast.error(error.message);
+    },
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey: invitationsKey });
+    },
   });
+
+  if (query.isError) {
+    return (
+      <QueryErrorState
+        message={(query.error as Error)?.message}
+        onRetry={() => queryClient.invalidateQueries({ queryKey: invitationsKey })}
+      />
+    );
+  }
 
   const invitations = query.data ?? [];
 
@@ -471,42 +675,57 @@ function InvitationsTab({ workspaceId }: { workspaceId: string }) {
             </SelectContent>
           </Select>
         </div>
-        <Button onClick={() => invite.mutate()} disabled={!email.trim() || invite.isPending} className="gap-1.5">
+        <Button
+          onClick={() => invite.mutate({ email, role: inviteRole })}
+          disabled={!email.trim() || invite.isPending}
+          className="gap-1.5"
+        >
           {invite.isPending ? <Loader2 className="size-4 animate-spin" /> : <Mail className="size-4" />}
           Invite
         </Button>
       </div>
 
       {query.isLoading ? (
-        <Skeleton className="h-16 w-full" />
+        <div className="space-y-2" aria-label="Loading invitations" aria-busy="true">
+          <Skeleton className="h-16 w-full" />
+          <Skeleton className="h-16 w-full" />
+        </div>
       ) : invitations.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No invitations yet.</p>
+        <EmptyState icon={Mail} title="No invitations yet" description="Invite a teammate above to get started." size="compact" />
       ) : (
         <div className="space-y-2">
-          {invitations.map((invitation) => (
-            <div
-              key={invitation.id}
-              className="flex flex-wrap items-center gap-2 rounded-md border border-border p-2.5"
-            >
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-mono text-sm">{invitation.email}</p>
-                <p className="text-xs text-muted-foreground">
-                  {WORKSPACE_ROLE_LABELS[invitation.role]} · {invitation.status}
-                </p>
+          {invitations.map((invitation) => {
+            const isOptimistic = invitation.id.startsWith("optimistic-");
+            return (
+              <div
+                key={invitation.id}
+                className={cn(
+                  "flex flex-wrap items-center gap-2 rounded-md border border-border p-2.5 transition-opacity animate-in fade-in",
+                  isOptimistic && "opacity-60",
+                )}
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-mono text-sm">{invitation.email}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {WORKSPACE_ROLE_LABELS[invitation.role]} · {isOptimistic ? "sending…" : invitation.status}
+                  </p>
+                </div>
+                {isOptimistic ? (
+                  <Loader2 className="size-4 shrink-0 animate-spin text-muted-foreground" />
+                ) : invitation.status === "pending" ? (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    title="Revoke invitation"
+                    disabled={revoke.isPending}
+                    onClick={() => revoke.mutate(invitation.id)}
+                  >
+                    <X className="size-4 text-destructive" />
+                  </Button>
+                ) : null}
               </div>
-              {invitation.status === "pending" ? (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  title="Revoke invitation"
-                  disabled={revoke.isPending}
-                  onClick={() => revoke.mutate(invitation.id)}
-                >
-                  <X className="size-4 text-destructive" />
-                </Button>
-              ) : null}
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -543,22 +762,46 @@ const ACTIVITY_META: Record<WorkspaceActivityAction, { label: string; icon: type
 
 /** Feature 6: Team Activity Feed. Every workspace role — including Viewer — can see this, since `activity:view` is in every role's capability set. */
 function ActivityTab({ workspaceId }: { workspaceId: string }) {
+  const queryClient = useQueryClient();
   const listFn = useServerFn(listWorkspaceActivity);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const activityKey = ["workspace-activity", workspaceId] as const;
 
   const query = useInfiniteQuery({
-    queryKey: ["workspace-activity", workspaceId],
+    queryKey: activityKey,
     queryFn: ({ pageParam }: { pageParam: string | null }) =>
       listFn({ data: { workspaceId, before: pageParam } }),
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.nextBefore,
   });
 
+  const { hasNextPage, isFetchingNextPage, fetchNextPage } = query;
+
+  // True infinite scroll: a sentinel just past the last row triggers the
+  // next page as soon as it enters the viewport, instead of making people
+  // tap "Load more" every time. The button below stays as a manual/keyboard
+  // and screen-reader-friendly fallback in case the observer doesn't fire.
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const node = sentinelRef.current;
+    if (!node || !hasNextPage) return;
+    const observer = new IntersectionObserver(
+      (observerEntries) => {
+        if (observerEntries[0]?.isIntersecting && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { rootMargin: "200px" },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
   const entries: ActivityEntry[] = query.data?.pages.flatMap((page) => page.entries) ?? [];
 
   if (query.isLoading) {
     return (
-      <div className="space-y-2">
+      <div className="space-y-2" aria-label="Loading activity" aria-busy="true">
         <Skeleton className="h-14 w-full" />
         <Skeleton className="h-14 w-full" />
         <Skeleton className="h-14 w-full" />
@@ -567,7 +810,12 @@ function ActivityTab({ workspaceId }: { workspaceId: string }) {
   }
 
   if (query.isError) {
-    return <p className="text-sm text-destructive">{(query.error as Error).message}</p>;
+    return (
+      <QueryErrorState
+        message={(query.error as Error)?.message}
+        onRetry={() => queryClient.invalidateQueries({ queryKey: activityKey })}
+      />
+    );
   }
 
   if (entries.length === 0) {
@@ -653,17 +901,28 @@ function ActivityTab({ workspaceId }: { workspaceId: string }) {
         })}
       </ul>
 
-      {query.hasNextPage && (
-        <Button
-          variant="outline"
-          size="sm"
-          className="w-full"
-          disabled={query.isFetchingNextPage}
-          onClick={() => query.fetchNextPage()}
-        >
-          {query.isFetchingNextPage ? <Loader2 className="size-3.5 animate-spin" /> : null}
-          Load more
-        </Button>
+      {hasNextPage && (
+        <>
+          {/* Invisible trigger for auto-loading; the button just below it
+              still works for anyone who scrolls past it, hasn't focused it
+              via keyboard, or is on a browser without IntersectionObserver. */}
+          <div ref={sentinelRef} aria-hidden className="h-px w-full" />
+          {isFetchingNextPage && (
+            <div className="space-y-2" aria-label="Loading more activity" aria-busy="true">
+              <Skeleton className="h-14 w-full" />
+            </div>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full"
+            disabled={isFetchingNextPage}
+            onClick={() => fetchNextPage()}
+          >
+            {isFetchingNextPage ? <Loader2 className="size-3.5 animate-spin" /> : null}
+            Load more
+          </Button>
+        </>
       )}
     </div>
   );
@@ -706,6 +965,27 @@ function SettingsTab({ workspaceId }: { workspaceId: string }) {
     setLicenseTemplate(activeWorkspace?.defaultLicenseTemplate || NONE_TEMPLATE);
   }, [activeWorkspace?.id]);
 
+  // Shared helper: every workspace-settings mutation below patches this
+  // same ["workspaces"] cache entry optimistically, then rolls back to the
+  // exact previous value on failure.
+  type WorkspacesData = { workspaces: WorkspaceDto[]; activeWorkspaceId: string };
+  const workspacesKey = ["workspaces"] as const;
+  async function patchWorkspaceOptimistically(patch: Partial<WorkspaceDto>) {
+    await queryClient.cancelQueries({ queryKey: workspacesKey });
+    const previous = queryClient.getQueryData<WorkspacesData>(workspacesKey);
+    queryClient.setQueryData<WorkspacesData>(workspacesKey, (old) =>
+      old
+        ? {
+            ...old,
+            workspaces: old.workspaces.map((workspace) =>
+              workspace.id === workspaceId ? { ...workspace, ...patch } : workspace,
+            ),
+          }
+        : old,
+    );
+    return { previous };
+  }
+
   const save = useMutation({
     mutationFn: () =>
       updateFn({
@@ -721,11 +1001,25 @@ function SettingsTab({ workspaceId }: { workspaceId: string }) {
           defaultLicenseTemplate: licenseTemplate === NONE_TEMPLATE ? null : licenseTemplate,
         },
       }),
-    onSuccess: async () => {
-      toast.success("Workspace updated");
-      await queryClient.invalidateQueries({ queryKey: ["workspaces"] });
+    onMutate: () =>
+      patchWorkspaceOptimistically({
+        name,
+        description: description || null,
+        avatarUrl: avatarUrl || null,
+        defaultBranch: defaultBranch || null,
+        defaultRepoVisibility: visibility,
+        defaultRepoAutoInit: autoInit,
+        defaultGitignoreTemplate: gitignoreTemplate === NONE_TEMPLATE ? null : gitignoreTemplate,
+        defaultLicenseTemplate: licenseTemplate === NONE_TEMPLATE ? null : licenseTemplate,
+      }),
+    onSuccess: () => toast.success("Workspace updated"),
+    onError: (error: Error, _input, context) => {
+      if (context?.previous) queryClient.setQueryData(workspacesKey, context.previous);
+      toast.error(error.message);
     },
-    onError: (error: Error) => toast.error(error.message),
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey: workspacesKey });
+    },
   });
 
   // Security settings save instantly on change, like other toggle-style
@@ -734,20 +1028,29 @@ function SettingsTab({ workspaceId }: { workspaceId: string }) {
   const setSecurity = useMutation({
     mutationFn: (patch: { requireTeamAiKeys?: boolean; defaultInviteRole?: WorkspaceRole }) =>
       updateFn({ data: { workspaceId, ...patch } }),
-    onSuccess: async () => {
-      toast.success("Security settings updated");
-      await queryClient.invalidateQueries({ queryKey: ["workspaces"] });
+    onMutate: (patch) => patchWorkspaceOptimistically(patch),
+    onSuccess: () => toast.success("Security settings updated"),
+    onError: (error: Error, _input, context) => {
+      if (context?.previous) queryClient.setQueryData(workspacesKey, context.previous);
+      toast.error(error.message);
     },
-    onError: (error: Error) => toast.error(error.message),
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey: workspacesKey });
+    },
   });
 
   const archive = useMutation({
     mutationFn: (archived: boolean) => archiveFn({ data: { workspaceId, archived } }),
-    onSuccess: async () => {
-      toast.success("Workspace updated");
-      await queryClient.invalidateQueries({ queryKey: ["workspaces"] });
+    onMutate: (archived) =>
+      patchWorkspaceOptimistically({ archivedAt: archived ? new Date().toISOString() : null }),
+    onSuccess: () => toast.success("Workspace updated"),
+    onError: (error: Error, _input, context) => {
+      if (context?.previous) queryClient.setQueryData(workspacesKey, context.previous);
+      toast.error(error.message);
     },
-    onError: (error: Error) => toast.error(error.message),
+    onSettled: async () => {
+      await queryClient.invalidateQueries({ queryKey: workspacesKey });
+    },
   });
 
   const destroy = useMutation({

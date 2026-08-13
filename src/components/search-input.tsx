@@ -1,4 +1,4 @@
-import { useRef, type ChangeEvent } from "react";
+import { forwardRef, useImperativeHandle, useRef, type ChangeEvent } from "react";
 import { Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -10,23 +10,23 @@ import { cn } from "@/lib/utils";
  * tapping it wipes the query, resets the results immediately (the parent's
  * state is the single source of truth) and keeps the caret inside the input
  * so the user can keep typing without a second tap.
+ *
+ * Forwards its ref to the underlying `<input>` so pages can wire up
+ * keyboard shortcuts like "press / to search" without owning the field.
  */
-export function SearchInput({
-  value,
-  onValueChange,
-  placeholder,
-  className,
-  inputClassName,
-  ariaLabel,
-}: {
-  value: string;
-  onValueChange: (next: string) => void;
-  placeholder?: string;
-  className?: string;
-  inputClassName?: string;
-  ariaLabel?: string;
-}) {
+export const SearchInput = forwardRef<
+  HTMLInputElement,
+  {
+    value: string;
+    onValueChange: (next: string) => void;
+    placeholder?: string;
+    className?: string;
+    inputClassName?: string;
+    ariaLabel?: string;
+  }
+>(function SearchInput({ value, onValueChange, placeholder, className, inputClassName, ariaLabel }, forwardedRef) {
   const inputRef = useRef<HTMLInputElement>(null);
+  useImperativeHandle(forwardedRef, () => inputRef.current as HTMLInputElement);
   const hasValue = value.length > 0;
 
   return (
@@ -62,4 +62,4 @@ export function SearchInput({
       )}
     </div>
   );
-}
+});
