@@ -77,16 +77,20 @@ export const saveTeamAiProvider = createServerFn({ method: "POST" })
       }
     }
 
-    const { upsertTeamProvider } = await import("./workspaces/ai-providers.server");
+    const { upsertTeamProvider, listTeamProviders } = await import("./workspaces/ai-providers.server");
+    const before = await listTeamProviders(workspaceId);
+    const wasExisting = before.some((row) => row.provider === data.provider);
     const saved = await upsertTeamProvider(workspaceId, context.userId, data);
 
     const { logActivity } = await import("./workspaces/activity.server");
     await logActivity({
       workspaceId,
       actorId: context.userId,
-      action: "team_key_added",
-      summary: `Added the shared ${data.provider} key for the team`,
-      metadata: { provider: data.provider },
+      action: wasExisting ? "team_key_updated" : "team_key_added",
+      summary: wasExisting
+        ? `Updated the shared ${data.provider} key`
+        : `Added the shared ${data.provider} key for the team`,
+      metadata: { provider: data.provider, rotatedKey: Boolean(apiKey) },
     });
 
     return saved;
@@ -103,6 +107,16 @@ export const setTeamAiProviderEnabled = createServerFn({ method: "POST" })
       provider: data.provider,
       enabled: data.enabled,
     });
+
+    const { logActivity } = await import("./workspaces/activity.server");
+    await logActivity({
+      workspaceId,
+      actorId: context.userId,
+      action: "team_key_updated",
+      summary: `${data.enabled ? "Enabled" : "Disabled"} the shared ${data.provider} key`,
+      metadata: { provider: data.provider, enabled: data.enabled },
+    });
+
     return { ok: true };
   });
 

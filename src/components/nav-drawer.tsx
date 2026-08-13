@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { LayoutGrid, Code2, History, Settings, Sparkles, Crown, Wrench, Users } from "lucide-react";
+import { LayoutGrid, Code2, History, Settings, Sparkles, Crown, Wrench, Users, ShieldCheck } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { WorkspaceSwitcher } from "@/components/workspace-switcher";
 import { useRole } from "@/hooks/useRole";
@@ -9,6 +9,7 @@ const PRIMARY = [
   { to: "/app", label: "Repositories", icon: LayoutGrid },
   { to: "/workspace", label: "Workspace", icon: Code2 },
   { to: "/activity", label: "Activity", icon: History },
+  { to: "/audit-log", label: "Audit log", icon: ShieldCheck },
   { to: "/team", label: "Team & workspaces", icon: Users },
 ] as const;
 

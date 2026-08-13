@@ -26,6 +26,11 @@ import {
   Settings2,
   ChevronDown,
   KeyRound,
+  LogIn,
+  Crown,
+  Archive,
+  MessageSquare,
+  ScrollText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -155,6 +160,11 @@ function TeamPage() {
             )}
           </TabsContent>
           <TabsContent value="activity" className="mt-3">
+            <div className="mb-2 flex justify-end">
+              <Link to="/audit-log" className="text-xs text-primary hover:underline">
+                Open full audit log →
+              </Link>
+            </div>
             <ActivityTab workspaceId={activeWorkspace.id} />
           </TabsContent>
           <TabsContent value="settings" className="mt-3">
@@ -512,8 +522,17 @@ const ACTIVITY_META: Record<WorkspaceActivityAction, { label: string; icon: type
   member_joined: { label: "Member joined", icon: UserPlus },
   member_removed: { label: "Member removed", icon: UserMinus },
   workspace_updated: { label: "Workspace updated", icon: Settings2 },
+  workspace_archived: { label: "Workspace archived", icon: Archive },
   team_key_added: { label: "Team key added", icon: KeyRound },
   team_key_removed: { label: "Team key removed", icon: Trash2 },
+  team_key_updated: { label: "Team key updated", icon: KeyRound },
+  login: { label: "Signed in", icon: LogIn },
+  member_invited: { label: "Member invited", icon: Mail },
+  member_left: { label: "Member left", icon: LogOut },
+  member_role_changed: { label: "Role changed", icon: Shield },
+  ownership_transferred: { label: "Ownership transferred", icon: Crown },
+  ai_chat: { label: "AI repo chat", icon: MessageSquare },
+  ai_commit_message: { label: "AI commit message", icon: ScrollText },
 };
 
 /** Feature 6: Team Activity Feed. Every workspace role — including Viewer — can see this, since `activity:view` is in every role's capability set. */

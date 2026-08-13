@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { recordLogin } from "@/lib/audit.functions";
 
 interface AuthState {
   session: Session | null;
@@ -19,14 +21,24 @@ const AuthContext = createContext<AuthState>({
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const recordLoginFn = useServerFn(recordLogin);
 
   useEffect(() => {
     // The auth client throws if backend env vars are missing (e.g. a stale
     // build). Degrade to "signed out" instead of blanking the whole app.
     try {
-      const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
+      const { data: sub } = supabase.auth.onAuthStateChange((event, next) => {
         setSession(next);
         setLoading(false);
+        // Feature 9: Audit Logs. Only the genuine "a new session just
+        // started" event — never `INITIAL_SESSION` (a page refresh
+        // restoring an existing session) or `TOKEN_REFRESHED` — so this
+        // fires once per real sign-in, not once per tab open. Fire-and-
+        // forget: a slow or failed audit write should never hold up
+        // getting into the app.
+        if (event === "SIGNED_IN") {
+          void recordLoginFn().catch((err) => console.error("[audit] recordLogin failed:", err));
+        }
       });
       void supabase.auth
         .getSession()
@@ -41,7 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
       return;
     }
-  }, []);
+  }, [recordLoginFn]);
 
   return (
     <AuthContext.Provider

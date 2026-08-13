@@ -254,6 +254,16 @@ export async function setWorkspaceArchived(
     .update({ archived_at: archived ? new Date().toISOString() : null })
     .eq("id", workspaceId);
   if (error) throw new Error(error.message);
+
+  const { logActivity } = await import("./activity.server");
+  await logActivity({
+    workspaceId,
+    actorId: userId,
+    action: "workspace_archived",
+    summary: archived ? "Archived the workspace" : "Restored the workspace",
+    metadata: { archived },
+  });
+
   return getWorkspace(userId, workspaceId);
 }
 
@@ -308,6 +318,15 @@ export async function transferOwnership(
     .update({ owner_id: targetUserId })
     .eq("id", workspaceId);
   if (ownerError) throw new Error(ownerError.message);
+
+  const { logActivity } = await import("./activity.server");
+  await logActivity({
+    workspaceId,
+    actorId: userId,
+    action: "ownership_transferred",
+    summary: "Transferred workspace ownership",
+    metadata: { targetUserId },
+  });
 }
 
 export async function listMembers(userId: string, workspaceId: string): Promise<MemberRecord[]> {
@@ -375,6 +394,15 @@ export async function setMemberRole(
     .eq("workspace_id", workspaceId)
     .eq("user_id", targetUserId);
   if (error) throw new Error(error.message);
+
+  const { logActivity } = await import("./activity.server");
+  await logActivity({
+    workspaceId,
+    actorId: userId,
+    action: "member_role_changed",
+    summary: `Changed a member's role to ${role}`,
+    metadata: { targetUserId, role, previousRole: targetRole },
+  });
 }
 
 export async function removeMember(userId: string, workspaceId: string, targetUserId: string): Promise<void> {
@@ -448,6 +476,14 @@ export async function leaveWorkspace(userId: string, workspaceId: string): Promi
     .update({ active_workspace_id: null })
     .eq("user_id", userId)
     .eq("active_workspace_id", workspaceId);
+
+  const { logActivity } = await import("./activity.server");
+  await logActivity({
+    workspaceId,
+    actorId: userId,
+    action: "member_left",
+    summary: "Left the workspace",
+  });
 }
 
 export async function inviteMember(
@@ -479,6 +515,15 @@ export async function inviteMember(
     }
     throw new Error(error.message);
   }
+
+  const { logActivity } = await import("./activity.server");
+  await logActivity({
+    workspaceId,
+    actorId: userId,
+    action: "member_invited",
+    summary: `Invited ${normalized} as ${WORKSPACE_ROLE_LABELS[role]}`,
+    metadata: { email: normalized, role },
+  });
 
   // Best-effort: only notifies if the invited email already belongs to a
   // GitPush account. Otherwise the invitation still exists — they'll see

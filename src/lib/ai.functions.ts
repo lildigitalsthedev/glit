@@ -286,6 +286,16 @@ export const generateCommitMessage = createServerFn({ method: "POST" })
     const reply = await chat({ credential, system: COMMIT_MESSAGE_SYSTEM, prompt, maxTokens: 300 });
     const message = reply.trim();
     if (!message) throw new Error("The provider returned an empty response. Try again.");
+
+    const { logActivity } = await import("./workspaces/activity.server");
+    await logActivity({
+      workspaceId,
+      actorId: context.userId,
+      action: "ai_commit_message",
+      summary: `Generated a commit message for ${data.path}`,
+      metadata: { path: data.path, provider: credential.provider, model: credential.model },
+    });
+
     return { message, model: credential.model, provider: credential.provider };
   });
 
@@ -356,6 +366,16 @@ export const chatWithRepo = createServerFn({ method: "POST" })
 
     const answer = await chat({ credential, system: CHAT_SYSTEM, prompt, maxTokens: 2048 });
     if (!answer) throw new Error("The provider returned an empty response. Try again.");
+
+    const { logActivity } = await import("./workspaces/activity.server");
+    await logActivity({
+      workspaceId,
+      actorId: context.userId,
+      action: "ai_chat",
+      repoFullName: data.fullName,
+      summary: `Asked the AI about ${data.fullName}`,
+      metadata: { branch: data.branch, provider: credential.provider, model: credential.model },
+    });
 
     return { answer, filesUsed, model: credential.model, provider: credential.provider };
   });

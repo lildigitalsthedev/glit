@@ -10,12 +10,21 @@ export type WorkspaceActivityAction =
   | "push_completed"
   | "ai_generation"
   | "ai_edit"
+  | "ai_chat"
+  | "ai_commit_message"
   | "prompt_created"
   | "member_joined"
   | "member_removed"
+  | "member_invited"
+  | "member_left"
+  | "member_role_changed"
+  | "ownership_transferred"
   | "workspace_updated"
+  | "workspace_archived"
   | "team_key_added"
-  | "team_key_removed";
+  | "team_key_removed"
+  | "team_key_updated"
+  | "login";
 
 export interface ActivityActor {
   userId: string;
