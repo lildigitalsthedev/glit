@@ -1171,31 +1171,6 @@ function Workspace() {
     reader.readAsText(file);
   }
 
-  if (prefs.isLoading) {
-    return (
-      <div className="flex h-[60vh] items-center justify-center">
-        <Loader2 className="size-5 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (!accountId || !fullName) {
-    return (
-      <main className="flex h-[calc(100dvh-2.5rem)] items-center justify-center px-4">
-        <EmptyState
-          icon={FolderGit2}
-          title="Choose a repository to begin."
-          description="Pick a repo from your dashboard to open it here and start editing, committing, and pushing to GitHub."
-          action={
-            <Button asChild>
-              <Link to="/app">Go to repositories</Link>
-            </Button>
-          }
-        />
-      </main>
-    );
-  }
-
   const filePaths = (tree.data?.nodes ?? []).filter((n) => n.type === "blob").map((n) => n.path);
 
   // Command palette: data-driven groups, recomputed whenever the things
@@ -1349,6 +1324,42 @@ function Workspace() {
     rightPaneCollapsed,
     navigate,
   ]);
+
+  // These early returns must come after every hook call above (useState,
+  // useQuery, useMutation, useMemo, useEffect) — never before. `prefs`
+  // starts out loading on every fresh mount (a full page reload has an
+  // empty query cache, unlike a client-side navigation into this route,
+  // which usually already has it warm), so a guard placed earlier would
+  // make the very first render call fewer hooks than the next one once
+  // `prefs` resolves. React requires the exact same hooks, in the exact
+  // same order, on every render of a component — a mismatched count
+  // throws "Rendered more hooks than during the previous render", which
+  // is exactly the crash this file used to hit on reload. Keeping every
+  // hook above this line, unconditionally, is what fixes it.
+  if (prefs.isLoading) {
+    return (
+      <div className="flex h-[60vh] items-center justify-center">
+        <Loader2 className="size-5 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!accountId || !fullName) {
+    return (
+      <main className="flex h-[calc(100dvh-2.5rem)] items-center justify-center px-4">
+        <EmptyState
+          icon={FolderGit2}
+          title="Choose a repository to begin."
+          description="Pick a repo from your dashboard to open it here and start editing, committing, and pushing to GitHub."
+          action={
+            <Button asChild>
+              <Link to="/app">Go to repositories</Link>
+            </Button>
+          }
+        />
+      </main>
+    );
+  }
 
   const fileTreePanel = (
     <div className="flex min-h-0 flex-1 flex-col">
