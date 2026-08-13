@@ -33,6 +33,7 @@ import {
   Palette,
   Minus,
   Plus,
+  ChevronDown,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { usePlan } from "@/hooks/usePlan";
@@ -351,6 +352,7 @@ function Settings() {
   const [defaultFolderInput, setDefaultFolderInput] = useState("");
   const [branchFocused, setBranchFocused] = useState(false);
   const [folderFocused, setFolderFocused] = useState(false);
+  const [accentOpen, setAccentOpen] = useState(false);
 
   // Keep the text fields in sync with the server once preferences load —
   // but only while the user isn't actively editing them, so a background
@@ -362,8 +364,29 @@ function Settings() {
     if (!folderFocused) setDefaultFolderInput(prefs.data?.defaultFolder ?? "");
   }, [prefs.data?.defaultFolder, folderFocused]);
 
+  // Optimistic: every editor/preference control below is a controlled
+  // input driven by `prefs.data`, so without this the Select/Switch would
+  // sit frozen on the old value for a full request round-trip (or forever,
+  // silently, if the request ever failed) before the server response came
+  // back through `invalidateQueries` and a refetch. Writing the patch into
+  // the query cache immediately makes every subscriber — this page's
+  // controls AND the live Monaco editor in the workspace, which reads the
+  // same ["prefs"] cache — update in the same tick the user makes a
+  // selection. On failure, roll back to the pre-optimistic snapshot and
+  // surface a toast instead of failing silently.
   function setPref(patch: Partial<Preferences>) {
-    void updatePrefsFn({ data: patch }).then(() => queryClient.invalidateQueries({ queryKey: ["prefs"] }));
+    const previous = queryClient.getQueryData<Preferences>(["prefs"]);
+    queryClient.setQueryData<Preferences | undefined>(["prefs"], (old) =>
+      old ? { ...old, ...patch } : old,
+    );
+    void updatePrefsFn({ data: patch })
+      .then(() => {
+        void queryClient.invalidateQueries({ queryKey: ["prefs"] });
+      })
+      .catch((err) => {
+        queryClient.setQueryData(["prefs"], previous);
+        toast.error(err instanceof Error ? err.message : "Couldn't save that preference. Please try again.");
+      });
   }
 
   function handleTabChange(value: string) {
@@ -607,16 +630,39 @@ function Settings() {
               </div>
 
               <div className="border-t border-border pt-4">
-                <Label className="text-sm">Accent color</Label>
-                <p className="text-xs text-muted-foreground">
-                  Controls buttons, active states, focus rings, and selected rows throughout the app.
-                </p>
-                <div className="mt-2">
-                  <AccentColorPicker
-                    value={appTheme.accentColor ?? "#22d3ee"}
-                    onChange={(hex) => appTheme.setAccentColor(hex)}
-                  />
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setAccentOpen((open) => !open)}
+                  aria-expanded={accentOpen}
+                  className="flex w-full items-center justify-between gap-3 text-left"
+                >
+                  <div>
+                    <Label className="text-sm">Accent color</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Controls buttons, active states, focus rings, and selected rows throughout the app.
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <span
+                      className="size-6 rounded-full ring-1 ring-border"
+                      style={{ backgroundColor: appTheme.accentColor ?? "oklch(0.872 0.148 205.5)" }}
+                    />
+                    <ChevronDown
+                      className={cn(
+                        "size-4 text-muted-foreground transition-transform",
+                        accentOpen && "rotate-180",
+                      )}
+                    />
+                  </div>
+                </button>
+                {accentOpen && (
+                  <div className="mt-3">
+                    <AccentColorPicker
+                      value={appTheme.accentColor ?? "#22d3ee"}
+                      onChange={(hex) => appTheme.setAccentColor(hex)}
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="border-t border-border pt-4">
