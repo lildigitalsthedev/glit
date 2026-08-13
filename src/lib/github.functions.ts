@@ -276,6 +276,33 @@ export const createRepository = createServerFn({ method: "POST" })
       licenseTemplate: data.licenseTemplate || undefined,
     });
 
+    // Feature 10: Workspace Settings → Default branch. GitHub's create-repo
+    // endpoint has no field for the initial branch name — the only way to
+    // get a custom one is to rename after the fact, and only once a first
+    // commit actually exists to point a ref at (auto_init or a gitignore/
+    // license template forces that; createRepo already accounts for this).
+    // Best-effort: a rename failing shouldn't fail the whole repo creation,
+    // since the repo itself already exists and is otherwise usable.
+    const hadInitialCommit = data.autoInit || Boolean(data.gitignoreTemplate) || Boolean(data.licenseTemplate);
+    let finalDefaultBranch = repo.default_branch;
+    if (hadInitialCommit) {
+      try {
+        const { getWorkspace } = await import("./workspaces/store.server");
+        const workspace = await getWorkspace(context.userId, workspaceId);
+        const desired = workspace.defaultBranch?.trim();
+        if (desired && desired !== repo.default_branch) {
+          const { getRef, createRef, setDefaultBranch, deleteRef } = await import("./github/api.server");
+          const head = await getRef(token, repo.full_name, repo.default_branch);
+          await createRef(token, repo.full_name, desired, head.object.sha);
+          await setDefaultBranch(token, repo.full_name, desired);
+          await deleteRef(token, repo.full_name, repo.default_branch);
+          finalDefaultBranch = desired;
+        }
+      } catch (err) {
+        console.error(`[createRepository] default-branch rename failed for ${repo.full_name}:`, err);
+      }
+    }
+
     const { logActivity } = await import("./workspaces/activity.server");
     await logActivity({
       workspaceId,
@@ -293,7 +320,7 @@ export const createRepository = createServerFn({ method: "POST" })
       ownerAvatar: repo.owner.avatar_url,
       isPrivate: repo.private,
       description: repo.description,
-      defaultBranch: repo.default_branch,
+      defaultBranch: finalDefaultBranch,
       updatedAt: repo.pushed_at ?? repo.updated_at,
       canPush: repo.permissions?.push ?? true,
     };

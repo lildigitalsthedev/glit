@@ -28,6 +28,17 @@ export async function resolveAiCredential(args: {
     return resolveTeamProvider(workspaceId, userId, providerId.slice("team:".length));
   }
 
+  // Feature 10: Workspace Settings → Security. When an Owner/Admin has
+  // turned this on, personal BYO keys are skipped entirely for everyone in
+  // the workspace — every AI call goes through the vetted, monitored team
+  // key instead, even if the caller has their own key configured.
+  const { getWorkspaceAiKeyPolicy } = await import("../workspaces/store.server");
+  const { requireTeamAiKeys } = await getWorkspaceAiKeyPolicy(workspaceId);
+  if (requireTeamAiKeys) {
+    const { resolveTeamProvider } = await import("../workspaces/ai-providers.server");
+    return resolveTeamProvider(workspaceId, userId, null);
+  }
+
   const { resolveProviderForUser } = await import("./store.server");
   try {
     return await resolveProviderForUser(userId, providerId ?? null);

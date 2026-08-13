@@ -22,6 +22,12 @@ export interface WorkspaceRecord {
   role: WorkspaceRole;
   memberCount: number;
   createdAt: string;
+  defaultRepoVisibility: "private" | "public";
+  defaultRepoAutoInit: boolean;
+  defaultGitignoreTemplate: string | null;
+  defaultLicenseTemplate: string | null;
+  requireTeamAiKeys: boolean;
+  defaultInviteRole: WorkspaceRole;
 }
 
 export interface MemberRecord {
@@ -48,7 +54,7 @@ export interface InvitationRecord {
 }
 
 const WORKSPACE_COLUMNS =
-  "id, owner_id, name, description, avatar_url, is_personal, default_branch, default_folder, archived_at, created_at";
+  "id, owner_id, name, description, avatar_url, is_personal, default_branch, default_folder, archived_at, created_at, default_repo_visibility, default_repo_auto_init, default_gitignore_template, default_license_template, require_team_ai_keys, default_invite_role";
 
 /** Throws unless the caller's role in this workspace allows `capability`. */
 export async function requireCapability(
@@ -163,6 +169,12 @@ export async function listMyWorkspaces(userId: string): Promise<WorkspaceRecord[
     role: roleByWorkspace.get(row.id) ?? "viewer",
     memberCount: memberCounts.get(row.id) ?? 1,
     createdAt: row.created_at,
+    defaultRepoVisibility: (row.default_repo_visibility ?? "private") as "private" | "public",
+    defaultRepoAutoInit: row.default_repo_auto_init ?? true,
+    defaultGitignoreTemplate: row.default_gitignore_template ?? null,
+    defaultLicenseTemplate: row.default_license_template ?? null,
+    requireTeamAiKeys: row.require_team_ai_keys ?? false,
+    defaultInviteRole: (row.default_invite_role ?? "developer") as WorkspaceRole,
   }));
 }
 
@@ -211,6 +223,12 @@ export async function updateWorkspace(
     avatarUrl?: string | null;
     defaultBranch?: string | null;
     defaultFolder?: string | null;
+    defaultRepoVisibility?: "private" | "public";
+    defaultRepoAutoInit?: boolean;
+    defaultGitignoreTemplate?: string | null;
+    defaultLicenseTemplate?: string | null;
+    requireTeamAiKeys?: boolean;
+    defaultInviteRole?: WorkspaceRole;
   },
 ): Promise<WorkspaceRecord> {
   await requireCapability(userId, workspaceId, "workspace:update");
@@ -224,6 +242,26 @@ export async function updateWorkspace(
   if (patch.avatarUrl !== undefined) update["avatar_url"] = patch.avatarUrl?.trim() || null;
   if (patch.defaultBranch !== undefined) update["default_branch"] = patch.defaultBranch?.trim() || null;
   if (patch.defaultFolder !== undefined) update["default_folder"] = patch.defaultFolder?.trim() || null;
+  if (patch.defaultRepoVisibility !== undefined) {
+    if (!["private", "public"].includes(patch.defaultRepoVisibility)) {
+      throw new Error("Default visibility must be private or public.");
+    }
+    update["default_repo_visibility"] = patch.defaultRepoVisibility;
+  }
+  if (patch.defaultRepoAutoInit !== undefined) update["default_repo_auto_init"] = patch.defaultRepoAutoInit;
+  if (patch.defaultGitignoreTemplate !== undefined) {
+    update["default_gitignore_template"] = patch.defaultGitignoreTemplate?.trim() || null;
+  }
+  if (patch.defaultLicenseTemplate !== undefined) {
+    update["default_license_template"] = patch.defaultLicenseTemplate?.trim() || null;
+  }
+  if (patch.requireTeamAiKeys !== undefined) update["require_team_ai_keys"] = patch.requireTeamAiKeys;
+  if (patch.defaultInviteRole !== undefined) {
+    if (!["admin", "developer", "viewer"].includes(patch.defaultInviteRole)) {
+      throw new Error("That's not a valid default invite role.");
+    }
+    update["default_invite_role"] = patch.defaultInviteRole;
+  }
 
   if (Object.keys(update).length > 0) {
     const { error } = await supabaseAdmin.from("workspaces").update(update as never).eq("id", workspaceId);
@@ -239,6 +277,21 @@ export async function updateWorkspace(
     });
   }
   return getWorkspace(userId, workspaceId);
+}
+
+/**
+ * Cheap, single-column lookup for `ai/resolve.server`'s per-request check —
+ * deliberately not routed through `getWorkspace`, which re-lists every
+ * workspace the caller belongs to just to read one boolean.
+ */
+export async function getWorkspaceAiKeyPolicy(workspaceId: string): Promise<{ requireTeamAiKeys: boolean }> {
+  const { data, error } = await supabaseAdmin
+    .from("workspaces")
+    .select("require_team_ai_keys")
+    .eq("id", workspaceId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return { requireTeamAiKeys: (data?.require_team_ai_keys as boolean | undefined) ?? false };
 }
 
 export async function setWorkspaceArchived(

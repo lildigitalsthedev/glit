@@ -15,6 +15,12 @@ export interface WorkspaceDto {
   role: WorkspaceRole;
   memberCount: number;
   createdAt: string;
+  defaultRepoVisibility: "private" | "public";
+  defaultRepoAutoInit: boolean;
+  defaultGitignoreTemplate: string | null;
+  defaultLicenseTemplate: string | null;
+  requireTeamAiKeys: boolean;
+  defaultInviteRole: WorkspaceRole;
 }
 
 export interface MemberDto {
@@ -86,8 +92,15 @@ export const updateWorkspace = createServerFn({ method: "POST" })
       workspaceId: string;
       name?: string;
       description?: string | null;
+      avatarUrl?: string | null;
       defaultBranch?: string | null;
       defaultFolder?: string | null;
+      defaultRepoVisibility?: "private" | "public";
+      defaultRepoAutoInit?: boolean;
+      defaultGitignoreTemplate?: string | null;
+      defaultLicenseTemplate?: string | null;
+      requireTeamAiKeys?: boolean;
+      defaultInviteRole?: WorkspaceRole;
     }) => data,
   )
   .handler(async ({ data, context }): Promise<WorkspaceDto> => {

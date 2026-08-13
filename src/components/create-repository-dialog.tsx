@@ -4,6 +4,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { FolderPlus, Loader2, Lock, Unlock } from "lucide-react";
 import { createRepository, type RepoCard } from "@/lib/github.functions";
+import { GITIGNORE_TEMPLATES, LICENSE_TEMPLATES } from "@/lib/github-templates";
+import { useWorkspaces } from "@/hooks/useWorkspaces";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,37 +43,6 @@ function validateRepoName(rawName: string): string | null {
   return null;
 }
 
-// A curated set of GitHub's built-in .gitignore templates — exact names as
-// GitHub expects them for the `gitignore_template` field.
-const GITIGNORE_TEMPLATES = [
-  "Node",
-  "Python",
-  "Java",
-  "Go",
-  "Rust",
-  "Swift",
-  "C++",
-  "C",
-  "CSharp",
-  "Ruby",
-  "PHP",
-  "Kotlin",
-  "Dart",
-  "Unity",
-  "Terraform",
-];
-
-// A curated set of GitHub's built-in license templates — exact SPDX-style
-// ids as GitHub expects them for the `license_template` field.
-const LICENSE_TEMPLATES: { id: string; label: string }[] = [
-  { id: "mit", label: "MIT License" },
-  { id: "apache-2.0", label: "Apache License 2.0" },
-  { id: "gpl-3.0", label: "GNU GPLv3" },
-  { id: "bsd-3-clause", label: "BSD 3-Clause" },
-  { id: "unlicense", label: "The Unlicense" },
-  { id: "mpl-2.0", label: "Mozilla Public License 2.0" },
-];
-
 const NONE = "__none__";
 
 export function CreateRepositoryDialog({
@@ -95,18 +66,22 @@ export function CreateRepositoryDialog({
   const [touched, setTouched] = useState(false);
 
   const createFn = useServerFn(createRepository);
+  const { activeWorkspace } = useWorkspaces();
 
   useEffect(() => {
     if (open) {
       setName("");
       setDescription("");
-      setIsPrivate(true);
-      setAutoInit(true);
-      setGitignoreTemplate(NONE);
-      setLicenseTemplate(NONE);
+      // Feature 10: Workspace Settings → Repository defaults. Prefills
+      // from the active workspace's configured defaults, not hardcoded
+      // ones — still just a starting point, freely overridable below.
+      setIsPrivate((activeWorkspace?.defaultRepoVisibility ?? "private") === "private");
+      setAutoInit(activeWorkspace?.defaultRepoAutoInit ?? true);
+      setGitignoreTemplate(activeWorkspace?.defaultGitignoreTemplate || NONE);
+      setLicenseTemplate(activeWorkspace?.defaultLicenseTemplate || NONE);
       setTouched(false);
     }
-  }, [open]);
+  }, [open, activeWorkspace]);
 
   const create = useMutation({
     mutationFn: () =>

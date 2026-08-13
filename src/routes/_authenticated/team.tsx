@@ -31,12 +31,17 @@ import {
   Archive,
   MessageSquare,
   ScrollText,
+  CreditCard,
+  GitBranch,
+  ShieldCheck,
+  FolderGit2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -79,6 +84,7 @@ import {
 } from "@/lib/workspaces/permissions";
 import { listWorkspaceActivity } from "@/lib/activity.functions";
 import type { ActivityEntry, WorkspaceActivityAction } from "@/lib/activity.functions";
+import { GITIGNORE_TEMPLATES, LICENSE_TEMPLATES } from "@/lib/github-templates";
 
 export const Route = createFileRoute("/_authenticated/team")({
   head: () => ({
@@ -663,6 +669,8 @@ function ActivityTab({ workspaceId }: { workspaceId: string }) {
   );
 }
 
+const NONE_TEMPLATE = "__none__";
+
 function SettingsTab({ workspaceId }: { workspaceId: string }) {
   const queryClient = useQueryClient();
   const { activeWorkspace, can } = useWorkspaces();
@@ -673,17 +681,61 @@ function SettingsTab({ workspaceId }: { workspaceId: string }) {
 
   const [name, setName] = useState(activeWorkspace?.name ?? "");
   const [description, setDescription] = useState(activeWorkspace?.description ?? "");
+  const [avatarUrl, setAvatarUrl] = useState(activeWorkspace?.avatarUrl ?? "");
+  const [defaultBranch, setDefaultBranch] = useState(activeWorkspace?.defaultBranch ?? "");
+  const [visibility, setVisibility] = useState<"private" | "public">(
+    activeWorkspace?.defaultRepoVisibility ?? "private",
+  );
+  const [autoInit, setAutoInit] = useState(activeWorkspace?.defaultRepoAutoInit ?? true);
+  const [gitignoreTemplate, setGitignoreTemplate] = useState(
+    activeWorkspace?.defaultGitignoreTemplate || NONE_TEMPLATE,
+  );
+  const [licenseTemplate, setLicenseTemplate] = useState(
+    activeWorkspace?.defaultLicenseTemplate || NONE_TEMPLATE,
+  );
 
   // Keep the form in step with workspace switching.
   useEffect(() => {
     setName(activeWorkspace?.name ?? "");
     setDescription(activeWorkspace?.description ?? "");
-  }, [activeWorkspace?.id, activeWorkspace?.name, activeWorkspace?.description]);
+    setAvatarUrl(activeWorkspace?.avatarUrl ?? "");
+    setDefaultBranch(activeWorkspace?.defaultBranch ?? "");
+    setVisibility(activeWorkspace?.defaultRepoVisibility ?? "private");
+    setAutoInit(activeWorkspace?.defaultRepoAutoInit ?? true);
+    setGitignoreTemplate(activeWorkspace?.defaultGitignoreTemplate || NONE_TEMPLATE);
+    setLicenseTemplate(activeWorkspace?.defaultLicenseTemplate || NONE_TEMPLATE);
+  }, [activeWorkspace?.id]);
 
   const save = useMutation({
-    mutationFn: () => updateFn({ data: { workspaceId, name, description: description || null } }),
+    mutationFn: () =>
+      updateFn({
+        data: {
+          workspaceId,
+          name,
+          description: description || null,
+          avatarUrl: avatarUrl || null,
+          defaultBranch: defaultBranch || null,
+          defaultRepoVisibility: visibility,
+          defaultRepoAutoInit: autoInit,
+          defaultGitignoreTemplate: gitignoreTemplate === NONE_TEMPLATE ? null : gitignoreTemplate,
+          defaultLicenseTemplate: licenseTemplate === NONE_TEMPLATE ? null : licenseTemplate,
+        },
+      }),
     onSuccess: async () => {
       toast.success("Workspace updated");
+      await queryClient.invalidateQueries({ queryKey: ["workspaces"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  // Security settings save instantly on change, like other toggle-style
+  // controls in this app — there's nothing to "review" before committing a
+  // single switch or single-select, unlike the batched form above.
+  const setSecurity = useMutation({
+    mutationFn: (patch: { requireTeamAiKeys?: boolean; defaultInviteRole?: WorkspaceRole }) =>
+      updateFn({ data: { workspaceId, ...patch } }),
+    onSuccess: async () => {
+      toast.success("Security settings updated");
       await queryClient.invalidateQueries({ queryKey: ["workspaces"] });
     },
     onError: (error: Error) => toast.error(error.message),
@@ -718,10 +770,31 @@ function SettingsTab({ workspaceId }: { workspaceId: string }) {
 
   if (!activeWorkspace) return null;
   const editable = can("workspace:update") && !activeWorkspace.isPersonal;
+  const initials = (name || "W").slice(0, 2).toUpperCase();
 
   return (
     <div className="space-y-4">
       <div className="space-y-3 rounded-md border border-border p-2.5">
+        <p className="label-caps text-muted-foreground">Basics</p>
+
+        <div className="flex items-center gap-3">
+          <Avatar className="size-12 shrink-0">
+            {avatarUrl ? <AvatarImage src={avatarUrl} alt="" /> : null}
+            <AvatarFallback className="text-sm">{initials}</AvatarFallback>
+          </Avatar>
+          <div className="min-w-0 flex-1 space-y-1.5">
+            <Label htmlFor="ws-avatar">Avatar URL</Label>
+            <Input
+              id="ws-avatar"
+              value={avatarUrl}
+              onChange={(event) => setAvatarUrl(event.target.value)}
+              disabled={!editable}
+              placeholder="https://…/logo.png"
+              className="font-mono text-xs"
+            />
+          </div>
+        </div>
+
         <div className="space-y-1.5">
           <Label htmlFor="ws-name">Name</Label>
           <Input
@@ -742,6 +815,26 @@ function SettingsTab({ workspaceId }: { workspaceId: string }) {
             rows={2}
           />
         </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="ws-branch" className="flex items-center gap-1.5">
+            <GitBranch className="size-3.5" />
+            Default branch
+          </Label>
+          <Input
+            id="ws-branch"
+            value={defaultBranch}
+            onChange={(event) => setDefaultBranch(event.target.value)}
+            disabled={!editable}
+            placeholder="main"
+            className="font-mono text-xs"
+          />
+          <p className="text-[11px] text-muted-foreground">
+            Repositories created from GitPush in this workspace get renamed to this branch after
+            their first commit.
+          </p>
+        </div>
+
         {editable ? (
           <Button size="sm" onClick={() => save.mutate()} disabled={save.isPending || !name.trim()}>
             {save.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
@@ -754,6 +847,152 @@ function SettingsTab({ workspaceId }: { workspaceId: string }) {
               : "Only Admins and the workspace Owner can change these settings."}
           </p>
         )}
+      </div>
+
+      <div className="space-y-3 rounded-md border border-border p-2.5">
+        <p className="label-caps flex items-center gap-1.5 text-muted-foreground">
+          <FolderGit2 className="size-3.5" />
+          Repository defaults
+        </p>
+        <p className="text-[11px] text-muted-foreground">
+          Pre-fills the "New repository" dialog for everyone in this workspace — still editable
+          per-repo at creation time.
+        </p>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label>Default visibility</Label>
+            <Select
+              value={visibility}
+              onValueChange={(v) => setVisibility(v as "private" | "public")}
+              disabled={!editable}
+            >
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="private">Private</SelectItem>
+                <SelectItem value="public">Public</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="ws-autoinit">Initialize with README</Label>
+            <div className="flex h-8 items-center">
+              <Switch
+                id="ws-autoinit"
+                checked={autoInit}
+                onCheckedChange={setAutoInit}
+                disabled={!editable}
+              />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Default .gitignore</Label>
+            <Select value={gitignoreTemplate} onValueChange={setGitignoreTemplate} disabled={!editable}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="None" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NONE_TEMPLATE}>None</SelectItem>
+                {GITIGNORE_TEMPLATES.map((template) => (
+                  <SelectItem key={template} value={template}>
+                    {template}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Default license</Label>
+            <Select value={licenseTemplate} onValueChange={setLicenseTemplate} disabled={!editable}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="None" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NONE_TEMPLATE}>None</SelectItem>
+                {LICENSE_TEMPLATES.map((license) => (
+                  <SelectItem key={license.id} value={license.id}>
+                    {license.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        {editable && (
+          <p className="text-[11px] text-muted-foreground">
+            Saved together with Basics above — use the "Save changes" button there.
+          </p>
+        )}
+      </div>
+
+      {!activeWorkspace.isPersonal && (
+        <div className="space-y-3 rounded-md border border-border p-2.5">
+          <p className="label-caps flex items-center gap-1.5 text-muted-foreground">
+            <ShieldCheck className="size-3.5" />
+            Security
+          </p>
+
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-xs font-medium">Require the team's shared AI keys</p>
+              <p className="text-[11px] text-muted-foreground">
+                When on, no one in this workspace can use a personal AI key — every AI action
+                goes through the shared keys under AI Providers instead.
+              </p>
+            </div>
+            <Switch
+              checked={activeWorkspace.requireTeamAiKeys}
+              onCheckedChange={(v) => setSecurity.mutate({ requireTeamAiKeys: v })}
+              disabled={!can("workspace:update") || setSecurity.isPending}
+              aria-label="Require the team's shared AI keys"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Default role for new invitations</Label>
+            <Select
+              value={activeWorkspace.defaultInviteRole}
+              onValueChange={(v) => setSecurity.mutate({ defaultInviteRole: v as WorkspaceRole })}
+              disabled={!can("workspace:update") || setSecurity.isPending}
+            >
+              <SelectTrigger className="h-8 w-[160px] text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(["admin", "developer", "viewer"] as const).map((r) => (
+                  <SelectItem key={r} value={r}>
+                    {WORKSPACE_ROLE_LABELS[r]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-[11px] text-muted-foreground">
+              Pre-fills the role field on the Invitations tab. Each invite can still override it.
+            </p>
+          </div>
+
+          <p className="text-[11px] text-muted-foreground">
+            To change a member's role or transfer ownership, open their profile from the{" "}
+            <span className="text-foreground">Members</span> tab above.
+          </p>
+        </div>
+      )}
+
+      <div className="space-y-2 rounded-md border border-border p-2.5">
+        <p className="label-caps flex items-center gap-1.5 text-muted-foreground">
+          <CreditCard className="size-3.5" />
+          Billing
+        </p>
+        <p className="text-xs text-muted-foreground">
+          Per-workspace billing isn't available yet — this workspace runs on your account's plan.
+        </p>
+        <Link to="/pricing">
+          <Button size="sm" variant="outline">
+            View plan &amp; pricing
+          </Button>
+        </Link>
       </div>
 
       {!activeWorkspace.isPersonal ? (

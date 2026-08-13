@@ -338,6 +338,29 @@ export function updateRef(
   );
 }
 
+/** Creates a new branch pointing at `sha` — used to rename a repo's default branch on creation (Feature 10). */
+export function createRef(token: string, fullName: string, branch: string, sha: string) {
+  return ghFetch<GhRef>(token, `/repos/${fullName}/git/refs`, {
+    method: "POST",
+    body: JSON.stringify({ ref: `refs/heads/${branch}`, sha }),
+  });
+}
+
+export function deleteRef(token: string, fullName: string, branch: string) {
+  return ghFetch<void>(
+    token,
+    `/repos/${fullName}/git/refs/heads/${branch.split("/").map(encodeURIComponent).join("/")}`,
+    { method: "DELETE" },
+  );
+}
+
+export function setDefaultBranch(token: string, fullName: string, branch: string) {
+  return ghFetch<GhRepo>(token, `/repos/${fullName}`, {
+    method: "PATCH",
+    body: JSON.stringify({ default_branch: branch }),
+  });
+}
+
 export async function downloadZipball(
   token: string,
   fullName: string,
