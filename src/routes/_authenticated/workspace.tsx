@@ -66,6 +66,7 @@ import {
   downloadRepoZip,
   listRepoCommits,
   getRepoDetails,
+  undoPush,
 } from "@/lib/github.functions";
 import { generateCommitMessage } from "@/lib/ai.functions";
 import {
@@ -201,6 +202,7 @@ function Workspace() {
   const favoritePathsFn = useServerFn(listFavoritePaths);
   const setPathFavoriteFn = useServerFn(setPathFavorite);
   const generateCommitMessageFn = useServerFn(generateCommitMessage);
+  const undoPushFn = useServerFn(undoPush);
 
   const prefs = useQuery({ queryKey: ["prefs"], queryFn: () => prefsFn() });
   const accountId = prefs.data?.activeAccountId ?? null;
@@ -477,6 +479,29 @@ function Workspace() {
       .catch((error: Error) => toast.error(error.message || "Couldn't clear recent files."));
   }
 
+  /**
+   * Reverts a just-made push by moving its branch ref back to the commit's
+   * parent — see undoPush() in github.functions.ts for the actual safety
+   * checks (still the branch tip, still within the time window, not
+   * already undone). Wired as the "Undo" action on the push success toast;
+   * the same server function also backs the equivalent button on push
+   * notifications in the notification bell.
+   */
+  function handleUndoPush(pushId: string | null | undefined) {
+    if (!pushId) {
+      toast.error("This push can't be undone.");
+      return;
+    }
+    undoPushFn({ data: { pushId } })
+      .then((result) => {
+        toast.success(`Undone — ${result.branch} reverted to ${result.revertedTo}.`);
+        void queryClient.invalidateQueries({ queryKey: ["tree"] });
+        void queryClient.invalidateQueries({ queryKey: ["commits"] });
+        void queryClient.invalidateQueries({ queryKey: ["branches"] });
+      })
+      .catch((error: Error) => toast.error(error.message || "Couldn't undo that push."));
+  }
+
   const openFile = useMutation({
     mutationFn: (target: string) =>
       readFn({ data: { accountId: accountId!, fullName: fullName!, branch, path: target } }),
@@ -635,7 +660,12 @@ function Workspace() {
         },
       }),
     onSuccess: (result) => {
-      toast.success(`Pushed ${result.path} (${result.commitSha})`);
+      toast.success(`Pushed ${result.path} (${result.commitSha})`, {
+        action: {
+          label: "Undo",
+          onClick: () => handleUndoPush(result.pushId),
+        },
+      });
       setOriginal(content);
       setBaseSha(result.sha);
       setMessage("");
@@ -833,6 +863,12 @@ function Workspace() {
       });
       toast.success(
         `Pushed ${result.filesPushed} file${result.filesPushed === 1 ? "" : "s"} (${result.commitSha})`,
+        {
+          action: {
+            label: "Undo",
+            onClick: () => handleUndoPush(result.pushId),
+          },
+        },
       );
       for (const uploaded of args.files) recordRecentFile(uploaded.path);
       void queryClient.invalidateQueries({ queryKey: ["tree"] });
@@ -1798,11 +1834,13 @@ function Workspace() {
         <RepositoryInfoDialog
           open={repoInfoOpen}
           onOpenChange={setRepoInfoOpen}
+          accountId={accountId}
           fullName={fullName}
           totalFiles={tree.data ? filePaths.length : null}
           latestCommit={latestCommit.data ?? null}
           details={repoDetails.data}
           loading={repoDetails.isLoading}
+          canManage={canManageRepo}
         />
         <Select value={branch} onValueChange={setBranch}>
           <SelectTrigger className="h-8 w-24 font-mono text-xs sm:w-36">

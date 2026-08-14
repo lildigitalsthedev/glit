@@ -120,6 +120,14 @@ export function setRepoArchived(token: string, fullName: string, archived: boole
   });
 }
 
+/** Flips a repo between private and public via the same "update a repository" endpoint used for rename/archive. */
+export function setRepoVisibility(token: string, fullName: string, isPrivate: boolean) {
+  return ghFetch<GhRepo>(token, `/repos/${fullName}`, {
+    method: "PATCH",
+    body: JSON.stringify({ private: isPrivate }),
+  });
+}
+
 export interface CreateRepoArgs {
   name: string;
   description?: string | undefined;
@@ -264,6 +272,16 @@ export function getRef(token: string, fullName: string, branch: string) {
     token,
     `/repos/${fullName}/git/ref/heads/${branch.split("/").map(encodeURIComponent).join("/")}`,
   );
+}
+
+export interface GhCommitDetail {
+  sha: string;
+  parents: { sha: string }[];
+}
+
+/** Git Data API commit lookup — used by undoPush to find the parent of the commit being undone. */
+export function getCommit(token: string, fullName: string, sha: string) {
+  return ghFetch<GhCommitDetail>(token, `/repos/${fullName}/git/commits/${sha}`);
 }
 
 export interface GhBlob {

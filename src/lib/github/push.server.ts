@@ -55,18 +55,22 @@ export async function pushSingleFile(supabase: Client, userId: string, args: Pus
       content: args.content,
       sha: existingSha,
     });
-    await supabase.from("recent_pushes").insert({
-      user_id: userId,
-      account_id: args.accountId,
-      full_name: args.fullName,
-      branch: args.branch,
-      path,
-      commit_message: args.message.trim(),
-      commit_sha: result.commit.sha,
-      commit_url: result.commit.html_url,
-      action: existingSha ? "update" : "create",
-      status: "success",
-    });
+    const { data: pushRow } = await supabase
+      .from("recent_pushes")
+      .insert({
+        user_id: userId,
+        account_id: args.accountId,
+        full_name: args.fullName,
+        branch: args.branch,
+        path,
+        commit_message: args.message.trim(),
+        commit_sha: result.commit.sha,
+        commit_url: result.commit.html_url,
+        action: existingSha ? "update" : "create",
+        status: "success",
+      })
+      .select("id")
+      .single();
     return {
       ok: true as const,
       action: existingSha ? ("update" as const) : ("create" as const),
@@ -74,6 +78,11 @@ export async function pushSingleFile(supabase: Client, userId: string, args: Pus
       sha: result.content.sha,
       commitSha: result.commit.sha.slice(0, 7),
       commitUrl: result.commit.html_url,
+      // Lets the client offer an immediate "Undo" from the push toast/
+      // notification — see undoPush() in github.functions.ts. Null if the
+      // recent_pushes insert itself failed (rare, and the push already
+      // succeeded on GitHub either way, so this never blocks the push).
+      pushId: (pushRow?.id as string | undefined) ?? null,
     };
   } catch (error) {
     const messageText = error instanceof Error ? error.message : String(error);
@@ -182,6 +191,7 @@ export interface BulkPushResult {
   branch: string;
   filesPushed: number;
   paths: string[];
+  pushId: string | null;
 }
 
 /**
@@ -256,20 +266,26 @@ export async function pushMultipleFiles(
 
     await updateRef(token, args.fullName, args.branch, { sha: commit.sha });
 
-    await supabase.from("recent_pushes").insert(
-      normalizedFiles.map((file) => ({
-        user_id: userId,
-        account_id: args.accountId,
-        full_name: args.fullName,
-        branch: args.branch,
-        path: file.path,
-        commit_message: args.message.trim(),
-        commit_sha: commit.sha,
-        commit_url: commit.html_url,
-        action: "create",
-        status: "success",
-      })),
-    );
+    // All rows below share one commit_sha (one commit, many files) — any
+    // one of their ids is enough to identify and undo the whole batch, so
+    // the first row's id is what gets handed back as `pushId`.
+    const { data: pushRows } = await supabase
+      .from("recent_pushes")
+      .insert(
+        normalizedFiles.map((file) => ({
+          user_id: userId,
+          account_id: args.accountId,
+          full_name: args.fullName,
+          branch: args.branch,
+          path: file.path,
+          commit_message: args.message.trim(),
+          commit_sha: commit.sha,
+          commit_url: commit.html_url,
+          action: "create",
+          status: "success",
+        })),
+      )
+      .select("id");
 
     return {
       ok: true,
@@ -278,6 +294,7 @@ export async function pushMultipleFiles(
       branch: args.branch,
       filesPushed: normalizedFiles.length,
       paths: normalizedFiles.map((file) => file.path),
+      pushId: (pushRows?.[0]?.id as string | undefined) ?? null,
     };
   } catch (error) {
     const messageText = error instanceof Error ? error.message : String(error);

@@ -149,7 +149,9 @@ export const pushFile = createServerFn({ method: "POST" })
       workspaceId,
       repoFullName: data.fullName,
       actorId: context.userId,
-      metadata: { branch: data.branch, path: data.path, commitSha: result.commitSha },
+      // `pushId` lets tapping this notification offer an immediate "Undo"
+      // (see undoPush below) the same way the push toast does.
+      metadata: { branch: data.branch, path: data.path, commitSha: result.commitSha, pushId: result.pushId },
     });
 
     return result;
@@ -193,7 +195,12 @@ export const pushFiles = createServerFn({ method: "POST" })
       workspaceId,
       repoFullName: data.fullName,
       actorId: context.userId,
-      metadata: { branch: data.branch, filesPushed: result.filesPushed, commitSha: result.commitSha },
+      metadata: {
+        branch: data.branch,
+        filesPushed: result.filesPushed,
+        commitSha: result.commitSha,
+        pushId: result.pushId,
+      },
     });
 
     return result;
@@ -425,6 +432,100 @@ export const archiveRepository = createServerFn({ method: "POST" })
     }
 
     return { fullName: repo.full_name, archived };
+  });
+
+export const setRepositoryVisibility = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { accountId: string; fullName: string; isPrivate: boolean }) => data)
+  .handler(async ({ data, context }): Promise<{ fullName: string; isPrivate: boolean }> => {
+    const { requireActiveWorkspaceCapability } = await import("./workspaces/store.server");
+    await requireActiveWorkspaceCapability(context.userId, "repos:manage");
+    const { assertRateLimit } = await import("./rate-limit.server");
+    await assertRateLimit(context.userId, { bucket: "github_repo_admin", limit: 10, windowSeconds: 3600 });
+    const { loadAccountToken } = await import("./github/tokens.server");
+    const { setRepoVisibility } = await import("./github/api.server");
+    const { token } = await loadAccountToken(context.supabase, data.accountId);
+    const repo = await setRepoVisibility(token, data.fullName, data.isPrivate);
+    return { fullName: repo.full_name, isPrivate: repo.private };
+  });
+
+/**
+ * Undoes the most recent push/delete recorded in `recent_pushes` — either
+ * from the "Undo" action on the push toast, or by tapping the matching
+ * push notification. Rather than trusting anything the client says about
+ * *what* to undo, this only takes a `pushId` and looks the rest up itself:
+ * which repo/branch/commit, and whether it's still safe to undo at all.
+ *
+ * "Undo" here means moving the branch ref back to that commit's parent —
+ * the same thing `git reset --hard HEAD~1 && git push --force` would do.
+ * That's only safe if the pushed commit is still the tip of the branch
+ * (nobody has pushed since), so this refuses rather than guessing if the
+ * ref has moved, and refuses outright past a short time window so an old
+ * "Undo" button can't surprise-rewrite history much later.
+ */
+export const undoPush = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { pushId: string }) => data)
+  .handler(async ({ data, context }): Promise<{ fullName: string; branch: string; revertedTo: string }> => {
+    const { requireActiveWorkspaceCapability } = await import("./workspaces/store.server");
+    const { workspaceId } = await requireActiveWorkspaceCapability(context.userId, "repos:push");
+    const { assertRateLimit } = await import("./rate-limit.server");
+    await assertRateLimit(context.userId, { bucket: "github_write", limit: 60, windowSeconds: 300 });
+
+    const { data: row, error } = await context.supabase
+      .from("recent_pushes")
+      .select("id, account_id, full_name, branch, commit_sha, status, undone_at, created_at")
+      .eq("id", data.pushId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!row) throw new Error("That push couldn't be found.");
+    if (row.status !== "success" || !row.commit_sha) throw new Error("That push can't be undone.");
+    if (row.undone_at) throw new Error("That push was already undone.");
+    if (!row.account_id) throw new Error("That push's GitHub connection is no longer available.");
+
+    const UNDO_WINDOW_MS = 15 * 60 * 1000;
+    const pushedAt = new Date(row.created_at as string).getTime();
+    if (Date.now() - pushedAt > UNDO_WINDOW_MS) {
+      throw new Error("This push is too old to undo — undo is only available for 15 minutes after pushing.");
+    }
+
+    const fullName = row.full_name as string;
+    const branch = row.branch as string;
+    const commitSha = row.commit_sha as string;
+
+    const { loadAccountToken } = await import("./github/tokens.server");
+    const { getRef, getCommit, updateRef } = await import("./github/api.server");
+    const { token } = await loadAccountToken(context.supabase, row.account_id as string);
+
+    const ref = await getRef(token, fullName, branch);
+    if (ref.object.sha !== commitSha) {
+      throw new Error("Someone has pushed to this branch since — undo is no longer safe.");
+    }
+
+    const commit = await getCommit(token, fullName, commitSha);
+    const parent = commit.parents[0];
+    if (!parent) {
+      throw new Error("Can't undo the very first commit on a branch.");
+    }
+
+    await updateRef(token, fullName, branch, { sha: parent.sha, force: true });
+
+    await context.supabase
+      .from("recent_pushes")
+      .update({ undone_at: new Date().toISOString() })
+      .eq("id", data.pushId);
+
+    const { logActivity } = await import("./workspaces/activity.server");
+    await logActivity({
+      workspaceId,
+      actorId: context.userId,
+      action: "push_undone",
+      repoFullName: fullName,
+      summary: `Undid the last push to ${fullName} (${branch})`,
+      metadata: { branch, revertedCommit: commitSha, revertedTo: parent.sha },
+    });
+
+    return { fullName, branch, revertedTo: parent.sha.slice(0, 7) };
   });
 
 export interface RepoZipResult {

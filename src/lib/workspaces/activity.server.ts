@@ -8,6 +8,7 @@ export type WorkspaceActivityAction =
   | "repository_created"
   | "repository_deleted"
   | "push_completed"
+  | "push_undone"
   | "ai_generation"
   | "ai_edit"
   | "ai_chat"
