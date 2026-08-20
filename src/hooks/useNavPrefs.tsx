@@ -49,6 +49,17 @@ interface NavPrefsContextValue extends NavPrefsState {
   setFloatingOffset: (offset: FloatingOffset | null) => void;
   setActiveAnimation: (animation: NavAnimation) => void;
   reset: () => void;
+  /**
+   * Transient, session-only override that hides the dock and reclaims its
+   * reserved space entirely — used while a mobile on-screen keyboard is
+   * open (see `useKeyboardInset`), so the keyboard and the nav never
+   * compete for the same sliver of screen. Deliberately kept out of
+   * `NavPrefsState`/localStorage: it reflects the keyboard's current
+   * state, not a preference, and must never persist across sessions or
+   * leak into the user's actual saved nav settings.
+   */
+  keyboardHidden: boolean;
+  setKeyboardHidden: (hidden: boolean) => void;
 }
 
 const STORAGE_KEY = "gitpush:nav-prefs";
@@ -147,6 +158,7 @@ const NavPrefsContext = createContext<NavPrefsContextValue | null>(null);
 
 export function NavPrefsProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<NavPrefsState>(DEFAULT_NAV_PREFS);
+  const [keyboardHidden, setKeyboardHidden] = useState(false);
 
   // Preferences are read from localStorage after mount only, so the very
   // first client render always matches the server-rendered markup (avoids
@@ -178,8 +190,10 @@ export function NavPrefsProvider({ children }: { children: ReactNode }) {
         setState(next);
         persistPrefs(next);
       },
+      keyboardHidden,
+      setKeyboardHidden,
     }),
-    [state, update],
+    [state, update, keyboardHidden],
   );
 
   return <NavPrefsContext.Provider value={value}>{children}</NavPrefsContext.Provider>;

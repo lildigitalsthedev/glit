@@ -96,8 +96,17 @@ export function BottomDock() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isMobile = useIsMobile();
   const [mounted, setMounted] = useState(false);
-  const { position, size, autoHide, collapsed, floatingOffset, activeAnimation, setCollapsed, setFloatingOffset } =
-    useNavPrefs();
+  const {
+    position,
+    size,
+    autoHide,
+    collapsed,
+    floatingOffset,
+    activeAnimation,
+    setCollapsed,
+    setFloatingOffset,
+    keyboardHidden,
+  } = useNavPrefs();
 
   useEffect(() => setMounted(true), []);
 
@@ -109,10 +118,16 @@ export function BottomDock() {
   const isFloating = effectivePosition === "floating-bottom";
 
   // Reserve the right amount of layout space for whichever position/size is
-  // active, so page content never renders underneath the nav.
+  // active, so page content never renders underneath the nav. While a
+  // mobile keyboard is open (`keyboardHidden`), reclaim that space
+  // entirely instead — a hidden nav shouldn't still be holding a gap open.
   useEffect(() => {
     const root = document.documentElement.style;
-    if (isRail) {
+    if (keyboardHidden) {
+      root.setProperty("--dock-space", "0px");
+      root.setProperty("--dock-inset-left", "0px");
+      root.setProperty("--dock-inset-right", "0px");
+    } else if (isRail) {
       root.setProperty("--dock-space", "0px");
       root.setProperty("--dock-inset-left", effectivePosition === "left" ? RAIL_WIDTH[size] : "0px");
       root.setProperty("--dock-inset-right", effectivePosition === "right" ? RAIL_WIDTH[size] : "0px");
@@ -126,7 +141,7 @@ export function BottomDock() {
       root.removeProperty("--dock-inset-left");
       root.removeProperty("--dock-inset-right");
     };
-  }, [isRail, effectivePosition, size, collapsed]);
+  }, [isRail, effectivePosition, size, collapsed, keyboardHidden]);
 
   // Auto-hide: fade the nav after a few seconds of inactivity, and bring it
   // right back on any scroll or tap/click/keypress anywhere on the page.
@@ -228,6 +243,14 @@ export function BottomDock() {
   }
 
   const opacityClass = faded ? "opacity-30" : "opacity-100";
+
+  // Hide entirely while a mobile keyboard is open — the dock-space effect
+  // above has already reclaimed its layout space, so there's nothing left
+  // reserving room for it, and a fixed nav competing with an open keyboard
+  // for the same few inches of screen isn't useful either way. Rails don't
+  // take vertical space and aren't affected by an on-screen keyboard, so
+  // they're left alone.
+  if (keyboardHidden && !isRail) return null;
 
   if (isRail) {
     const sizing = RAIL_SIZE[size];

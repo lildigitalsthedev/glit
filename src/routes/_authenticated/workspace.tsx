@@ -83,6 +83,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { WorkspaceTools } from "@/components/workspace-tools";
 import { usePersistentState } from "@/hooks/use-persistent-state";
+import { useKeyboardInset } from "@/hooks/use-keyboard-inset";
+import { useNavPrefs } from "@/hooks/useNavPrefs";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -262,6 +264,18 @@ function Workspace() {
   const [shareOpen, setShareOpen] = useState(false);
   const [repoSearchOpen, setRepoSearchOpen] = useState(false);
   const pendingJumpLineRef = useRef<number | null>(null);
+
+  // Mobile keyboard handling: the nav dock reclaims its reserved space and
+  // hides itself while the keyboard is open (see BottomDock/useNavPrefs),
+  // and the editor's own height is driven directly from the real visible
+  // viewport rather than `dvh` alone — see useKeyboardInset for why.
+  const { viewportHeight, keyboardOpen } = useKeyboardInset();
+  const { setKeyboardHidden } = useNavPrefs();
+  useEffect(() => {
+    setKeyboardHidden(keyboardOpen);
+    return () => setKeyboardHidden(false);
+  }, [keyboardOpen, setKeyboardHidden]);
+
   // Persisted per-repo so returning to Workspace — whether by switching
   // tabs and coming back, or reopening the app later — drops the user back
   // into the exact folder they were browsing, instead of always resetting
@@ -1484,7 +1498,7 @@ function Workspace() {
         />
       </div>
       <p className="label-caps px-2 pb-1 pt-1.5">Workspace Files</p>
-      <div className="min-h-0 flex-1 overflow-auto px-0.5 pb-1">
+      <div className="min-h-0 flex-1 overflow-auto px-0.5 pb-20">
         <FileTree
           nodes={tree.data?.nodes ?? []}
           loading={tree.isLoading}
@@ -1562,7 +1576,7 @@ function Workspace() {
       </div>
       <div
         className="shrink-0 border-t border-border bg-background p-3"
-        style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
+        style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom), var(--dock-space, 0px))" }}
       >
         <Button
           className="h-10 w-full sm:h-9"
@@ -1800,7 +1814,19 @@ function Workspace() {
               wordWrap: prefs.data?.wordWrap ? "on" : "off",
               minimap: { enabled: prefs.data?.editorMinimap ?? false },
               scrollBeyondLastLine: false,
-              padding: { top: 12 },
+              // Bottom padding roughly matches the floating nav dock's
+              // height: the dock no longer reserves layout space (it
+              // floats on top instead — see the `<main>` height above), so
+              // this is what keeps the last few lines, and the cursor
+              // itself, from ending up visually underneath it.
+              padding: { top: 12, bottom: 96 },
+              // Without this, Monaco only re-measures its own size on an
+              // explicit `.layout()` call. The container now resizes live
+              // as the on-screen keyboard opens/closes (via viewportHeight
+              // above); automaticLayout is what makes Monaco notice that
+              // and keep the caret scrolled into view instead of letting
+              // the keyboard cover it.
+              automaticLayout: true,
             }}
             height="100%"
           />
@@ -1810,7 +1836,10 @@ function Workspace() {
   );
 
   return (
-    <main className="flex h-[calc(100dvh-2.5rem-var(--dock-space,7rem))] flex-col">
+    <main
+      className="flex h-[calc(100dvh-2.5rem)] flex-col"
+      style={viewportHeight != null ? { height: `${viewportHeight - 40}px` } : undefined}
+    >
       {/* justify-between + two shrink-0-free clusters instead of a single
           flex-wrap row with ml-auto: with ml-auto, the action-buttons
           cluster wrapping onto its own line on narrow screens still gets
