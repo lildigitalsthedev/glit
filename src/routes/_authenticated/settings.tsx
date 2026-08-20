@@ -38,7 +38,8 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { usePlan } from "@/hooks/usePlan";
 import { useRole } from "@/hooks/useRole";
-import { useNavPrefs, type NavPosition, type NavSize, type NavAnimation } from "@/hooks/useNavPrefs";
+import { useNavPrefs, type NavPosition, type NavSize, type NavAnimation, NAV_ITEM_KEYS } from "@/hooks/useNavPrefs";
+import { ICON_CHOICES } from "@/components/bottom-dock";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { supabase } from "@/integrations/supabase/client";
 import { AccountRow, ConnectGithubDialog, useAccounts } from "@/components/connect-github";
@@ -94,8 +95,9 @@ import { cn } from "@/lib/utils";
 const NAV_POSITIONS: { value: NavPosition; label: string; description: string; icon: typeof PanelBottom }[] = [
   { value: "bottom", label: "Bottom", description: "Docked to the bottom edge — the phone default.", icon: PanelBottom },
   { value: "floating-bottom", label: "Floating", description: "Draggable floating dock.", icon: Move },
-  { value: "left", label: "Left side", description: "Side rail — the tablet/desktop default.", icon: PanelLeft },
+  { value: "left", label: "Left side", description: "Side rail, docked to the left edge.", icon: PanelLeft },
   { value: "right", label: "Right side", description: "Side rail, opposite edge.", icon: PanelRight },
+  { value: "minimal", label: "Minimal", description: "Just floating icons — no background or box.", icon: Sparkles },
 ];
 
 const NAV_SIZES: { value: NavSize; label: string }[] = [
@@ -983,10 +985,10 @@ function Settings() {
               <div>
                 <Label className="text-sm">Position</Label>
                 <p className="text-xs text-muted-foreground">
-                  Where the nav bar sits. Floating can be dragged anywhere on screen; left/right rails
-                  apply on tablets and larger, and fall back to the bottom on phones.
+                  Where the nav bar sits — works the same on phones as it does on tablets and desktop.
+                  Floating can be dragged anywhere on screen.
                 </p>
-                <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
                   {NAV_POSITIONS.map((option) => {
                     const active = navPrefs.position === option.value;
                     return (
@@ -1059,6 +1061,47 @@ function Settings() {
                       >
                         {option.label}
                       </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="border-t border-border pt-4">
+                <Label className="text-sm">Icons</Label>
+                <p className="text-xs text-muted-foreground">
+                  Pick an alternate icon for each item — bundled choices only, so this doesn't cost any
+                  upload or storage space.
+                </p>
+                <div className="mt-2 space-y-3">
+                  {NAV_ITEM_KEYS.map((itemKey) => {
+                    const choices = ICON_CHOICES[itemKey];
+                    const current = navPrefs.icons[itemKey] ?? choices[0].key;
+                    return (
+                      <div key={itemKey} className="flex items-center justify-between gap-3">
+                        <span className="w-20 shrink-0 text-xs capitalize text-muted-foreground">{itemKey}</span>
+                        <div className="flex flex-1 gap-2">
+                          {choices.map((choice) => {
+                            const active = current === choice.key;
+                            return (
+                              <button
+                                key={choice.key}
+                                type="button"
+                                title={choice.label}
+                                aria-pressed={active}
+                                onClick={() => navPrefs.setIcon(itemKey, choice.key === choices[0].key ? null : choice.key)}
+                                className={cn(
+                                  "flex flex-1 items-center justify-center rounded-md border py-2 transition-colors",
+                                  active
+                                    ? "border-primary bg-primary/10 text-primary"
+                                    : "border-border text-muted-foreground hover:bg-secondary hover:text-foreground",
+                                )}
+                              >
+                                <choice.icon className="size-4" />
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
                     );
                   })}
                 </div>

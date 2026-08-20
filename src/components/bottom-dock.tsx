@@ -1,16 +1,70 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type MouseEvent as ReactMouseEvent } from "react";
-import { ChevronUp, ChevronDown, LayoutGrid, Code2, History, Settings, Minus } from "lucide-react";
+import {
+  ChevronUp,
+  ChevronDown,
+  Minus,
+  LayoutGrid,
+  FolderGit2,
+  Boxes,
+  Code2,
+  TerminalSquare,
+  Braces,
+  History,
+  Activity,
+  Clock,
+  Settings,
+  SlidersHorizontal,
+  Cog,
+  type LucideIcon,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useIsMobile } from "@/hooks/use-mobile";
-import { useNavPrefs, type NavPosition, type NavSize, type NavAnimation, type FloatingOffset } from "@/hooks/useNavPrefs";
+import { useNavPrefs, type NavPosition, type NavSize, type NavAnimation, type NavItemKey, type FloatingOffset } from "@/hooks/useNavPrefs";
 
-const NAV = [
-  { to: "/app", label: "Repos", icon: LayoutGrid },
-  { to: "/workspace", label: "Workspace", icon: Code2 },
-  { to: "/activity", label: "Activity", icon: History },
-  { to: "/settings", label: "Settings", icon: Settings },
-] as const;
+const NAV: { to: string; label: string; key: NavItemKey }[] = [
+  { to: "/app", label: "Repos", key: "repos" },
+  { to: "/workspace", label: "Workspace", key: "workspace" },
+  { to: "/activity", label: "Activity", key: "activity" },
+  { to: "/settings", label: "Settings", key: "settings" },
+];
+
+/**
+ * The bundled icon-customization registry (see `NavPrefsState.icons` in
+ * useNavPrefs.tsx). Deliberately a small curated set from lucide-react —
+ * already a project dependency — rather than user-uploaded images: that
+ * keeps this free (no storage/database cost, no upload UI, no moderation
+ * surface) while still giving each item a handful of genuinely different
+ * looks. The first entry in each list is always that item's default, so
+ * an empty `icons` override map renders exactly as before.
+ */
+export const ICON_CHOICES: Record<NavItemKey, { key: string; icon: LucideIcon; label: string }[]> = {
+  repos: [
+    { key: "grid", icon: LayoutGrid, label: "Grid" },
+    { key: "folder", icon: FolderGit2, label: "Folder" },
+    { key: "boxes", icon: Boxes, label: "Boxes" },
+  ],
+  workspace: [
+    { key: "code", icon: Code2, label: "Code" },
+    { key: "terminal", icon: TerminalSquare, label: "Terminal" },
+    { key: "braces", icon: Braces, label: "Braces" },
+  ],
+  activity: [
+    { key: "history", icon: History, label: "History" },
+    { key: "pulse", icon: Activity, label: "Pulse" },
+    { key: "clock", icon: Clock, label: "Clock" },
+  ],
+  settings: [
+    { key: "gear", icon: Settings, label: "Gear" },
+    { key: "sliders", icon: SlidersHorizontal, label: "Sliders" },
+    { key: "cog", icon: Cog, label: "Cog" },
+  ],
+};
+
+function resolveIcon(itemKey: NavItemKey, icons: Partial<Record<NavItemKey, string>>): LucideIcon {
+  const choices = ICON_CHOICES[itemKey];
+  const chosen = icons[itemKey];
+  return choices.find((c) => c.key === chosen)?.icon ?? choices[0].icon;
+}
 
 // Reserved viewport space (bottom-safe area + dock height + margin) and the
 // side-rail width, both mirrored via CSS variables so any page — including
@@ -94,7 +148,6 @@ function activeIconClass(active: boolean, animation: NavAnimation, translate?: s
 
 export function BottomDock() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const isMobile = useIsMobile();
   const [mounted, setMounted] = useState(false);
   const {
     position,
@@ -103,6 +156,7 @@ export function BottomDock() {
     collapsed,
     floatingOffset,
     activeAnimation,
+    icons: navIcons,
     setCollapsed,
     setFloatingOffset,
     keyboardHidden,
@@ -110,12 +164,13 @@ export function BottomDock() {
 
   useEffect(() => setMounted(true), []);
 
-  // Left/right rails are desktop & tablet only — phones always get the
-  // bottom dock regardless of the saved preference.
-  const effectivePosition: NavPosition =
-    mounted && isMobile && (position === "left" || position === "right") ? "bottom" : position;
+  // Every position is honored on every screen size now — left/right rails
+  // used to force-fallback to "bottom" on phones, which meant picking
+  // "Left side" or "Right side" in settings silently did nothing there.
+  const effectivePosition: NavPosition = position;
   const isRail = effectivePosition === "left" || effectivePosition === "right";
   const isFloating = effectivePosition === "floating-bottom";
+  const isMinimal = effectivePosition === "minimal";
 
   // Reserve the right amount of layout space for whichever position/size is
   // active, so page content never renders underneath the nav. While a
@@ -271,6 +326,7 @@ export function BottomDock() {
         >
           {NAV.map((item) => {
             const active = pathname === item.to;
+            const Icon = resolveIcon(item.key, navIcons);
             return (
               <Link
                 key={item.to}
@@ -293,7 +349,7 @@ export function BottomDock() {
                   )}
                   aria-hidden="true"
                 />
-                <item.icon className={cn(sizing.icon, activeIconClass(active, activeAnimation))} />
+                <Icon className={cn(sizing.icon, activeIconClass(active, activeAnimation))} />
                 <span className="flex max-w-full items-center gap-0.5 truncate font-semibold">
                   {item.label}
                   {active && activeAnimation === "blink" && <BlinkCursor className="h-2.5" />}
@@ -318,6 +374,7 @@ export function BottomDock() {
     >
       {NAV.map((item) => {
         const active = pathname === item.to;
+        const Icon = resolveIcon(item.key, navIcons);
         return (
           <Link
             key={item.to}
@@ -338,7 +395,7 @@ export function BottomDock() {
               )}
               aria-hidden="true"
             />
-            <item.icon className={cn(sizing.icon, activeIconClass(active, activeAnimation, "-translate-y-0.5"))} />
+            <Icon className={cn(sizing.icon, activeIconClass(active, activeAnimation, "-translate-y-0.5"))} />
             <span className="flex max-w-full items-center gap-0.5 truncate font-semibold">
               {item.label}
               {active && activeAnimation === "blink" && <BlinkCursor className="h-2.5" />}
@@ -348,6 +405,56 @@ export function BottomDock() {
       })}
     </nav>
   );
+
+  const minimalNav = (
+    <nav aria-label="Primary" className="flex items-center gap-2">
+      {NAV.map((item) => {
+        const active = pathname === item.to;
+        const Icon = resolveIcon(item.key, navIcons);
+        return (
+          <Link
+            key={item.to}
+            to={item.to}
+            aria-current={active ? "page" : undefined}
+            className={cn(
+              "flex flex-col items-center justify-center gap-1 rounded-2xl font-mono uppercase tracking-wider transition-all duration-150",
+              "px-3",
+              sizing.padY,
+              sizing.text,
+              sizing.minTouch,
+              active
+                ? "scale-105 text-primary drop-shadow-[0_2px_8px_rgba(0,0,0,0.85)]"
+                : "text-foreground/85 drop-shadow-[0_2px_6px_rgba(0,0,0,0.75)] hover:scale-105 hover:text-foreground active:scale-95",
+            )}
+          >
+            <Icon className={cn(sizing.icon, activeIconClass(active, activeAnimation, "-translate-y-0.5"))} />
+            <span className="flex max-w-full items-center gap-0.5 truncate font-semibold">
+              {item.label}
+              {active && activeAnimation === "blink" && <BlinkCursor className="h-2.5" />}
+            </span>
+          </Link>
+        );
+      })}
+    </nav>
+  );
+
+  if (isMinimal) {
+    return (
+      <div
+        className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-4 transform-gpu will-change-transform"
+        style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
+      >
+        <div
+          className={cn(
+            "pointer-events-auto transition-opacity duration-300",
+            mounted ? opacityClass : "opacity-0",
+          )}
+        >
+          {minimalNav}
+        </div>
+      </div>
+    );
+  }
 
   if (isFloating) {
     return (

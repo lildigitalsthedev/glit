@@ -8,11 +8,11 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
  * - "floating-bottom": the same pill, but draggable anywhere on screen and
  *   remembers wherever the user drops it.
  * - "left" / "right": a vertical rail docked to the edge of the screen.
- *   Only rendered on tablet/desktop-sized viewports — on phones GitPush
- *   automatically falls back to the bottom pill so navigation never eats
- *   into precious horizontal space.
+ * - "minimal": no pill at all — just the bare icons and labels floating
+ *   directly over the page at the bottom-center, individually tappable,
+ *   with no shared background/border/blur behind them.
  */
-export type NavPosition = "bottom" | "floating-bottom" | "left" | "right";
+export type NavPosition = "bottom" | "floating-bottom" | "left" | "right" | "minimal";
 
 export type NavSize = "sm" | "md" | "lg";
 
@@ -32,6 +32,10 @@ export interface FloatingOffset {
   y: number;
 }
 
+/** Stable identifiers for the four nav items — used to key per-item icon overrides, independent of route path or label. */
+export type NavItemKey = "repos" | "workspace" | "activity" | "settings";
+export const NAV_ITEM_KEYS: readonly NavItemKey[] = ["repos", "workspace", "activity", "settings"] as const;
+
 export interface NavPrefsState {
   position: NavPosition;
   size: NavSize;
@@ -39,6 +43,15 @@ export interface NavPrefsState {
   collapsed: boolean;
   floatingOffset: FloatingOffset | null;
   activeAnimation: NavAnimation;
+  /**
+   * Per-item icon overrides, keyed by `NavItemKey`. Values are string keys
+   * into a small bundled icon registry (see `ICON_CHOICES` in
+   * bottom-dock.tsx) — never uploaded image data, so this costs nothing in
+   * database or storage space and works entirely offline like the rest of
+   * these preferences. An item with no entry here just uses its default
+   * icon.
+   */
+  icons: Partial<Record<NavItemKey, string>>;
 }
 
 interface NavPrefsContextValue extends NavPrefsState {
@@ -48,6 +61,8 @@ interface NavPrefsContextValue extends NavPrefsState {
   setCollapsed: (collapsed: boolean) => void;
   setFloatingOffset: (offset: FloatingOffset | null) => void;
   setActiveAnimation: (animation: NavAnimation) => void;
+  /** Sets (or, passing `null`, clears back to default) the icon override for one nav item. */
+  setIcon: (key: NavItemKey, iconKey: string | null) => void;
   reset: () => void;
   /**
    * Transient, session-only override that hides the dock and reclaims its
@@ -75,10 +90,17 @@ export const DEFAULT_NAV_PREFS: NavPrefsState = {
   collapsed: false,
   floatingOffset: null,
   activeAnimation: "glow",
+  icons: {},
 };
 
 function isNavPosition(value: unknown): value is NavPosition {
-  return value === "bottom" || value === "floating-bottom" || value === "left" || value === "right";
+  return (
+    value === "bottom" ||
+    value === "floating-bottom" ||
+    value === "left" ||
+    value === "right" ||
+    value === "minimal"
+  );
 }
 
 function isNavSize(value: unknown): value is NavSize {
@@ -87,6 +109,16 @@ function isNavSize(value: unknown): value is NavSize {
 
 function isNavAnimation(value: unknown): value is NavAnimation {
   return value === "glow" || value === "blink" || value === "none";
+}
+
+function sanitizeIcons(value: unknown): Partial<Record<NavItemKey, string>> {
+  if (!value || typeof value !== "object") return {};
+  const result: Partial<Record<NavItemKey, string>> = {};
+  for (const key of NAV_ITEM_KEYS) {
+    const raw = (value as Record<string, unknown>)[key];
+    if (typeof raw === "string" && raw.length > 0 && raw.length < 64) result[key] = raw;
+  }
+  return result;
 }
 
 // Tablet/desktop-sized viewports default to a persistent side rail (an
@@ -120,6 +152,7 @@ function loadStoredPrefs(): NavPrefsState {
         activeAnimation: isNavAnimation(parsed.activeAnimation)
           ? parsed.activeAnimation
           : DEFAULT_NAV_PREFS.activeAnimation,
+        icons: sanitizeIcons(parsed.icons),
       };
     }
 
@@ -176,6 +209,21 @@ export function NavPrefsProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  // Written as its own functional setState (rather than routed through
+  // `update`) so the merge into `icons` always starts from the freshest
+  // state, not whatever `state.icons` happened to be in the render
+  // closure this callback was created in.
+  const setIcon = useCallback((key: NavItemKey, iconKey: string | null) => {
+    setState((prev) => {
+      const nextIcons = { ...prev.icons };
+      if (iconKey) nextIcons[key] = iconKey;
+      else delete nextIcons[key];
+      const next = { ...prev, icons: nextIcons };
+      persistPrefs(next);
+      return next;
+    });
+  }, []);
+
   const value = useMemo<NavPrefsContextValue>(
     () => ({
       ...state,
@@ -185,6 +233,7 @@ export function NavPrefsProvider({ children }: { children: ReactNode }) {
       setCollapsed: (collapsed) => update({ collapsed }),
       setFloatingOffset: (floatingOffset) => update({ floatingOffset }),
       setActiveAnimation: (activeAnimation) => update({ activeAnimation }),
+      setIcon,
       reset: () => {
         const next = { ...DEFAULT_NAV_PREFS, position: deviceDefaultPosition() };
         setState(next);
@@ -193,7 +242,7 @@ export function NavPrefsProvider({ children }: { children: ReactNode }) {
       keyboardHidden,
       setKeyboardHidden,
     }),
-    [state, update, keyboardHidden],
+    [state, update, setIcon, keyboardHidden],
   );
 
   return <NavPrefsContext.Provider value={value}>{children}</NavPrefsContext.Provider>;
