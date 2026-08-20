@@ -54,6 +54,7 @@ import {
   CreditCard,
   Eye,
   ShieldAlert,
+  Share2,
 } from "lucide-react";
 import {
   listRepoBranches,
@@ -106,6 +107,8 @@ import {
 } from "@/components/ui/sheet";
 import { RenameRepositoryDialog } from "@/components/rename-repository-dialog";
 import { RepositoryInfoDialog } from "@/components/repository-info-dialog";
+import { ShareRepositoryDialog } from "@/components/share-repository-dialog";
+import { TempPublicBadge } from "@/components/temp-public-badge";
 import { DeleteFileDialog } from "@/components/delete-file-dialog";
 import { DeleteFolderDialog } from "@/components/delete-folder-dialog";
 import { NewFileDialog } from "@/components/new-file-dialog";
@@ -255,6 +258,7 @@ function Workspace() {
   const [filter, setFilter] = useState("");
   const [renameOpen, setRenameOpen] = useState(false);
   const [repoInfoOpen, setRepoInfoOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   // Persisted per-repo so returning to Workspace — whether by switching
   // tabs and coming back, or reopening the app later — drops the user back
   // into the exact folder they were browsing, instead of always resetting
@@ -1788,6 +1792,9 @@ function Workspace() {
         >
           {repoShortName ?? "No repository"}
         </span>
+        {fullName && (
+          <TempPublicBadge accountId={accountId} fullName={fullName} onClick={() => setShareOpen(true)} />
+        )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -1811,6 +1818,10 @@ function Workspace() {
             <DropdownMenuItem onSelect={handleRenameRepository} disabled={!canManageRepo}>
               <Pencil className="size-3.5" />
               Rename Repository
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setShareOpen(true)} disabled={!canManageRepo}>
+              <Share2 className="size-3.5" />
+              Share Repository
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={handleRefreshRepository}>
               <RefreshCw className="size-3.5" />
@@ -1841,6 +1852,12 @@ function Workspace() {
           details={repoDetails.data}
           loading={repoDetails.isLoading}
           canManage={canManageRepo}
+        />
+        <ShareRepositoryDialog
+          open={shareOpen}
+          onOpenChange={setShareOpen}
+          accountId={accountId}
+          fullName={fullName}
         />
         <Select value={branch} onValueChange={setBranch}>
           <SelectTrigger className="h-8 w-24 font-mono text-xs sm:w-36">
