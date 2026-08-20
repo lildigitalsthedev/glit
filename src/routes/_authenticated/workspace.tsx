@@ -108,6 +108,7 @@ import {
 import { RenameRepositoryDialog } from "@/components/rename-repository-dialog";
 import { RepositoryInfoDialog } from "@/components/repository-info-dialog";
 import { ShareRepositoryDialog } from "@/components/share-repository-dialog";
+import { RepoSearchDialog } from "@/components/repo-search-dialog";
 import { TempPublicBadge } from "@/components/temp-public-badge";
 import { DeleteFileDialog } from "@/components/delete-file-dialog";
 import { DeleteFolderDialog } from "@/components/delete-folder-dialog";
@@ -259,6 +260,8 @@ function Workspace() {
   const [renameOpen, setRenameOpen] = useState(false);
   const [repoInfoOpen, setRepoInfoOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [repoSearchOpen, setRepoSearchOpen] = useState(false);
+  const pendingJumpLineRef = useRef<number | null>(null);
   // Persisted per-repo so returning to Workspace — whether by switching
   // tabs and coming back, or reopening the app later — drops the user back
   // into the exact folder they were browsing, instead of always resetting
@@ -360,6 +363,20 @@ function Workspace() {
       if (event.key.toLowerCase() === "k" && (event.metaKey || event.ctrlKey)) {
         event.preventDefault();
         setCommandPaletteOpen((open) => !open);
+      }
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  // Ctrl/Cmd+Shift+F — "find in files", the same shortcut editors like
+  // VS Code use for repo-wide content search (distinct from Cmd/Ctrl+K's
+  // filename-only jump, and from Monaco's own in-file find/replace).
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key.toLowerCase() === "f" && event.shiftKey && (event.metaKey || event.ctrlKey)) {
+        event.preventDefault();
+        setRepoSearchOpen((open) => !open);
       }
     }
     document.addEventListener("keydown", onKeyDown);
@@ -1104,6 +1121,32 @@ function Workspace() {
   }
 
   /**
+   * Jumps to a specific line once the target file has finished loading
+   * into the editor — set by `handleOpenSearchResult` below, consumed
+   * here as soon as `content` next changes (whether that's an already-open
+   * tab activating synchronously, or a fresh `openFile` fetch resolving).
+   */
+  useEffect(() => {
+    if (pendingJumpLineRef.current == null) return;
+    const editorInstance = editorInstanceRef.current;
+    if (!editorInstance) return;
+    const line = pendingJumpLineRef.current;
+    pendingJumpLineRef.current = null;
+    requestAnimationFrame(() => {
+      editorInstance.revealLineInCenter(line);
+      editorInstance.setPosition({ lineNumber: line, column: 1 });
+      editorInstance.focus();
+    });
+  }, [content]);
+
+  /** Opens (or activates) a file from a repo-wide search result, then jumps to the matching line if one was clicked. */
+  function handleOpenSearchResult(target: string, lineNumber?: number) {
+    setRepoSearchOpen(false);
+    if (lineNumber) pendingJumpLineRef.current = lineNumber;
+    openOrActivateFile(target);
+  }
+
+  /**
    * Runs Monaco's built-in document formatter for the current language, if
    * one is registered. Not every language has a formatting provider built
    * into Monaco (there's no bundled Prettier), so this silently no-ops for
@@ -1230,6 +1273,13 @@ function Workspace() {
     if (fileItems.length) groups.push({ heading: "Files", items: fileItems });
 
     const actionItems = [
+      {
+        id: "action:search-repo",
+        label: "Search in repository (content)",
+        icon: Search,
+        shortcut: "⇧F",
+        onSelect: () => setRepoSearchOpen(true),
+      },
       {
         id: "action:new-file",
         label: "New file",
@@ -1795,6 +1845,17 @@ function Workspace() {
         {fullName && (
           <TempPublicBadge accountId={accountId} fullName={fullName} onClick={() => setShareOpen(true)} />
         )}
+        {fullName && (
+          <button
+            type="button"
+            onClick={() => setRepoSearchOpen(true)}
+            className="flex shrink-0 items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            title="Search in repository (Ctrl/Cmd+Shift+F)"
+          >
+            <Search className="size-3" />
+            <span className="hidden sm:inline">Search</span>
+          </button>
+        )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -1858,6 +1919,14 @@ function Workspace() {
           onOpenChange={setShareOpen}
           accountId={accountId}
           fullName={fullName}
+        />
+        <RepoSearchDialog
+          open={repoSearchOpen}
+          onOpenChange={setRepoSearchOpen}
+          accountId={accountId}
+          fullName={fullName}
+          branch={branch}
+          onOpenResult={handleOpenSearchResult}
         />
         <Select value={branch} onValueChange={setBranch}>
           <SelectTrigger className="h-8 w-24 font-mono text-xs sm:w-36">
