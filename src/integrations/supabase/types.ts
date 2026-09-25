@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.15"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -248,6 +248,74 @@ export type Database = {
         }
         Relationships: []
       }
+      link_rate_limits: {
+        Row: {
+          count: number
+          key: string
+          window_start: string
+        }
+        Insert: {
+          count?: number
+          key: string
+          window_start?: string
+        }
+        Update: {
+          count?: number
+          key?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          actor_id: string | null
+          body: string | null
+          created_at: string
+          id: string
+          metadata: Json
+          read_at: string | null
+          repo_full_name: string | null
+          title: string
+          type: Database["public"]["Enums"]["notification_type"]
+          user_id: string
+          workspace_id: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          body?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          read_at?: string | null
+          repo_full_name?: string | null
+          title: string
+          type: Database["public"]["Enums"]["notification_type"]
+          user_id: string
+          workspace_id?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          body?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          read_at?: string | null
+          repo_full_name?: string | null
+          title?: string
+          type?: Database["public"]["Enums"]["notification_type"]
+          user_id?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       oauth_states: {
         Row: {
           created_at: string
@@ -367,6 +435,7 @@ export type Database = {
           id: string
           path: string
           status: string
+          undone_at: string | null
           user_id: string
         }
         Insert: {
@@ -382,6 +451,7 @@ export type Database = {
           id?: string
           path: string
           status?: string
+          undone_at?: string | null
           user_id: string
         }
         Update: {
@@ -397,6 +467,7 @@ export type Database = {
           id?: string
           path?: string
           status?: string
+          undone_at?: string | null
           user_id?: string
         }
         Relationships: [
@@ -405,6 +476,148 @@ export type Database = {
             columns: ["account_id"]
             isOneToOne: false
             referencedRelation: "github_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      repo_access_links: {
+        Row: {
+          account_id: string
+          allow_download: boolean
+          created_at: string
+          created_by: string
+          expires_at: string
+          full_name: string
+          id: string
+          last_used_at: string | null
+          max_uses: number | null
+          revoked_at: string | null
+          revoked_by: string | null
+          role: string
+          status: string
+          token_hash: string
+          token_prefix: string
+          uses_count: number
+          workspace_id: string
+        }
+        Insert: {
+          account_id: string
+          allow_download?: boolean
+          created_at?: string
+          created_by: string
+          expires_at: string
+          full_name: string
+          id?: string
+          last_used_at?: string | null
+          max_uses?: number | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          role: string
+          status?: string
+          token_hash: string
+          token_prefix: string
+          uses_count?: number
+          workspace_id: string
+        }
+        Update: {
+          account_id?: string
+          allow_download?: boolean
+          created_at?: string
+          created_by?: string
+          expires_at?: string
+          full_name?: string
+          id?: string
+          last_used_at?: string | null
+          max_uses?: number | null
+          revoked_at?: string | null
+          revoked_by?: string | null
+          role?: string
+          status?: string
+          token_hash?: string
+          token_prefix?: string
+          uses_count?: number
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "repo_access_links_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "github_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "repo_access_links_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      repo_access_sessions: {
+        Row: {
+          account_id: string
+          allow_download: boolean
+          created_at: string
+          expires_at: string
+          full_name: string
+          id: string
+          last_seen_at: string
+          link_id: string
+          revoked_at: string | null
+          role: string
+          session_token_hash: string
+          workspace_id: string
+        }
+        Insert: {
+          account_id: string
+          allow_download?: boolean
+          created_at?: string
+          expires_at: string
+          full_name: string
+          id?: string
+          last_seen_at?: string
+          link_id: string
+          revoked_at?: string | null
+          role: string
+          session_token_hash: string
+          workspace_id: string
+        }
+        Update: {
+          account_id?: string
+          allow_download?: boolean
+          created_at?: string
+          expires_at?: string
+          full_name?: string
+          id?: string
+          last_seen_at?: string
+          link_id?: string
+          revoked_at?: string | null
+          role?: string
+          session_token_hash?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "repo_access_sessions_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "github_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "repo_access_sessions_link_id_fkey"
+            columns: ["link_id"]
+            isOneToOne: false
+            referencedRelation: "repo_access_links"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "repo_access_sessions_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
             referencedColumns: ["id"]
           },
         ]
@@ -459,6 +672,143 @@ export type Database = {
           },
           {
             foreignKeyName: "repo_prefs_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      repo_share_audit: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          event: string
+          full_name: string | null
+          id: string
+          ip_hash: string | null
+          link_id: string | null
+          metadata: Json
+          session_id: string | null
+          temp_public_id: string | null
+          workspace_id: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          event: string
+          full_name?: string | null
+          id?: string
+          ip_hash?: string | null
+          link_id?: string | null
+          metadata?: Json
+          session_id?: string | null
+          temp_public_id?: string | null
+          workspace_id?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          event?: string
+          full_name?: string | null
+          id?: string
+          ip_hash?: string | null
+          link_id?: string | null
+          metadata?: Json
+          session_id?: string | null
+          temp_public_id?: string | null
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "repo_share_audit_link_id_fkey"
+            columns: ["link_id"]
+            isOneToOne: false
+            referencedRelation: "repo_access_links"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "repo_share_audit_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "repo_access_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "repo_share_audit_temp_public_id_fkey"
+            columns: ["temp_public_id"]
+            isOneToOne: false
+            referencedRelation: "repo_temp_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "repo_share_audit_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      repo_temp_public: {
+        Row: {
+          account_id: string
+          created_at: string
+          created_by: string
+          error_count: number
+          expires_at: string
+          extended_count: number
+          full_name: string
+          id: string
+          last_error: string | null
+          previous_private: boolean
+          reverted_at: string | null
+          status: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          account_id: string
+          created_at?: string
+          created_by: string
+          error_count?: number
+          expires_at: string
+          extended_count?: number
+          full_name: string
+          id?: string
+          last_error?: string | null
+          previous_private?: boolean
+          reverted_at?: string | null
+          status?: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          account_id?: string
+          created_at?: string
+          created_by?: string
+          error_count?: number
+          expires_at?: string
+          extended_count?: number
+          full_name?: string
+          id?: string
+          last_error?: string | null
+          previous_private?: boolean
+          reverted_at?: string | null
+          status?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "repo_temp_public_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "github_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "repo_temp_public_workspace_id_fkey"
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"
@@ -615,6 +965,106 @@ export type Database = {
         }
         Relationships: []
       }
+      workspace_activity: {
+        Row: {
+          action: Database["public"]["Enums"]["workspace_activity_action"]
+          actor_id: string | null
+          created_at: string
+          id: string
+          metadata: Json
+          repo_full_name: string | null
+          summary: string
+          workspace_id: string
+        }
+        Insert: {
+          action: Database["public"]["Enums"]["workspace_activity_action"]
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          repo_full_name?: string | null
+          summary: string
+          workspace_id: string
+        }
+        Update: {
+          action?: Database["public"]["Enums"]["workspace_activity_action"]
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          repo_full_name?: string | null
+          summary?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_activity_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workspace_ai_providers: {
+        Row: {
+          api_key_ciphertext: string
+          base_url: string | null
+          created_at: string
+          created_by: string | null
+          enabled: boolean
+          id: string
+          is_default: boolean
+          key_hint: string
+          label: string | null
+          model: string | null
+          provider: string
+          updated_at: string
+          updated_by: string | null
+          workspace_id: string
+        }
+        Insert: {
+          api_key_ciphertext: string
+          base_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          enabled?: boolean
+          id?: string
+          is_default?: boolean
+          key_hint?: string
+          label?: string | null
+          model?: string | null
+          provider: string
+          updated_at?: string
+          updated_by?: string | null
+          workspace_id: string
+        }
+        Update: {
+          api_key_ciphertext?: string
+          base_url?: string | null
+          created_at?: string
+          created_by?: string | null
+          enabled?: boolean
+          id?: string
+          is_default?: boolean
+          key_hint?: string
+          label?: string | null
+          model?: string | null
+          provider?: string
+          updated_at?: string
+          updated_by?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_ai_providers_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workspace_invitations: {
         Row: {
           created_at: string
@@ -710,11 +1160,17 @@ export type Database = {
           created_at: string
           default_branch: string | null
           default_folder: string | null
+          default_gitignore_template: string | null
+          default_invite_role: string
+          default_license_template: string | null
+          default_repo_auto_init: boolean
+          default_repo_visibility: string
           description: string | null
           id: string
           is_personal: boolean
           name: string
           owner_id: string
+          require_team_ai_keys: boolean
           updated_at: string
         }
         Insert: {
@@ -723,11 +1179,17 @@ export type Database = {
           created_at?: string
           default_branch?: string | null
           default_folder?: string | null
+          default_gitignore_template?: string | null
+          default_invite_role?: string
+          default_license_template?: string | null
+          default_repo_auto_init?: boolean
+          default_repo_visibility?: string
           description?: string | null
           id?: string
           is_personal?: boolean
           name: string
           owner_id: string
+          require_team_ai_keys?: boolean
           updated_at?: string
         }
         Update: {
@@ -736,11 +1198,17 @@ export type Database = {
           created_at?: string
           default_branch?: string | null
           default_folder?: string | null
+          default_gitignore_template?: string | null
+          default_invite_role?: string
+          default_license_template?: string | null
+          default_repo_auto_init?: boolean
+          default_repo_visibility?: string
           description?: string | null
           id?: string
           is_personal?: boolean
           name?: string
           owner_id?: string
+          require_team_ai_keys?: boolean
           updated_at?: string
         }
         Relationships: []
@@ -750,13 +1218,77 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      claim_expired_temp_public: {
+        Args: { p_limit?: number }
+        Returns: {
+          account_id: string
+          created_at: string
+          created_by: string
+          error_count: number
+          expires_at: string
+          extended_count: number
+          full_name: string
+          id: string
+          last_error: string | null
+          previous_private: boolean
+          reverted_at: string | null
+          status: string
+          updated_at: string
+          workspace_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "repo_temp_public"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      expire_stale_access_links: { Args: never; Returns: undefined }
+      get_user_id_by_email: { Args: { _email: string }; Returns: string }
       increment_rate_limit: {
         Args: { p_bucket: string; p_user_id: string; p_window_seconds: number }
+        Returns: number
+      }
+      increment_text_rate_limit: {
+        Args: { p_key: string; p_window_seconds: number }
         Returns: number
       }
       is_workspace_member: {
         Args: { _user_id: string; _workspace_id: string }
         Returns: boolean
+      }
+      prune_stale_link_rate_limits: { Args: never; Returns: undefined }
+      prune_stale_notifications: { Args: never; Returns: undefined }
+      prune_stale_repo_share_audit: { Args: never; Returns: undefined }
+      prune_stale_repo_temp_public: { Args: never; Returns: undefined }
+      prune_stale_workspace_activity: { Args: never; Returns: undefined }
+      redeem_access_link: {
+        Args: { p_token_hash: string }
+        Returns: {
+          account_id: string
+          allow_download: boolean
+          created_at: string
+          created_by: string
+          expires_at: string
+          full_name: string
+          id: string
+          last_used_at: string | null
+          max_uses: number | null
+          revoked_at: string | null
+          revoked_by: string | null
+          role: string
+          status: string
+          token_hash: string
+          token_prefix: string
+          uses_count: number
+          workspace_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "repo_access_links"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       workspace_role_of: {
         Args: { _user_id: string; _workspace_id: string }
@@ -765,6 +1297,35 @@ export type Database = {
     }
     Enums: {
       invitation_status: "pending" | "accepted" | "rejected" | "revoked"
+      notification_type:
+        | "workspace_invited"
+        | "workspace_removed"
+        | "repository_shared"
+        | "ai_generation_completed"
+        | "push_completed"
+        | "repository_archived"
+      workspace_activity_action:
+        | "repository_created"
+        | "repository_deleted"
+        | "push_completed"
+        | "ai_generation"
+        | "ai_edit"
+        | "prompt_created"
+        | "member_joined"
+        | "member_removed"
+        | "workspace_updated"
+        | "team_key_added"
+        | "team_key_removed"
+        | "login"
+        | "member_invited"
+        | "member_left"
+        | "member_role_changed"
+        | "ownership_transferred"
+        | "workspace_archived"
+        | "ai_chat"
+        | "ai_commit_message"
+        | "team_key_updated"
+        | "push_undone"
       workspace_role: "owner" | "admin" | "developer" | "viewer"
     }
     CompositeTypes: {
@@ -781,12 +1342,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -810,11 +1371,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -835,11 +1396,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -860,11 +1421,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -877,11 +1438,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -894,6 +1455,37 @@ export const Constants = {
   public: {
     Enums: {
       invitation_status: ["pending", "accepted", "rejected", "revoked"],
+      notification_type: [
+        "workspace_invited",
+        "workspace_removed",
+        "repository_shared",
+        "ai_generation_completed",
+        "push_completed",
+        "repository_archived",
+      ],
+      workspace_activity_action: [
+        "repository_created",
+        "repository_deleted",
+        "push_completed",
+        "ai_generation",
+        "ai_edit",
+        "prompt_created",
+        "member_joined",
+        "member_removed",
+        "workspace_updated",
+        "team_key_added",
+        "team_key_removed",
+        "login",
+        "member_invited",
+        "member_left",
+        "member_role_changed",
+        "ownership_transferred",
+        "workspace_archived",
+        "ai_chat",
+        "ai_commit_message",
+        "team_key_updated",
+        "push_undone",
+      ],
       workspace_role: ["owner", "admin", "developer", "viewer"],
     },
   },
