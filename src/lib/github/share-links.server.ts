@@ -6,40 +6,15 @@
 // GitHub account or its token is ever present in the link itself.
 import { randomBytes, createHash } from "node:crypto";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import {
+  SHARE_ROLES,
+  type AccessLinkSummary,
+  type ShareCapability,
+  type ShareRole,
+} from "@/lib/github/share-links";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = supabaseAdmin as any;
-
-export type ShareRole = "viewer" | "editor" | "developer" | "admin";
-
-export const SHARE_ROLES: readonly ShareRole[] = ["viewer", "editor", "developer", "admin"] as const;
-
-export const SHARE_ROLE_LABELS: Record<ShareRole, string> = {
-  viewer: "Viewer",
-  editor: "Editor",
-  developer: "Developer",
-  admin: "Admin",
-};
-
-export const SHARE_ROLE_DESCRIPTIONS: Record<ShareRole, string> = {
-  viewer: "Browse files, read file contents and commit history. No edits, no downloads unless allowed.",
-  editor: "Everything Viewer can do, plus create, edit and delete files.",
-  developer: "Everything Editor can do, plus create branches and download/clone the repository.",
-  admin: "Everything Developer can do, plus rename the repository and toggle archived status.",
-};
-
-/** Every action a redeemed session might attempt. */
-export type ShareCapability =
-  | "repo:view"
-  | "repo:browse"
-  | "repo:readFile"
-  | "repo:commits"
-  | "repo:branches"
-  | "repo:download"
-  | "repo:writeFile"
-  | "repo:deleteFile"
-  | "repo:createBranch"
-  | "repo:adminSettings";
 
 // Deliberately more conservative than the spec's ceiling for Admin: a
 // leaked link should never be able to manage *other* access links, delete
@@ -140,22 +115,6 @@ export async function assertLinkRateLimit(key: string, limit: number, windowSeco
   if (count > limit) {
     throw new Error("Too many attempts. Please wait a moment and try again.");
   }
-}
-
-export interface AccessLinkSummary {
-  id: string;
-  fullName: string;
-  role: ShareRole;
-  tokenPrefix: string;
-  allowDownload: boolean;
-  maxUses: number | null;
-  usesCount: number;
-  expiresAt: string;
-  status: "active" | "revoked" | "expired" | "exhausted";
-  createdAt: string;
-  createdBy: string;
-  lastUsedAt: string | null;
-  revokedAt: string | null;
 }
 
 function toSummary(row: Record<string, unknown>): AccessLinkSummary {

@@ -1,12 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import type { ShareRole } from "@/lib/github/share-links.server";
+import type { ShareRole, AccessLinkSummary } from "@/lib/github/share-links";
 import type { TempPublicStatus } from "@/lib/github/temp-public.server";
-import type { AccessLinkSummary } from "@/lib/github/share-links.server";
 
-export type { ShareRole, AccessLinkSummary } from "@/lib/github/share-links.server";
+export type { ShareRole, AccessLinkSummary } from "@/lib/github/share-links";
 export type { TempPublicStatus } from "@/lib/github/temp-public.server";
-export { SHARE_ROLES, SHARE_ROLE_LABELS, SHARE_ROLE_DESCRIPTIONS } from "@/lib/github/share-links.server";
+export { SHARE_ROLES, SHARE_ROLE_LABELS, SHARE_ROLE_DESCRIPTIONS } from "@/lib/github/share-links";
 
 /**
  * All owner-side actions for both sharing features require `repos:manage`
