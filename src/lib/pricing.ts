@@ -75,10 +75,14 @@ export function proPriceNGN(): string {
  * no rate for their currency — callers should simply omit the hint then.
  */
 export function proPriceLocalEquivalent(): string | null {
-  const region =
-    typeof navigator !== "undefined"
-      ? (new Intl.Locale(navigator.language || "en-US").maximize().region ?? "US")
-      : "US";
+  let region = "US";
+  if (typeof navigator !== "undefined") {
+    try {
+      region = new Intl.Locale(navigator.language || "en-US").maximize().region ?? "US";
+    } catch {
+      region = "US";
+    }
+  }
   const currency = LOCALE_CURRENCY[region] ?? "USD";
   if (currency === "NGN") return null;
   const rate = NGN_PER_UNIT[currency];
