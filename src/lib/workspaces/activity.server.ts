@@ -2,6 +2,7 @@
 // the migration for why: workspace_activity has RLS enabled with no client
 // policies at all, so every read/write goes through here.
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import type { Json } from "@/integrations/supabase/types";
 import { requireCapability } from "./store.server";
 
 export type WorkspaceActivityAction =
@@ -38,7 +39,7 @@ export interface ActivityEntry {
   action: WorkspaceActivityAction;
   summary: string;
   repoFullName: string | null;
-  metadata: Record<string, unknown>;
+  metadata: Json;
   actor: ActivityActor | null;
   createdAt: string;
 }
@@ -55,7 +56,7 @@ export async function logActivity(args: {
   action: WorkspaceActivityAction;
   summary: string;
   repoFullName?: string | null;
-  metadata?: Record<string, unknown>;
+  metadata?: Json;
 }): Promise<void> {
   try {
     const { error } = await supabaseAdmin.from("workspace_activity").insert({
@@ -121,13 +122,13 @@ export async function listActivity(
     action: row.action as WorkspaceActivityAction,
     summary: row.summary as string,
     repoFullName: row.repo_full_name as string | null,
-    metadata: (row.metadata as Record<string, unknown>) ?? {},
+    metadata: row.metadata ?? {},
     actor: row.actor_id ? (actors.get(row.actor_id as string) ?? null) : null,
     createdAt: row.created_at as string,
   }));
 
   return {
     entries,
-    nextBefore: rows.length === PAGE_SIZE ? (rows[rows.length - 1].created_at as string) : null,
+    nextBefore: rows.length === PAGE_SIZE ? ((rows.at(-1)?.created_at as string | undefined) ?? null) : null,
   };
 }

@@ -79,6 +79,7 @@ async function mapWithConcurrency<T, R>(
   async function worker() {
     while (index < items.length) {
       const current = items[index++];
+      if (current === undefined) continue;
       results.push(await fn(current));
     }
   }
@@ -126,12 +127,14 @@ export async function searchRepositoryContents(args: {
       const lines = file.content.split("\n");
       let matchesInFile = 0;
       for (let i = 0; i < lines.length && matchesInFile < MATCHES_PER_FILE; i++) {
-        const idx = lines[i].toLowerCase().indexOf(needle);
+        const line = lines[i];
+        if (line === undefined) continue;
+        const idx = line.toLowerCase().indexOf(needle);
         if (idx === -1) continue;
         contentMatches.push({
           path: entry.path,
           lineNumber: i + 1,
-          line: snippet(lines[i], idx, needle.length),
+          line: snippet(line, idx, needle.length),
         });
         matchesInFile++;
       }

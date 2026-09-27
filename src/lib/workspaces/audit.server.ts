@@ -5,6 +5,7 @@
 // export that shares the same filter logic so "what you filtered is what
 // you export" always holds.
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import type { Json } from "@/integrations/supabase/types";
 import { requireCapability } from "./store.server";
 import type { ActivityActor, WorkspaceActivityAction } from "./activity.server";
 
@@ -13,7 +14,7 @@ export interface AuditLogEntry {
   action: WorkspaceActivityAction;
   summary: string;
   repoFullName: string | null;
-  metadata: Record<string, unknown>;
+  metadata: Json;
   actor: ActivityActor | null;
   createdAt: string;
 }
@@ -126,7 +127,7 @@ export async function listAuditLog(
     action: row.action as WorkspaceActivityAction,
     summary: row.summary as string,
     repoFullName: row.repo_full_name as string | null,
-    metadata: (row.metadata as Record<string, unknown>) ?? {},
+    metadata: row.metadata ?? {},
     actor: row.actor_id ? (actors.get(row.actor_id as string) ?? null) : null,
     createdAt: row.created_at as string,
   }));

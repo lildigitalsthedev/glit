@@ -63,7 +63,7 @@ export const ICON_CHOICES: Record<NavItemKey, { key: string; icon: LucideIcon; l
 function resolveIcon(itemKey: NavItemKey, icons: Partial<Record<NavItemKey, string>>): LucideIcon {
   const choices = ICON_CHOICES[itemKey];
   const chosen = icons[itemKey];
-  return choices.find((c) => c.key === chosen)?.icon ?? choices[0].icon;
+  return choices.find((c) => c.key === chosen)?.icon ?? choices[0]?.icon ?? Code2;
 }
 
 // Reserved viewport space (bottom-safe area + dock height + margin) and the

@@ -123,7 +123,7 @@ export function MemberProfileDrawer({
                 <span className="label-caps text-muted-foreground">Change role</span>
                 <Select
                   value={member.role}
-                  disabled={isSettingRole}
+                  disabled={Boolean(isSettingRole)}
                   onValueChange={(value) => onSetRole(value as WorkspaceRole)}
                 >
                   <SelectTrigger className="w-full text-xs">
