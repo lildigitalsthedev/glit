@@ -1840,16 +1840,10 @@ function Workspace() {
       className="flex h-[calc(100dvh-2.5rem)] flex-col"
       style={viewportHeight != null ? { height: `${viewportHeight - 40}px` } : undefined}
     >
-      {/* justify-between + two shrink-0-free clusters instead of a single
-          flex-wrap row with ml-auto: with ml-auto, the action-buttons
-          cluster wrapping onto its own line on narrow screens still gets
-          shoved flush right by its margin, leaving a wide dead strip of
-          empty space to its left. Splitting into two clusters means that
-          when the action cluster is alone on a line, justify-between has
-          nothing to distribute it against and it falls back to flush-left,
-          right under the repo/branch row above it. */}
-      <div className="flex flex-wrap items-center justify-between gap-x-1.5 gap-y-1.5 border-b border-border px-2 py-1 sm:gap-x-2 sm:px-3">
-        <div className="flex min-w-0 flex-wrap items-center gap-1.5 sm:gap-2">
+      {/* The toolbar is always a two-column grid: repository context may
+          shrink, while Add and Commit stay anchored at the right edge. */}
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-1.5 border-b border-border px-2 py-1 sm:gap-2 sm:px-3">
+        <div className="flex min-w-0 items-center gap-1.5 overflow-hidden sm:gap-2">
         <Button
           variant="outline"
           size="icon"
@@ -1866,7 +1860,7 @@ function Workspace() {
           </AvatarFallback>
         </Avatar>
         <span
-          className="min-w-0 truncate font-mono text-sm"
+          className="min-w-0 flex-1 truncate font-mono text-sm"
           title={fullName ?? undefined}
         >
           {repoShortName ?? "No repository"}
@@ -1878,7 +1872,7 @@ function Workspace() {
           <button
             type="button"
             onClick={() => setRepoSearchOpen(true)}
-            className="flex shrink-0 items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            className="hidden shrink-0 items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:flex"
             title="Search in repository (Ctrl/Cmd+Shift+F)"
           >
             <Search className="size-3" />
@@ -1958,7 +1952,7 @@ function Workspace() {
           onOpenResult={handleOpenSearchResult}
         />
         <Select value={branch} onValueChange={setBranch}>
-          <SelectTrigger className="h-8 w-24 font-mono text-xs sm:w-36">
+          <SelectTrigger className="h-8 w-24 shrink-0 font-mono text-xs sm:w-36">
             <GitBranch className="size-3.5" />
             <SelectValue placeholder="branch" />
           </SelectTrigger>
