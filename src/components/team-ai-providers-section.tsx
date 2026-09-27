@@ -113,7 +113,7 @@ export function TeamAiProvidersSection() {
       saveFn({
         data: {
           provider,
-          apiKey: apiKey.trim() || undefined,
+          ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}),
           label: label.trim() || null,
           baseUrl: baseUrl.trim() || meta?.baseUrl || null,
           model: model.trim() || meta?.defaultModel || null,

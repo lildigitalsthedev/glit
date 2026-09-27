@@ -119,19 +119,19 @@ export async function assertLinkRateLimit(key: string, limit: number, windowSeco
 
 function toSummary(row: Record<string, unknown>): AccessLinkSummary {
   return {
-    id: row.id as string,
-    fullName: row.full_name as string,
-    role: row.role as ShareRole,
-    tokenPrefix: row.token_prefix as string,
-    allowDownload: row.allow_download as boolean,
-    maxUses: (row.max_uses as number | null) ?? null,
-    usesCount: row.uses_count as number,
-    expiresAt: row.expires_at as string,
-    status: row.status as AccessLinkSummary["status"],
-    createdAt: row.created_at as string,
-    createdBy: row.created_by as string,
-    lastUsedAt: (row.last_used_at as string | null) ?? null,
-    revokedAt: (row.revoked_at as string | null) ?? null,
+    id: row["id"] as string,
+    fullName: row["full_name"] as string,
+    role: row["role"] as ShareRole,
+    tokenPrefix: row["token_prefix"] as string,
+    allowDownload: row["allow_download"] as boolean,
+    maxUses: (row["max_uses"] as number | null) ?? null,
+    usesCount: row["uses_count"] as number,
+    expiresAt: row["expires_at"] as string,
+    status: row["status"] as AccessLinkSummary["status"],
+    createdAt: row["created_at"] as string,
+    createdBy: row["created_by"] as string,
+    lastUsedAt: (row["last_used_at"] as string | null) ?? null,
+    revokedAt: (row["revoked_at"] as string | null) ?? null,
   };
 }
 

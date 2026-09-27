@@ -330,6 +330,10 @@ export const createRepository = createServerFn({ method: "POST" })
       defaultBranch: finalDefaultBranch,
       updatedAt: repo.pushed_at ?? repo.updated_at,
       canPush: repo.permissions?.push ?? true,
+      accountId: data.accountId,
+      language: repo.language ?? null,
+      archived: repo.archived ?? false,
+      htmlUrl: repo.html_url ?? null,
     };
   });
 
@@ -615,8 +619,18 @@ export const listWorkspaceRepoCards = createServerFn({ method: "POST" })
           language: repo.language ?? null,
           archived: repo.archived ?? false,
           htmlUrl: repo.html_url ?? null,
-          contributors: ref.contributors,
-          addedBy: ref.addedBy,
+          contributors: ref.contributors.map((member) => ({
+            userId: member.userId,
+            name: member.displayName ?? "Workspace member",
+            avatarUrl: member.avatarUrl,
+          })),
+          addedBy: ref.addedBy
+            ? {
+                userId: ref.addedBy.userId,
+                name: ref.addedBy.displayName ?? "Workspace member",
+                avatarUrl: ref.addedBy.avatarUrl,
+              }
+            : null,
         });
       }
     }

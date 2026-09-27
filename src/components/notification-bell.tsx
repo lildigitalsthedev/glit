@@ -148,7 +148,7 @@ export function NotificationBell() {
 
   function undoablePushId(notification: NotificationRecord): string | null {
     if (notification.type !== "push_completed") return null;
-    const pushId = notification.metadata.pushId;
+    const pushId = notification.metadata["pushId"];
     if (typeof pushId !== "string") return null;
     if (undoneIds.has(pushId)) return null;
     if (Date.now() - new Date(notification.createdAt).getTime() > UNDO_WINDOW_MS) return null;
@@ -221,9 +221,9 @@ export function NotificationBell() {
                   const isExpanded = expandedId === notification.id;
                   const pushIdToUndo = undoablePushId(notification);
                   const branch =
-                    typeof notification.metadata.branch === "string" ? notification.metadata.branch : null;
+                    typeof notification.metadata["branch"] === "string" ? notification.metadata["branch"] : null;
                   const commitSha =
-                    typeof notification.metadata.commitSha === "string" ? notification.metadata.commitSha : null;
+                    typeof notification.metadata["commitSha"] === "string" ? notification.metadata["commitSha"] : null;
                   return (
                     <li
                       key={notification.id}

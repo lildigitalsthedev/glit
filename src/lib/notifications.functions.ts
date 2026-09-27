@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { Json } from "@/integrations/supabase/types";
 
 export type { NotificationType } from "@/lib/notifications/store.server";
 import type { NotificationType } from "@/lib/notifications/store.server";
@@ -12,7 +13,7 @@ export interface NotificationRecord {
   workspaceId: string | null;
   repoFullName: string | null;
   actorId: string | null;
-  metadata: Record<string, unknown>;
+  metadata: Json;
   readAt: string | null;
   createdAt: string;
 }
@@ -47,14 +48,14 @@ export const listNotifications = createServerFn({ method: "POST" })
       workspaceId: row.workspace_id as string | null,
       repoFullName: row.repo_full_name as string | null,
       actorId: row.actor_id as string | null,
-      metadata: (row.metadata as Record<string, unknown>) ?? {},
+      metadata: row.metadata ?? {},
       readAt: row.read_at as string | null,
       createdAt: row.created_at as string,
     }));
 
     return {
       entries,
-      nextBefore: entries.length === PAGE_SIZE ? entries[entries.length - 1].createdAt : null,
+      nextBefore: entries.length === PAGE_SIZE ? (entries.at(-1)?.createdAt ?? null) : null,
     };
   });
 
