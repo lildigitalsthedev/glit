@@ -20,6 +20,60 @@ function json(body: unknown, status = 200, extraHeaders: Record<string, string> 
 
 type RpcMsg = { jsonrpc: "2.0"; id?: string | number | null; method: string; params?: Record<string, unknown> };
 
+type SchemaDef = {
+  typeName?: string;
+  shape?: () => Record<string, z.ZodTypeAny>;
+  innerType?: z.ZodTypeAny;
+  type?: z.ZodTypeAny;
+  values?: Record<string, string | number> | string[];
+  value?: string | number | boolean;
+  checks?: { kind: string; value?: number }[];
+};
+
+/** Convert the Zod 3 schemas used by MCP tools into MCP-compatible JSON Schema. */
+function toInputSchema(schema: z.ZodTypeAny): Record<string, unknown> {
+  const originalDescription = schema.description;
+  let current = schema;
+  let def = current._def as SchemaDef;
+  while (def.typeName === "ZodOptional" || def.typeName === "ZodDefault") {
+    current = def.innerType!;
+    def = current._def as SchemaDef;
+  }
+
+  let result: Record<string, unknown>;
+  switch (def.typeName) {
+    case "ZodObject": {
+      const shape = def.shape!();
+      const properties: Record<string, unknown> = {};
+      const required: string[] = [];
+      for (const [key, child] of Object.entries(shape)) {
+        properties[key] = toInputSchema(child);
+        const childType = (child._def as SchemaDef).typeName;
+        if (childType !== "ZodOptional" && childType !== "ZodDefault") required.push(key);
+      }
+      result = { type: "object", properties, additionalProperties: false, ...(required.length ? { required } : {}) };
+      break;
+    }
+    case "ZodString": {
+      const checks = def.checks ?? [];
+      result = {
+        type: "string",
+        ...Object.fromEntries(checks.filter((c) => c.kind === "min" || c.kind === "max").map((c) => [c.kind === "min" ? "minLength" : "maxLength", c.value])),
+      };
+      break;
+    }
+    case "ZodNumber": result = { type: "number" }; break;
+    case "ZodBoolean": result = { type: "boolean" }; break;
+    case "ZodArray": result = { type: "array", items: toInputSchema(def.type!) }; break;
+    case "ZodEnum": result = { type: "string", enum: def.values }; break;
+    case "ZodNativeEnum": result = { enum: Object.values(def.values ?? {}) }; break;
+    case "ZodLiteral": result = { const: def.value, type: typeof def.value }; break;
+    default: result = {};
+  }
+  if (originalDescription) result.description = originalDescription;
+  return result;
+}
+
 async function handle(msg: RpcMsg, userId: string) {
   const { TOOLS } = await import("@/lib/mcp/tools.server");
   const ok = (result: unknown) => ({ jsonrpc: "2.0", id: msg.id ?? null, result });
@@ -45,7 +99,7 @@ async function handle(msg: RpcMsg, userId: string) {
         tools: Object.entries(TOOLS).map(([name, t]) => ({
           name,
           description: t.description,
-          inputSchema: z.toJSONSchema(t.schema),
+          inputSchema: toInputSchema(t.schema),
         })),
       });
     case "tools/call": {
