@@ -62,7 +62,7 @@ export function McpAccessSection() {
             Connect AI tools
           </h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            Let Claude, Cursor, ChatGPT and other AI tools read your repos and push code through GitPush.
+            Connect an MCP-compatible AI tool to browse repositories, pull files, and push changes through GitPush.
           </p>
         </div>
         {isPro && (
@@ -88,10 +88,14 @@ export function McpAccessSection() {
                 <Copy className="size-3.5" />
               </Button>
             </div>
-            <p className="mt-2 text-xs text-muted-foreground">
-              In your AI tool, add a custom connector (MCP server) with this address and send your key as{" "}
-              <code className="font-mono">Authorization: Bearer &lt;key&gt;</code>.
-            </p>
+            <div className="mt-3 space-y-1 text-xs text-muted-foreground">
+              <p>To connect: create a key below, then add this URL as a remote MCP server in your AI tool.</p>
+              <p>
+                Set the server authorization header to <code className="font-mono">Bearer YOUR_GITPUSH_KEY</code>.
+                The key lets the tool access repositories connected to your GitPush account.
+              </p>
+              <p>Once connected, ask the tool to list repositories, read or pull files, and commit changes with GitPush.</p>
+            </div>
           </div>
 
           {keys.isLoading ? (

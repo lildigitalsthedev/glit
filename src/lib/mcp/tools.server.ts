@@ -89,6 +89,30 @@ export const TOOLS = {
       return file.content;
     },
   },
+  read_files: {
+    description:
+      "Read multiple text files from a repository branch. Use this to pull a set of files into the AI tool in one request.",
+    schema: z.object({
+      account,
+      repo,
+      branch: z.string(),
+      paths: z.array(z.string()).min(1).max(100),
+    }),
+    async run(
+      userId: string,
+      a: { account?: string; repo: string; branch: string; paths: string[] },
+    ) {
+      const { token } = await accountFor(userId, a.account);
+      const { readFile } = await import("../github/api.server");
+      const files = await Promise.all(
+        a.paths.map(async (path) => {
+          const file = await readFile(token, a.repo, a.branch, path);
+          return { path, content: file.content };
+        }),
+      );
+      return { repo: a.repo, branch: a.branch, files };
+    },
+  },
   push_files: {
     description:
       "Create or update one or more files on a branch in a single commit. Content is plain text.",
