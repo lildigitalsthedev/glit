@@ -91,12 +91,11 @@ export function McpAccessSection() {
             <div className="mt-3 space-y-1 text-xs text-muted-foreground">
               <p>Create a key below, then add this URL as a remote MCP server.</p>
               <p>
-                For Claude Code and clients that support custom headers, set{" "}
-                <code className="font-mono">Authorization: Bearer YOUR_GITPUSH_KEY</code>. The key lets the tool access repositories connected to your GitPush account.
+                For Claude web/Desktop, choose <strong>Sign in now</strong> and <strong>Register automatically</strong> in the OAuth setup. Sign in to GitPush and approve access when prompted.
               </p>
               <p>
-                Claude web/Desktop custom connectors require OAuth. GitPush access keys are not OAuth client credentials,
-                so those connectors cannot connect until GitPush adds OAuth support.
+                Claude Code and clients that use custom headers can instead send{" "}
+                <code className="font-mono">Authorization: Bearer YOUR_GITPUSH_KEY</code>.
               </p>
               <p>Once connected, ask the tool to list repositories, read or pull files, and commit changes with GitPush.</p>
             </div>

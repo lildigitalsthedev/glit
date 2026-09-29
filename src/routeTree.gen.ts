@@ -23,6 +23,8 @@ import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedTeamRouteImport } from './routes/_authenticated/team'
 import { Route as AuthenticatedWorkspaceRouteImport } from './routes/_authenticated/workspace'
 import { Route as ShareTokenRouteImport } from './routes/share/$token'
+import { Route as McpAuthorizeRouteImport } from './routes/mcp/authorize'
+import { Route as ApiPublicOauthActionRouteImport } from './routes/api/public/oauth/$action'
 import { Route as ApiPublicMcpRouteImport } from './routes/api/public/mcp'
 import { Route as ApiInternalCronSweepRepoSharingRouteImport } from './routes/api/internal/cron/sweep-repo-sharing'
 import { Route as ApiPublicGithubCallbackRouteImport } from './routes/api/public/github/callback'
@@ -102,6 +104,16 @@ const ShareTokenRoute = ShareTokenRouteImport.update({
   path: '/share/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const McpAuthorizeRoute = McpAuthorizeRouteImport.update({
+  id: '/mcp/authorize',
+  path: '/mcp/authorize',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicOauthActionRoute = ApiPublicOauthActionRouteImport.update({
+  id: '/api/public/oauth/$action',
+  path: '/api/public/oauth/$action',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicMcpRoute = ApiPublicMcpRouteImport.update({
   id: '/api/public/mcp',
   path: '/api/public/mcp',
@@ -165,6 +177,8 @@ export interface FileRoutesByFullPath {
   '/team': typeof AuthenticatedTeamRoute
   '/workspace': typeof AuthenticatedWorkspaceRoute
   '/share/$token': typeof ShareTokenRoute
+  '/mcp/authorize': typeof McpAuthorizeRoute
+  '/api/public/oauth/$action': typeof ApiPublicOauthActionRoute
   '/api/public/mcp': typeof ApiPublicMcpRoute
   '/api/internal/cron/sweep-repo-sharing': typeof ApiInternalCronSweepRepoSharingRoute
   '/api/public/github/callback': typeof ApiPublicGithubCallbackRoute
@@ -189,6 +203,8 @@ export interface FileRoutesByTo {
   '/team': typeof AuthenticatedTeamRoute
   '/workspace': typeof AuthenticatedWorkspaceRoute
   '/share/$token': typeof ShareTokenRoute
+  '/mcp/authorize': typeof McpAuthorizeRoute
+  '/api/public/oauth/$action': typeof ApiPublicOauthActionRoute
   '/api/public/mcp': typeof ApiPublicMcpRoute
   '/api/internal/cron/sweep-repo-sharing': typeof ApiInternalCronSweepRepoSharingRoute
   '/api/public/github/callback': typeof ApiPublicGithubCallbackRoute
@@ -215,6 +231,8 @@ export interface FileRoutesById {
   '/_authenticated/team': typeof AuthenticatedTeamRoute
   '/_authenticated/workspace': typeof AuthenticatedWorkspaceRoute
   '/share/$token': typeof ShareTokenRoute
+  '/mcp/authorize': typeof McpAuthorizeRoute
+  '/api/public/oauth/$action': typeof ApiPublicOauthActionRoute
   '/api/public/mcp': typeof ApiPublicMcpRoute
   '/api/internal/cron/sweep-repo-sharing': typeof ApiInternalCronSweepRepoSharingRoute
   '/api/public/github/callback': typeof ApiPublicGithubCallbackRoute
@@ -241,6 +259,8 @@ export interface FileRouteTypes {
     | '/team'
     | '/workspace'
     | '/share/$token'
+    | '/mcp/authorize'
+    | '/api/public/oauth/$action'
     | '/api/public/mcp'
     | '/api/internal/cron/sweep-repo-sharing'
     | '/api/public/github/callback'
@@ -265,6 +285,8 @@ export interface FileRouteTypes {
     | '/team'
     | '/workspace'
     | '/share/$token'
+    | '/mcp/authorize'
+    | '/api/public/oauth/$action'
     | '/api/public/mcp'
     | '/api/internal/cron/sweep-repo-sharing'
     | '/api/public/github/callback'
@@ -290,6 +312,8 @@ export interface FileRouteTypes {
     | '/_authenticated/team'
     | '/_authenticated/workspace'
     | '/share/$token'
+    | '/mcp/authorize'
+    | '/api/public/oauth/$action'
     | '/api/public/mcp'
     | '/api/internal/cron/sweep-repo-sharing'
     | '/api/public/github/callback'
@@ -306,6 +330,8 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   ShareTokenRoute: typeof ShareTokenRoute
+  McpAuthorizeRoute: typeof McpAuthorizeRoute
+  ApiPublicOauthActionRoute: typeof ApiPublicOauthActionRoute
   ApiPublicMcpRoute: typeof ApiPublicMcpRoute
   ApiInternalCronSweepRepoSharingRoute: typeof ApiInternalCronSweepRepoSharingRoute
   ApiPublicGithubCallbackRoute: typeof ApiPublicGithubCallbackRoute
@@ -417,6 +443,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ShareTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/mcp/authorize': {
+      id: '/mcp/authorize'
+      path: '/mcp/authorize'
+      fullPath: '/mcp/authorize'
+      preLoaderRoute: typeof McpAuthorizeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/oauth/$action': {
+      id: '/api/public/oauth/$action'
+      path: '/api/public/oauth/$action'
+      fullPath: '/api/public/oauth/$action'
+      preLoaderRoute: typeof ApiPublicOauthActionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/mcp': {
       id: '/api/public/mcp'
       path: '/api/public/mcp'
@@ -517,6 +557,8 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   ShareTokenRoute: ShareTokenRoute,
+  McpAuthorizeRoute: McpAuthorizeRoute,
+  ApiPublicOauthActionRoute: ApiPublicOauthActionRoute,
   ApiPublicMcpRoute: ApiPublicMcpRoute,
   ApiInternalCronSweepRepoSharingRoute: ApiInternalCronSweepRepoSharingRoute,
   ApiPublicGithubCallbackRoute: ApiPublicGithubCallbackRoute,

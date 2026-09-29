@@ -11,10 +11,10 @@ const CORS = {
   "Access-Control-Allow-Headers": "Authorization, Content-Type, Mcp-Session-Id, Mcp-Protocol-Version",
 };
 
-function json(body: unknown, status = 200) {
+function json(body: unknown, status = 200, extraHeaders: Record<string, string> = {}) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "Content-Type": "application/json", ...CORS },
+    headers: { "Content-Type": "application/json", ...CORS, ...extraHeaders },
   });
 }
 
@@ -86,9 +86,16 @@ export const Route = createFileRoute("/api/public/mcp")({
         const auth = request.headers.get("authorization") ?? "";
         const raw = auth.replace(/^Bearer\s+/i, "").trim();
         const { verifyKey } = await import("@/lib/mcp/keys.server");
-        const userId = raw ? await verifyKey(raw) : null;
+        const origin = new URL(request.url).origin;
+        const { verifyAccessToken } = await import("@/lib/mcp/oauth.server");
+        const userId = raw
+          ? (await verifyKey(raw)) ?? (await verifyAccessToken(raw, `${origin}/api/public/mcp`))
+          : null;
         if (!userId) {
-          return json({ jsonrpc: "2.0", id: null, error: { code: -32001, message: "Invalid or missing GitPush access key" } }, 401);
+          const metadata = `${origin}/api/public/oauth/resource`;
+          return json({ jsonrpc: "2.0", id: null, error: { code: -32001, message: "Authentication required. Connect through GitPush OAuth." } }, 401, {
+            "WWW-Authenticate": `Bearer resource_metadata="${metadata}", scope="mcp"`,
+          });
         }
 
         let body: unknown;

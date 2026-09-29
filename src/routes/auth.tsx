@@ -42,9 +42,17 @@ function AuthPage() {
 
   const requiresAgreement = mode === "signup";
   const canProceed = !requiresAgreement || agreedToTerms;
+  const returnTo = typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("returnTo");
+  const authReturnPath = returnTo?.startsWith("/mcp/authorize?")
+    ? `/auth?returnTo=${encodeURIComponent(returnTo)}`
+    : "/app";
 
   useEffect(() => {
-    if (!loading && session) void navigate({ to: "/app" });
+    if (!loading && session) {
+      const returnTo = new URLSearchParams(window.location.search).get("returnTo");
+      if (returnTo?.startsWith("/mcp/authorize?")) window.location.assign(returnTo);
+      else void navigate({ to: "/app" });
+    }
   }, [loading, session, navigate]);
 
   async function onSubmit(event: React.FormEvent) {
@@ -60,7 +68,7 @@ function AuthPage() {
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/app`,
+            emailRedirectTo: `${window.location.origin}${authReturnPath}`,
             data: { full_name: name },
           },
         });
@@ -84,7 +92,7 @@ function AuthPage() {
     }
     setBusy(true);
     const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
+      redirect_uri: `${window.location.origin}${authReturnPath}`,
     });
     if (result.error) {
       setBusy(false);
