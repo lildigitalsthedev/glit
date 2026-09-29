@@ -46,6 +46,7 @@ import { AccountRow, ConnectGithubDialog, useAccounts } from "@/components/conne
 import { RequestFeatureDialog } from "@/components/request-feature-dialog";
 import { AiProvidersSection } from "@/components/ai-providers-section";
 import { TeamAiProvidersSection } from "@/components/team-ai-providers-section";
+import { McpAccessSection } from "@/components/mcp-access-section";
 import { AccentColorPicker } from "@/components/accent-color-picker";
 import { getPreferences, updatePreferences, type Preferences } from "@/lib/workspace.functions";
 import { deleteUserAccount } from "@/lib/accounts.functions";
@@ -1163,6 +1164,7 @@ function Settings() {
         <TabsContent value="ai" className="mt-4">
           <TeamAiProvidersSection />
           <AiProvidersSection />
+          <McpAccessSection />
         </TabsContent>
 
         {/* Feedback */}
