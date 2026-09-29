@@ -23,6 +23,7 @@ import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedTeamRouteImport } from './routes/_authenticated/team'
 import { Route as AuthenticatedWorkspaceRouteImport } from './routes/_authenticated/workspace'
 import { Route as ShareTokenRouteImport } from './routes/share/$token'
+import { Route as ApiPublicMcpRouteImport } from './routes/api/public/mcp'
 import { Route as ApiInternalCronSweepRepoSharingRouteImport } from './routes/api/internal/cron/sweep-repo-sharing'
 import { Route as ApiPublicGithubCallbackRouteImport } from './routes/api/public/github/callback'
 import { Route as ApiPublicPaystackCallbackRouteImport } from './routes/api/public/paystack/callback'
@@ -101,6 +102,11 @@ const ShareTokenRoute = ShareTokenRouteImport.update({
   path: '/share/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicMcpRoute = ApiPublicMcpRouteImport.update({
+  id: '/api/public/mcp',
+  path: '/api/public/mcp',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiInternalCronSweepRepoSharingRoute =
   ApiInternalCronSweepRepoSharingRouteImport.update({
     id: '/api/internal/cron/sweep-repo-sharing',
@@ -159,6 +165,7 @@ export interface FileRoutesByFullPath {
   '/team': typeof AuthenticatedTeamRoute
   '/workspace': typeof AuthenticatedWorkspaceRoute
   '/share/$token': typeof ShareTokenRoute
+  '/api/public/mcp': typeof ApiPublicMcpRoute
   '/api/internal/cron/sweep-repo-sharing': typeof ApiInternalCronSweepRepoSharingRoute
   '/api/public/github/callback': typeof ApiPublicGithubCallbackRoute
   '/api/public/paystack/callback': typeof ApiPublicPaystackCallbackRoute
@@ -182,6 +189,7 @@ export interface FileRoutesByTo {
   '/team': typeof AuthenticatedTeamRoute
   '/workspace': typeof AuthenticatedWorkspaceRoute
   '/share/$token': typeof ShareTokenRoute
+  '/api/public/mcp': typeof ApiPublicMcpRoute
   '/api/internal/cron/sweep-repo-sharing': typeof ApiInternalCronSweepRepoSharingRoute
   '/api/public/github/callback': typeof ApiPublicGithubCallbackRoute
   '/api/public/paystack/callback': typeof ApiPublicPaystackCallbackRoute
@@ -207,6 +215,7 @@ export interface FileRoutesById {
   '/_authenticated/team': typeof AuthenticatedTeamRoute
   '/_authenticated/workspace': typeof AuthenticatedWorkspaceRoute
   '/share/$token': typeof ShareTokenRoute
+  '/api/public/mcp': typeof ApiPublicMcpRoute
   '/api/internal/cron/sweep-repo-sharing': typeof ApiInternalCronSweepRepoSharingRoute
   '/api/public/github/callback': typeof ApiPublicGithubCallbackRoute
   '/api/public/paystack/callback': typeof ApiPublicPaystackCallbackRoute
@@ -232,6 +241,7 @@ export interface FileRouteTypes {
     | '/team'
     | '/workspace'
     | '/share/$token'
+    | '/api/public/mcp'
     | '/api/internal/cron/sweep-repo-sharing'
     | '/api/public/github/callback'
     | '/api/public/paystack/callback'
@@ -255,6 +265,7 @@ export interface FileRouteTypes {
     | '/team'
     | '/workspace'
     | '/share/$token'
+    | '/api/public/mcp'
     | '/api/internal/cron/sweep-repo-sharing'
     | '/api/public/github/callback'
     | '/api/public/paystack/callback'
@@ -279,6 +290,7 @@ export interface FileRouteTypes {
     | '/_authenticated/team'
     | '/_authenticated/workspace'
     | '/share/$token'
+    | '/api/public/mcp'
     | '/api/internal/cron/sweep-repo-sharing'
     | '/api/public/github/callback'
     | '/api/public/paystack/callback'
@@ -294,6 +306,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   ShareTokenRoute: typeof ShareTokenRoute
+  ApiPublicMcpRoute: typeof ApiPublicMcpRoute
   ApiInternalCronSweepRepoSharingRoute: typeof ApiInternalCronSweepRepoSharingRoute
   ApiPublicGithubCallbackRoute: typeof ApiPublicGithubCallbackRoute
   ApiPublicPaystackCallbackRoute: typeof ApiPublicPaystackCallbackRoute
@@ -404,6 +417,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ShareTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/mcp': {
+      id: '/api/public/mcp'
+      path: '/api/public/mcp'
+      fullPath: '/api/public/mcp'
+      preLoaderRoute: typeof ApiPublicMcpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/internal/cron/sweep-repo-sharing': {
       id: '/api/internal/cron/sweep-repo-sharing'
       path: '/api/internal/cron/sweep-repo-sharing'
@@ -497,6 +517,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   ShareTokenRoute: ShareTokenRoute,
+  ApiPublicMcpRoute: ApiPublicMcpRoute,
   ApiInternalCronSweepRepoSharingRoute: ApiInternalCronSweepRepoSharingRoute,
   ApiPublicGithubCallbackRoute: ApiPublicGithubCallbackRoute,
   ApiPublicPaystackCallbackRoute: ApiPublicPaystackCallbackRoute,
