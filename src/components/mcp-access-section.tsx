@@ -89,10 +89,14 @@ export function McpAccessSection() {
               </Button>
             </div>
             <div className="mt-3 space-y-1 text-xs text-muted-foreground">
-              <p>To connect: create a key below, then add this URL as a remote MCP server in your AI tool.</p>
+              <p>Create a key below, then add this URL as a remote MCP server.</p>
               <p>
-                Set the server authorization header to <code className="font-mono">Bearer YOUR_GITPUSH_KEY</code>.
-                The key lets the tool access repositories connected to your GitPush account.
+                For Claude Code and clients that support custom headers, set{" "}
+                <code className="font-mono">Authorization: Bearer YOUR_GITPUSH_KEY</code>. The key lets the tool access repositories connected to your GitPush account.
+              </p>
+              <p>
+                Claude web/Desktop custom connectors require OAuth. GitPush access keys are not OAuth client credentials,
+                so those connectors cannot connect until GitPush adds OAuth support.
               </p>
               <p>Once connected, ask the tool to list repositories, read or pull files, and commit changes with GitPush.</p>
             </div>
