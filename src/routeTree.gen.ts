@@ -22,12 +22,12 @@ import { Route as AuthenticatedPromptsRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedTeamRouteImport } from './routes/_authenticated/team'
 import { Route as AuthenticatedWorkspaceRouteImport } from './routes/_authenticated/workspace'
-import { Route as ShareTokenRouteImport } from './routes/share/$token'
 import { Route as McpAuthorizeRouteImport } from './routes/mcp/authorize'
-import { Route as ApiPublicOauthActionRouteImport } from './routes/api/public/oauth/$action'
+import { Route as ShareTokenRouteImport } from './routes/share/$token'
 import { Route as ApiPublicMcpRouteImport } from './routes/api/public/mcp'
 import { Route as ApiInternalCronSweepRepoSharingRouteImport } from './routes/api/internal/cron/sweep-repo-sharing'
 import { Route as ApiPublicGithubCallbackRouteImport } from './routes/api/public/github/callback'
+import { Route as ApiPublicOauthActionRouteImport } from './routes/api/public/oauth/$action'
 import { Route as ApiPublicPaystackCallbackRouteImport } from './routes/api/public/paystack/callback'
 import { Route as ApiPublicPaystackWebhookRouteImport } from './routes/api/public/paystack/webhook'
 import { Route as ApiPublicShareRedeemRouteImport } from './routes/api/public/share/redeem'
@@ -99,19 +99,14 @@ const AuthenticatedWorkspaceRoute = AuthenticatedWorkspaceRouteImport.update({
   path: '/workspace',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const ShareTokenRoute = ShareTokenRouteImport.update({
-  id: '/share/$token',
-  path: '/share/$token',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const McpAuthorizeRoute = McpAuthorizeRouteImport.update({
   id: '/mcp/authorize',
   path: '/mcp/authorize',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicOauthActionRoute = ApiPublicOauthActionRouteImport.update({
-  id: '/api/public/oauth/$action',
-  path: '/api/public/oauth/$action',
+const ShareTokenRoute = ShareTokenRouteImport.update({
+  id: '/share/$token',
+  path: '/share/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicMcpRoute = ApiPublicMcpRouteImport.update({
@@ -128,6 +123,11 @@ const ApiInternalCronSweepRepoSharingRoute =
 const ApiPublicGithubCallbackRoute = ApiPublicGithubCallbackRouteImport.update({
   id: '/api/public/github/callback',
   path: '/api/public/github/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicOauthActionRoute = ApiPublicOauthActionRouteImport.update({
+  id: '/api/public/oauth/$action',
+  path: '/api/public/oauth/$action',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicPaystackCallbackRoute =
@@ -176,12 +176,12 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AuthenticatedSettingsRoute
   '/team': typeof AuthenticatedTeamRoute
   '/workspace': typeof AuthenticatedWorkspaceRoute
-  '/share/$token': typeof ShareTokenRoute
   '/mcp/authorize': typeof McpAuthorizeRoute
-  '/api/public/oauth/$action': typeof ApiPublicOauthActionRoute
+  '/share/$token': typeof ShareTokenRoute
   '/api/public/mcp': typeof ApiPublicMcpRoute
   '/api/internal/cron/sweep-repo-sharing': typeof ApiInternalCronSweepRepoSharingRoute
   '/api/public/github/callback': typeof ApiPublicGithubCallbackRoute
+  '/api/public/oauth/$action': typeof ApiPublicOauthActionRoute
   '/api/public/paystack/callback': typeof ApiPublicPaystackCallbackRoute
   '/api/public/paystack/webhook': typeof ApiPublicPaystackWebhookRoute
   '/api/public/share/redeem': typeof ApiPublicShareRedeemRoute
@@ -202,12 +202,12 @@ export interface FileRoutesByTo {
   '/settings': typeof AuthenticatedSettingsRoute
   '/team': typeof AuthenticatedTeamRoute
   '/workspace': typeof AuthenticatedWorkspaceRoute
-  '/share/$token': typeof ShareTokenRoute
   '/mcp/authorize': typeof McpAuthorizeRoute
-  '/api/public/oauth/$action': typeof ApiPublicOauthActionRoute
+  '/share/$token': typeof ShareTokenRoute
   '/api/public/mcp': typeof ApiPublicMcpRoute
   '/api/internal/cron/sweep-repo-sharing': typeof ApiInternalCronSweepRepoSharingRoute
   '/api/public/github/callback': typeof ApiPublicGithubCallbackRoute
+  '/api/public/oauth/$action': typeof ApiPublicOauthActionRoute
   '/api/public/paystack/callback': typeof ApiPublicPaystackCallbackRoute
   '/api/public/paystack/webhook': typeof ApiPublicPaystackWebhookRoute
   '/api/public/share/redeem': typeof ApiPublicShareRedeemRoute
@@ -230,12 +230,12 @@ export interface FileRoutesById {
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/team': typeof AuthenticatedTeamRoute
   '/_authenticated/workspace': typeof AuthenticatedWorkspaceRoute
-  '/share/$token': typeof ShareTokenRoute
   '/mcp/authorize': typeof McpAuthorizeRoute
-  '/api/public/oauth/$action': typeof ApiPublicOauthActionRoute
+  '/share/$token': typeof ShareTokenRoute
   '/api/public/mcp': typeof ApiPublicMcpRoute
   '/api/internal/cron/sweep-repo-sharing': typeof ApiInternalCronSweepRepoSharingRoute
   '/api/public/github/callback': typeof ApiPublicGithubCallbackRoute
+  '/api/public/oauth/$action': typeof ApiPublicOauthActionRoute
   '/api/public/paystack/callback': typeof ApiPublicPaystackCallbackRoute
   '/api/public/paystack/webhook': typeof ApiPublicPaystackWebhookRoute
   '/api/public/share/redeem': typeof ApiPublicShareRedeemRoute
@@ -258,12 +258,12 @@ export interface FileRouteTypes {
     | '/settings'
     | '/team'
     | '/workspace'
-    | '/share/$token'
     | '/mcp/authorize'
-    | '/api/public/oauth/$action'
+    | '/share/$token'
     | '/api/public/mcp'
     | '/api/internal/cron/sweep-repo-sharing'
     | '/api/public/github/callback'
+    | '/api/public/oauth/$action'
     | '/api/public/paystack/callback'
     | '/api/public/paystack/webhook'
     | '/api/public/share/redeem'
@@ -284,12 +284,12 @@ export interface FileRouteTypes {
     | '/settings'
     | '/team'
     | '/workspace'
-    | '/share/$token'
     | '/mcp/authorize'
-    | '/api/public/oauth/$action'
+    | '/share/$token'
     | '/api/public/mcp'
     | '/api/internal/cron/sweep-repo-sharing'
     | '/api/public/github/callback'
+    | '/api/public/oauth/$action'
     | '/api/public/paystack/callback'
     | '/api/public/paystack/webhook'
     | '/api/public/share/redeem'
@@ -311,12 +311,12 @@ export interface FileRouteTypes {
     | '/_authenticated/settings'
     | '/_authenticated/team'
     | '/_authenticated/workspace'
-    | '/share/$token'
     | '/mcp/authorize'
-    | '/api/public/oauth/$action'
+    | '/share/$token'
     | '/api/public/mcp'
     | '/api/internal/cron/sweep-repo-sharing'
     | '/api/public/github/callback'
+    | '/api/public/oauth/$action'
     | '/api/public/paystack/callback'
     | '/api/public/paystack/webhook'
     | '/api/public/share/redeem'
@@ -329,12 +329,12 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
-  ShareTokenRoute: typeof ShareTokenRoute
   McpAuthorizeRoute: typeof McpAuthorizeRoute
-  ApiPublicOauthActionRoute: typeof ApiPublicOauthActionRoute
+  ShareTokenRoute: typeof ShareTokenRoute
   ApiPublicMcpRoute: typeof ApiPublicMcpRoute
   ApiInternalCronSweepRepoSharingRoute: typeof ApiInternalCronSweepRepoSharingRoute
   ApiPublicGithubCallbackRoute: typeof ApiPublicGithubCallbackRoute
+  ApiPublicOauthActionRoute: typeof ApiPublicOauthActionRoute
   ApiPublicPaystackCallbackRoute: typeof ApiPublicPaystackCallbackRoute
   ApiPublicPaystackWebhookRoute: typeof ApiPublicPaystackWebhookRoute
   ApiPublicShareRedeemRoute: typeof ApiPublicShareRedeemRoute
@@ -436,13 +436,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedWorkspaceRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/share/$token': {
-      id: '/share/$token'
-      path: '/share/$token'
-      fullPath: '/share/$token'
-      preLoaderRoute: typeof ShareTokenRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/mcp/authorize': {
       id: '/mcp/authorize'
       path: '/mcp/authorize'
@@ -450,11 +443,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof McpAuthorizeRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/oauth/$action': {
-      id: '/api/public/oauth/$action'
-      path: '/api/public/oauth/$action'
-      fullPath: '/api/public/oauth/$action'
-      preLoaderRoute: typeof ApiPublicOauthActionRouteImport
+    '/share/$token': {
+      id: '/share/$token'
+      path: '/share/$token'
+      fullPath: '/share/$token'
+      preLoaderRoute: typeof ShareTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/mcp': {
@@ -476,6 +469,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/github/callback'
       fullPath: '/api/public/github/callback'
       preLoaderRoute: typeof ApiPublicGithubCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/oauth/$action': {
+      id: '/api/public/oauth/$action'
+      path: '/api/public/oauth/$action'
+      fullPath: '/api/public/oauth/$action'
+      preLoaderRoute: typeof ApiPublicOauthActionRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/paystack/callback': {
@@ -556,12 +556,12 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
-  ShareTokenRoute: ShareTokenRoute,
   McpAuthorizeRoute: McpAuthorizeRoute,
-  ApiPublicOauthActionRoute: ApiPublicOauthActionRoute,
+  ShareTokenRoute: ShareTokenRoute,
   ApiPublicMcpRoute: ApiPublicMcpRoute,
   ApiInternalCronSweepRepoSharingRoute: ApiInternalCronSweepRepoSharingRoute,
   ApiPublicGithubCallbackRoute: ApiPublicGithubCallbackRoute,
+  ApiPublicOauthActionRoute: ApiPublicOauthActionRoute,
   ApiPublicPaystackCallbackRoute: ApiPublicPaystackCallbackRoute,
   ApiPublicPaystackWebhookRoute: ApiPublicPaystackWebhookRoute,
   ApiPublicShareRedeemRoute: ApiPublicShareRedeemRoute,
