@@ -7,7 +7,7 @@ import { getViewer, listAllRepos } from "./api.server";
 type Client = SupabaseClient<any, any, any>;
 
 /**
- * Free plan is capped at a single connected GitHub account — GitPush Pro
+ * Free plan is capped at a single connected GitHub account — Glit Pro
  * unlocks unlimited accounts (see FEATURE 2 in the Phase 3 spec). This is
  * enforced here, server-side, so it can't be bypassed by calling the PAT
  * or OAuth connect paths directly.
@@ -35,7 +35,7 @@ export async function assertAccountQuota(supabase: Client, userId: string) {
   const plan = (role?.subscription_plan as string | undefined) ?? "free";
   if (plan !== "pro" && (count ?? 0) >= 1) {
     throw new Error(
-      "Free plan is limited to 1 connected GitHub account. Upgrade to GitPush Pro for unlimited accounts.",
+      "Free plan is limited to 1 connected GitHub account. Upgrade to Glit Pro for unlimited accounts.",
     );
   }
 }

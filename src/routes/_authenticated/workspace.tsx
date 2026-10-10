@@ -140,9 +140,9 @@ import {
 export const Route = createFileRoute("/_authenticated/workspace")({
   head: () => ({
     meta: [
-      { title: "Workspace — GitPush" },
+      { title: "Workspace — Glit" },
       { name: "description", content: "Create, edit and commit files to GitHub from the browser." },
-      { property: "og:title", content: "Workspace — GitPush" },
+      { property: "og:title", content: "Workspace — Glit" },
       {
         property: "og:description",
         content: "Create, edit and commit files to GitHub from the browser.",
@@ -807,7 +807,7 @@ function Workspace() {
     setActiveFolder(lastSlash === -1 ? null : fullPath.slice(0, lastSlash));
   }
 
-  // Batch file uploads are a GitPush Pro feature — free accounts see the
+  // Batch file uploads are a Glit Pro feature — free accounts see the
   // upgrade dialog instead of the picker.
   function openBulkUpload() {
     if (isPro) {
@@ -817,7 +817,7 @@ function Workspace() {
     }
   }
 
-  // Folder uploads are also a GitPush Pro feature.
+  // Folder uploads are also a Glit Pro feature.
   function openUploadFolder() {
     if (isPro) {
       setUploadFolderOpen(true);
@@ -826,7 +826,7 @@ function Workspace() {
     }
   }
 
-  // ZIP uploads are also a GitPush Pro feature.
+  // ZIP uploads are also a Glit Pro feature.
   function openUploadZip() {
     if (isPro) {
       setUploadZipOpen(true);
@@ -2124,7 +2124,7 @@ function Workspace() {
         open={aiUpgradeOpen}
         onOpenChange={setAiUpgradeOpen}
         title="AI tools are a Pro feature"
-        description="Upgrade to GitPush Pro to connect your own AI provider and generate or refactor files with natural language."
+        description="Upgrade to Glit Pro to connect your own AI provider and generate or refactor files with natural language."
         features={[
           "Bring your own key: OpenAI, Claude, Gemini, xAI, OpenRouter, DeepSeek, Mistral, Together AI",
           "Generate whole files straight into the editor",
@@ -2144,7 +2144,7 @@ function Workspace() {
         open={bulkUploadUpgradeOpen}
         onOpenChange={setBulkUploadUpgradeOpen}
         title="Batch uploads are a Pro feature"
-        description="Free accounts upload one file at a time. Upgrade to GitPush Pro to drag, drop, and push multiple files in a single commit."
+        description="Free accounts upload one file at a time. Upgrade to Glit Pro to drag, drop, and push multiple files in a single commit."
         features={[
           "Upload any number of files in one go",
           "Drag & drop or browse, with previews before you push",
@@ -2164,7 +2164,7 @@ function Workspace() {
         open={uploadFolderUpgradeOpen}
         onOpenChange={setUploadFolderUpgradeOpen}
         title="Folder uploads are a Pro feature"
-        description="Free accounts upload files one at a time. Upgrade to GitPush Pro to drop in a whole folder and push it as a single commit."
+        description="Free accounts upload files one at a time. Upgrade to Glit Pro to drop in a whole folder and push it as a single commit."
         features={[
           "Drag & drop or pick an entire folder",
           "Full folder hierarchy recreated automatically",
@@ -2184,7 +2184,7 @@ function Workspace() {
         open={uploadZipUpgradeOpen}
         onOpenChange={setUploadZipUpgradeOpen}
         title="ZIP uploads are a Pro feature"
-        description="Free accounts upload files one at a time. Upgrade to GitPush Pro to drop in a ZIP archive and push its contents as a single commit."
+        description="Free accounts upload files one at a time. Upgrade to Glit Pro to drop in a ZIP archive and push its contents as a single commit."
         features={[
           "Extract and preview a ZIP archive's contents locally",
           "Full folder hierarchy recreated automatically",

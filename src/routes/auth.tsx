@@ -1,3 +1,4 @@
+import { BrandLogo } from "@/components/brand-logo";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -9,20 +10,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { TermsDialog } from "@/components/terms-dialog";
-import { Terminal, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Sign in — GitPush" },
+      { title: "Sign in — Glit" },
       {
         name: "description",
-        content: "Sign in to GitPush to connect GitHub and push files from your browser.",
+        content: "Sign in to Glit to connect GitHub and push files from your browser.",
       },
-      { property: "og:title", content: "Sign in — GitPush" },
+      { property: "og:title", content: "Sign in — Glit" },
       {
         property: "og:description",
-        content: "Sign in to GitPush to connect GitHub and push files from your browser.",
+        content: "Sign in to Glit to connect GitHub and push files from your browser.",
       },
     ],
   }),
@@ -107,8 +108,7 @@ function AuthPage() {
     <main className="flex min-h-screen items-center justify-center px-4 py-16">
       <div className="w-full max-w-sm">
         <Link to="/" className="mb-10 flex items-center gap-2 font-mono text-sm">
-          <Terminal className="size-4 text-primary" />
-          <span className="font-semibold tracking-tight">gitpush</span>
+          <BrandLogo />
         </Link>
 
         <h1 className="text-2xl font-semibold tracking-tight">

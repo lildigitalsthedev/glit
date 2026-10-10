@@ -17,7 +17,7 @@ export interface RepoCard {
   language: string | null;
   archived: boolean;
   htmlUrl: string | null;
-  /** Only populated on the shared workspace dashboard (Feature 4) — workspace members who've opened/pushed this repo through GitPush, not raw GitHub commit history. */
+  /** Only populated on the shared workspace dashboard (Feature 4) — workspace members who've opened/pushed this repo through Glit, not raw GitHub commit history. */
   contributors?: { userId: string; name: string; avatarUrl: string | null }[];
   addedBy?: { userId: string; name: string; avatarUrl: string | null } | null;
 }

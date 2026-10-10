@@ -87,7 +87,7 @@ const CODE_LINES: CodeLine[] = [
 ];
 
 /**
- * A self-animating mock of the GitPush editor — file tree, a small diff,
+ * A self-animating mock of the Glit editor — file tree, a small diff,
  * and a commit bar — built from the app's own design tokens rather than a
  * screenshot, so it stays accurate as the product changes and never goes
  * stale or out of sync with the real UI.

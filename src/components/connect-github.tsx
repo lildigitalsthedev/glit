@@ -185,7 +185,7 @@ export function ConnectGithubDialog({ trigger }: { trigger?: React.ReactNode }) 
         open={upgradeOpen}
         onOpenChange={setUpgradeOpen}
         title="Unlock more accounts with Pro"
-        description={`Free is limited to ${FREE_ACCOUNT_LIMIT} connected GitHub account. Upgrade to GitPush Pro to connect unlimited accounts and switch between them instantly.`}
+        description={`Free is limited to ${FREE_ACCOUNT_LIMIT} connected GitHub account. Upgrade to Glit Pro to connect unlimited accounts and switch between them instantly.`}
         features={[
           "Unlimited connected GitHub accounts",
           "Instant switching, right where you work",

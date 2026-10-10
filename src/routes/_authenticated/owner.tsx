@@ -24,7 +24,7 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/_authenticated/owner")({
   head: () => ({
     meta: [
-      { title: "Owner Dashboard — GitPush" },
+      { title: "Owner Dashboard — Glit" },
       { name: "description", content: "Manage user roles." },
     ],
   }),

@@ -38,7 +38,7 @@ export const getMyBilling = createServerFn({ method: "GET" })
   });
 
 /**
- * Starts a Paystack-hosted checkout for GitPush Pro and returns the URL to
+ * Starts a Paystack-hosted checkout for Glit Pro and returns the URL to
  * redirect the browser to. Requires `PAYSTACK_SECRET_KEY` and
  * `PAYSTACK_PRO_PLAN_CODE` (the recurring Plan created in the Paystack
  * dashboard) to be configured.
@@ -48,7 +48,7 @@ export const startCheckout = createServerFn({ method: "POST" })
   .handler(async ({ context }) => {
     const planCode = process.env["PAYSTACK_PRO_PLAN_CODE"];
     if (!planCode) {
-      throw new Error("GitPush Pro billing isn't configured yet. Set PAYSTACK_PRO_PLAN_CODE.");
+      throw new Error("Glit Pro billing isn't configured yet. Set PAYSTACK_PRO_PLAN_CODE.");
     }
     const email = context.claims.email as string | undefined;
     if (!email) throw new Error("Your account has no email on file — can't start checkout.");
@@ -80,7 +80,7 @@ export const cancelSubscription = createServerFn({ method: "POST" })
     const { getSubscription } = await import("@/lib/paystack/subscriptions.server");
     const sub = await getSubscription(context.userId);
     if (!sub?.paystackSubscriptionCode || !sub.paystackEmailToken) {
-      throw new Error("No active GitPush Pro subscription to cancel.");
+      throw new Error("No active Glit Pro subscription to cancel.");
     }
     const { disableSubscription } = await import("@/lib/paystack/client.server");
     await disableSubscription({ code: sub.paystackSubscriptionCode, token: sub.paystackEmailToken });

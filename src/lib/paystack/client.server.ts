@@ -19,7 +19,7 @@ function secretKey(): string {
   const key = process.env["PAYSTACK_SECRET_KEY"];
   if (!key) {
     throw new Error(
-      "Paystack isn't configured yet. Set PAYSTACK_SECRET_KEY (and PAYSTACK_PRO_PLAN_CODE) to enable GitPush Pro billing.",
+      "Paystack isn't configured yet. Set PAYSTACK_SECRET_KEY (and PAYSTACK_PRO_PLAN_CODE) to enable Glit Pro billing.",
     );
   }
   return key;
@@ -69,7 +69,7 @@ export interface InitializeTransactionResult {
  *
  * `metadata.userId` round-trips through Paystack and comes back on every
  * webhook event for this transaction/subscription, which is how the
- * webhook handler maps a Paystack event back to a GitPush user without
+ * webhook handler maps a Paystack event back to a Glit user without
  * relying on email matching.
  *
  * Paystack's `/transaction/initialize` endpoint requires `amount` on every

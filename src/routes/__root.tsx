@@ -81,13 +81,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
-      { title: "GitPush — Push files to GitHub from the browser" },
+      { title: "Glit — Push files to GitHub from the browser" },
       {
         name: "description",
         content:
-          "GitPush is a fast, minimal cloud editor for creating, editing and committing files straight to your GitHub repositories.",
+          "Glit is a fast, minimal cloud editor for creating, editing and committing files straight to your GitHub repositories.",
       },
-      { property: "og:title", content: "GitPush — Push files to GitHub from the browser" },
+      { property: "og:title", content: "Glit — Push files to GitHub from the browser" },
       {
         property: "og:description",
         content: "Create, edit and commit files to any GitHub repo without cloning or a CLI.",
@@ -106,7 +106,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: appCss,
       },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "icon", href: "/favicon.png", type: "image/png" },
     ],
   }),
   shellComponent: RootShell,

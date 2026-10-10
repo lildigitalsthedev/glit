@@ -152,7 +152,7 @@ export function AiProvidersSection() {
         <div className="mt-3 rounded-md border border-primary/30 bg-primary/5 p-4">
           <p className="text-sm">
             <Sparkles className="mr-1.5 inline size-3.5 text-primary" />
-            Bring Your Own AI is a GitPush Pro feature — connect OpenAI, Claude, Gemini, xAI,
+            Bring Your Own AI is a Glit Pro feature — connect OpenAI, Claude, Gemini, xAI,
             OpenRouter, DeepSeek, Mistral, Together AI or any OpenAI-compatible endpoint.
           </p>
         </div>

@@ -1,6 +1,6 @@
 /**
  * Per-workspace RBAC. Deliberately separate from `@/lib/permissions`, which
- * describes the app-wide GitPush staff roles (owner/admin/developer/user of
+ * describes the app-wide Glit staff roles (owner/admin/developer/user of
  * the *product*). This file describes what a member can do *inside one
  * workspace* — the same person can be Owner of their personal workspace and
  * a Viewer in someone else's team.

@@ -579,7 +579,7 @@ export async function inviteMember(
   });
 
   // Best-effort: only notifies if the invited email already belongs to a
-  // GitPush account. Otherwise the invitation still exists — they'll see
+  // Glit account. Otherwise the invitation still exists — they'll see
   // it as a pending invite once they sign up with that email.
   const { findUserIdByEmail, notifyUser } = await import("../notifications/store.server");
   const invitedUserId = await findUserIdByEmail(normalized);

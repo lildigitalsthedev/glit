@@ -1,5 +1,5 @@
 /**
- * Single source of truth for how the GitPush Pro price is *displayed*.
+ * Single source of truth for how the Glit Pro price is *displayed*.
  *
  * The amount actually charged lives on the Paystack Plan referenced by
  * PAYSTACK_PRO_PLAN_CODE — nothing here can change what a customer pays.

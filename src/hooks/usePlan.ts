@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { getMyRole } from "@/lib/roles.functions";
 
 /**
- * The shared "is this user on GitPush Pro?" check.
+ * The shared "is this user on Glit Pro?" check.
  *
  * `plan` comes from `getMyRole`, which reads `user_roles.subscription_plan`
  * — a table with zero write grants to `authenticated`, only ever updated

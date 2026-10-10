@@ -39,7 +39,7 @@ export const Route = createFileRoute("/api/public/paystack/callback")({
           const { verifyTransaction } = await import("@/lib/paystack/client.server");
           const result = await verifyTransaction(reference);
           if (result.status === "success") {
-            return page("Payment received", "Activating your GitPush Pro plan — redirecting…", true);
+            return page("Payment received", "Activating your Glit Pro plan — redirecting…", true);
           }
           return page(
             "Payment not completed",

@@ -19,7 +19,7 @@ const db = supabaseAdmin as any;
 // Deliberately more conservative than the spec's ceiling for Admin: a
 // leaked link should never be able to manage *other* access links, delete
 // the repository outright, or touch GitHub-level collaborators. "Admin"
-// here means "full GitPush content control", not "full GitHub repo
+// here means "full Glit content control", not "full GitHub repo
 // ownership" — see repo:adminSettings below for exactly what that covers.
 const SHARE_MATRIX: Record<ShareRole, readonly ShareCapability[]> = {
   viewer: ["repo:view", "repo:browse", "repo:readFile", "repo:commits", "repo:branches"],

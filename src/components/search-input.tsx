@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 /**
- * Shared search field used by every searchable list in GitPush.
+ * Shared search field used by every searchable list in Glit.
  *
  * Adds a clear (✕) affordance that only renders while the field has text —
  * tapping it wipes the query, resets the results immediately (the parent's

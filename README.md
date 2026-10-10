@@ -1,10 +1,10 @@
-# GitFlow Swift
+# Glit
 
 # Project Name
 
 
 
-GitPush
+Glit
 
 
 

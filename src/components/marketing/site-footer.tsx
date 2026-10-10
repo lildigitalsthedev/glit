@@ -1,5 +1,5 @@
+import { BrandLogo } from "@/components/brand-logo";
 import { Link } from "@tanstack/react-router";
-import { Terminal } from "lucide-react";
 
 /**
  * Footer for public marketing pages (currently just the frontpage). Only
@@ -13,8 +13,7 @@ export function SiteFooter() {
         <div className="flex flex-col gap-8 sm:flex-row sm:justify-between">
           <div className="max-w-xs">
             <div className="flex items-center gap-2 font-mono text-sm">
-              <Terminal className="size-4 text-primary" />
-              <span className="font-semibold tracking-tight">gitpush</span>
+              <BrandLogo />
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
               Push files to GitHub straight from your browser — no clone, no CLI.
@@ -62,7 +61,7 @@ export function SiteFooter() {
         </div>
 
         <div className="mt-10 flex flex-col gap-3 border-t border-border pt-6 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-          <p>© {new Date().getFullYear()} gitpush. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} glit. All rights reserved.</p>
           <p>Built for the moments you just need one file in a repo.</p>
         </div>
       </div>

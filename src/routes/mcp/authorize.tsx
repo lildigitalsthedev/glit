@@ -27,7 +27,7 @@ function McpAuthorizePage() {
   if (loading) return <main className="mx-auto max-w-lg p-8 text-sm text-muted-foreground">Loading sign-in…</main>;
   if (!user) return (
     <main className="mx-auto max-w-lg space-y-4 p-8">
-      <h1 className="text-xl font-semibold">Sign in to GitPush</h1>
+      <h1 className="text-xl font-semibold">Sign in to Glit</h1>
       <p className="text-sm text-muted-foreground">Sign in to authorize this AI tool to access your connected GitHub repositories.</p>
       <Button asChild><a href={`/auth?returnTo=${encodeURIComponent(returnTo)}`}>Continue to sign in</a></Button>
     </main>
@@ -37,14 +37,14 @@ function McpAuthorizePage() {
   return (
     <main className="mx-auto max-w-lg space-y-5 p-8">
       <div>
-        <p className="text-xs uppercase tracking-wide text-muted-foreground">GitPush authorization</p>
+        <p className="text-xs uppercase tracking-wide text-muted-foreground">Glit authorization</p>
         <h1 className="mt-2 text-xl font-semibold">Allow {params.get("client_name") || "an AI tool"}?</h1>
       </div>
-      <p className="text-sm text-muted-foreground">This will let the connected tool browse your GitHub repositories, read files, and push commits through GitPush. You can revoke access by disconnecting the connector in Claude.</p>
+      <p className="text-sm text-muted-foreground">This will let the connected tool browse your GitHub repositories, read files, and push commits through Glit. You can revoke access by disconnecting the connector in Claude.</p>
       <p className="text-xs text-muted-foreground">Authorization returns to <code className="font-mono">{redirectHost}</code>.</p>
       {approve.error && <p role="alert" className="text-sm text-destructive">{approve.error.message}</p>}
       <Button onClick={() => approve.mutate()} disabled={approve.isPending}>
-        {approve.isPending ? "Authorizing…" : "Authorize GitPush"}
+        {approve.isPending ? "Authorizing…" : "Authorize Glit"}
       </Button>
     </main>
   );

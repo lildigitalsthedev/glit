@@ -78,7 +78,7 @@ export async function notifyUsers(userIds: string[], args: NotifyArgs): Promise<
  * Returns null (rather than throwing) when nobody with that email has
  * signed up yet — the invitation itself is still created either way, this
  * is only for the best-effort "notify them right now if they're already a
- * GitPush user" case.
+ * Glit user" case.
  */
 export async function findUserIdByEmail(email: string): Promise<string | null> {
   try {

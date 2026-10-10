@@ -39,7 +39,7 @@ export async function ghFetch<T>(
     headers: {
       Accept: "application/vnd.github+json",
       "X-GitHub-Api-Version": "2022-11-28",
-      "User-Agent": "GitPush",
+      "User-Agent": "Glit",
       Authorization: `Bearer ${token}`,
       ...(init?.body ? { "Content-Type": "application/json" } : {}),
       ...(init?.headers as Record<string, string> | undefined),
@@ -388,7 +388,7 @@ export async function downloadZipball(
     headers: {
       Accept: "application/vnd.github+json",
       "X-GitHub-Api-Version": "2022-11-28",
-      "User-Agent": "GitPush",
+      "User-Agent": "Glit",
       Authorization: `Bearer ${token}`,
     },
   });

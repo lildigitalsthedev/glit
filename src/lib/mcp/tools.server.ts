@@ -21,7 +21,7 @@ async function accountFor(userId: string, login?: string) {
     throw new Error(
       login
         ? `No connected GitHub account named "${login}".`
-        : "No GitHub account connected. Connect one in GitPush first.",
+        : "No GitHub account connected. Connect one in Glit first.",
     );
   }
   const { loadAccountTokenAdmin } = await import("../github/tokens.server");
@@ -96,7 +96,7 @@ async function readFileBase64(token: string, repoName: string, branch: string, p
 
 export const TOOLS = {
   list_accounts: {
-    description: "List the GitHub accounts connected to GitPush.",
+    description: "List the GitHub accounts connected to Glit.",
     schema: z.object({}),
     async run(userId: string) {
       const db = await admin();

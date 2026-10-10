@@ -13,10 +13,10 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/_authenticated/pricing")({
   head: () => ({
     meta: [
-      { title: "Pricing — GitPush" },
-      { name: "description", content: "Compare GitPush Free and GitPush Pro." },
-      { property: "og:title", content: "Pricing — GitPush" },
-      { property: "og:description", content: "Compare GitPush Free and GitPush Pro." },
+      { title: "Pricing — Glit" },
+      { name: "description", content: "Compare Glit Free and Glit Pro." },
+      { property: "og:title", content: "Pricing — Glit" },
+      { property: "og:description", content: "Compare Glit Free and Glit Pro." },
     ],
   }),
   component: Pricing,
@@ -109,7 +109,7 @@ function Pricing() {
       <p className="label-caps">Pricing</p>
       <h1 className="mt-1 text-2xl font-semibold tracking-tight">Simple, upfront pricing</h1>
       <p className="mt-2 max-w-lg text-sm text-muted-foreground">
-        GitPush stays a genuinely useful GitHub manager for free. Pro adds AI-assisted development
+        Glit stays a genuinely useful GitHub manager for free. Pro adds AI-assisted development
         and support for unlimited connected accounts.
       </p>
 
@@ -166,7 +166,7 @@ function Pricing() {
           <div className="flex items-center justify-between gap-2">
             <h2 className="flex items-center gap-1.5 text-sm font-semibold">
               <Sparkles className="size-3.5 text-primary" />
-              GitPush Pro
+              Glit Pro
             </h2>
             {isPro && !isLoading && (
               <Badge className="font-mono text-[10px]">Current plan</Badge>
@@ -216,7 +216,7 @@ function Pricing() {
       )}
       {!available.isLoading && !paystackReady && (
         <p className="mx-auto mt-6 max-w-lg text-center text-xs text-muted-foreground">
-          GitPush Pro billing isn't configured yet on this deployment.
+          Glit Pro billing isn't configured yet on this deployment.
         </p>
       )}
       <p className="mx-auto mt-2 max-w-lg text-center text-xs text-muted-foreground">

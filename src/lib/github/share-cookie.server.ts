@@ -1,7 +1,7 @@
 // Server-only. Tiny cookie helpers for the public (unauthenticated)
 // share-link routes in src/routes/api/public/share/*.ts. These routes are
 // raw `Request`/`Response` handlers (not `createServerFn`s, since the
-// recipient of a share link is never a signed-in GitPush user), so
+// recipient of a share link is never a signed-in Glit user), so
 // there's no framework-provided cookie jar to reach for.
 export const SHARE_SESSION_COOKIE = "gp_share_session";
 

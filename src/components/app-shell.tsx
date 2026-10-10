@@ -1,6 +1,6 @@
+import { BrandLogo } from "@/components/brand-logo";
 import { useRouterState } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
-import { Terminal } from "lucide-react";
 import { BottomDock } from "@/components/bottom-dock";
 import { NavDrawer } from "@/components/nav-drawer";
 import { NotificationBell } from "@/components/notification-bell";
@@ -37,8 +37,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               aria-expanded={drawerOpen}
               className="-ml-1 flex items-center gap-2 rounded-md px-1.5 py-1 font-mono text-sm font-semibold transition-colors duration-150 hover:bg-white/5 active:scale-95"
             >
-              <Terminal className="size-4 text-primary" />
-              gitpush
+              <BrandLogo />
             </button>
             <NotificationBell />
           </div>

@@ -5,7 +5,7 @@ import { createFileRoute } from "@tanstack/react-router";
  * self-heal in `getTemporaryPublicStatus` / `redeemAccessLink` already
  * handles the common case (someone looks at the app again), but the spec
  * explicitly requires expiry to survive the browser being closed, the
- * device going offline, or GitPush never being reopened at all — this
+ * device going offline, or Glit never being reopened at all — this
  * endpoint is what makes that true unconditionally, independent of any
  * user visiting the app.
  *

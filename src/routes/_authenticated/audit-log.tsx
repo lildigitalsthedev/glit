@@ -35,12 +35,12 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/_authenticated/audit-log")({
   head: () => ({
     meta: [
-      { title: "Audit log — GitPush" },
+      { title: "Audit log — Glit" },
       {
         name: "description",
         content: "Search, filter, and export every login, push, and settings change in this workspace.",
       },
-      { property: "og:title", content: "Audit log — GitPush" },
+      { property: "og:title", content: "Audit log — Glit" },
       {
         property: "og:description",
         content: "Search, filter, and export every login, push, and settings change in this workspace.",

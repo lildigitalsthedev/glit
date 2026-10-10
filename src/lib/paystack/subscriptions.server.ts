@@ -11,7 +11,7 @@
 // `metadata.userId` the way the initial `charge.success` does — only the
 // transaction/charge events do. So the flow is: `charge.success` (which we
 // only ever fire a checkout for with `metadata.userId` attached) links
-// `paystack_customer_code` to the GitPush user and grants Pro immediately;
+// `paystack_customer_code` to the Glit user and grants Pro immediately;
 // every later event (`subscription.create`, renewals, cancellation) is
 // looked up by `paystack_customer_code` or `paystack_subscription_code`
 // instead, since that's all those payloads give us.
@@ -91,7 +91,7 @@ async function setPlanFlag(userId: string, plan: "free" | "pro"): Promise<void> 
 /**
  * `charge.success` for a checkout that carried our `metadata.userId` —
  * i.e. the transaction `startCheckout` initialized. Links the Paystack
- * customer to the GitPush user and grants Pro right away, so the person
+ * customer to the Glit user and grants Pro right away, so the person
  * isn't stuck waiting on `subscription.create` (which typically follows
  * within seconds, but there's no reason to make them wait).
  */

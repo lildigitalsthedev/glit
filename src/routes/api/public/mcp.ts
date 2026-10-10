@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 
 /**
- * GitPush MCP server (Streamable HTTP, stateless JSON responses).
+ * Glit MCP server (Streamable HTTP, stateless JSON responses).
  * Authenticated by a personal access key: `Authorization: Bearer gp_...`.
  */
 const CORS = {
@@ -90,7 +90,7 @@ async function handle(msg: RpcMsg, userId: string) {
         capabilities: { tools: {} },
         serverInfo: { name: "gitpush", version: "1.0.0" },
         instructions:
-          "Use GitPush to browse the user's GitHub repositories and push code. Prefer push_files for multi-file changes (one commit).",
+          "Use Glit to browse the user's GitHub repositories and push code. Prefer push_files for multi-file changes (one commit).",
       });
     case "ping":
       return ok({});
@@ -147,7 +147,7 @@ export const Route = createFileRoute("/api/public/mcp")({
           : null;
         if (!userId) {
           const metadata = `${origin}/api/public/oauth/resource`;
-          return json({ jsonrpc: "2.0", id: null, error: { code: -32001, message: "Authentication required. Connect through GitPush OAuth." } }, 401, {
+          return json({ jsonrpc: "2.0", id: null, error: { code: -32001, message: "Authentication required. Connect through Glit OAuth." } }, 401, {
             "WWW-Authenticate": `Bearer resource_metadata="${metadata}", scope="mcp"`,
           });
         }

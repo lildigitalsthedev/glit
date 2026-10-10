@@ -16,7 +16,7 @@ export interface WorkspaceRepoRef {
   fullName: string;
   /** The GitHub connection whose token should be used to fetch this repo's live metadata — the most recently touched repo_prefs row's account. */
   accountId: string;
-  /** Workspace members who've opened/pushed this repo through GitPush — not raw GitHub commit history. */
+  /** Workspace members who've opened/pushed this repo through Glit — not raw GitHub commit history. */
   contributors: WorkspaceMemberRef[];
   addedBy: WorkspaceMemberRef | null;
   isFavoriteForCaller: boolean;

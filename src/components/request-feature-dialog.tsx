@@ -62,19 +62,19 @@ export function RequestFeatureDialog({ trigger }: { trigger?: React.ReactNode })
             Request a feature
           </DialogTitle>
           <DialogDescription>
-            Tell us what you&apos;d like GitPush to do. If we build it, you get 1 year of free
+            Tell us what you&apos;d like Glit to do. If we build it, you get 1 year of free
             access to it — even if it ships as a Pro feature.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="feature-username">GitPush username</Label>
+            <Label htmlFor="feature-username">Glit username</Label>
             <Input
               id="feature-username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="How you're known on GitPush"
+              placeholder="How you're known on Glit"
               autoComplete="off"
             />
           </div>
@@ -100,7 +100,7 @@ export function RequestFeatureDialog({ trigger }: { trigger?: React.ReactNode })
               id="feature-desc"
               value={feature}
               onChange={(e) => setFeature(e.target.value)}
-              placeholder="What should GitPush do that it doesn't today?"
+              placeholder="What should Glit do that it doesn't today?"
               className="min-h-28"
               maxLength={2000}
             />
@@ -117,7 +117,7 @@ export function RequestFeatureDialog({ trigger }: { trigger?: React.ReactNode })
 
           <p className="flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground">
             <Sparkles className="size-3 shrink-0 text-primary" />
-            Premium features you request get 1 year of GitPush Pro access, free, if we ship them.
+            Premium features you request get 1 year of Glit Pro access, free, if we ship them.
           </p>
         </div>
       </DialogContent>

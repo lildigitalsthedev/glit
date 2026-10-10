@@ -193,7 +193,7 @@ export function TeamAiProvidersSection() {
         <div className="mt-3 rounded-md border border-primary/30 bg-primary/5 p-4">
           <p className="text-sm">
             <Sparkles className="mr-1.5 inline size-3.5 text-primary" />
-            Shared team AI keys are a GitPush Pro feature — add one key per provider once, and
+            Shared team AI keys are a Glit Pro feature — add one key per provider once, and
             every Developer in the workspace can use it.
           </p>
         </div>

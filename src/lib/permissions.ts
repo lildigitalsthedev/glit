@@ -1,5 +1,5 @@
 /**
- * Single source of truth for GitPush's role hierarchy.
+ * Single source of truth for Glit's role hierarchy.
  *
  * Owner
  * ├── Admin

@@ -9,7 +9,7 @@ export interface MemberStatus {
 }
 
 /**
- * GitPush has no realtime presence socket, so "status" is derived from
+ * Glit has no realtime presence socket, so "status" is derived from
  * `workspace_members.last_active_at` — refreshed server-side whenever a
  * member switches into this workspace (`setActiveWorkspace`). That's a
  * good enough signal for "is this person around" without pretending to

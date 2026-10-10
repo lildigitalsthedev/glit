@@ -69,12 +69,12 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/_authenticated/app")({
   head: () => ({
     meta: [
-      { title: "Repositories — GitPush" },
-      { name: "description", content: "Browse your connected GitHub repositories in GitPush." },
-      { property: "og:title", content: "Repositories — GitPush" },
+      { title: "Repositories — Glit" },
+      { name: "description", content: "Browse your connected GitHub repositories in Glit." },
+      { property: "og:title", content: "Repositories — Glit" },
       {
         property: "og:description",
-        content: "Browse your connected GitHub repositories in GitPush.",
+        content: "Browse your connected GitHub repositories in Glit.",
       },
     ],
   }),
@@ -97,7 +97,7 @@ function initials(name: string) {
   return name.slice(0, 2).toUpperCase();
 }
 
-/** Small avatar stack for "who's touched this repo through GitPush" — capped at 4 with a "+N" overflow chip. */
+/** Small avatar stack for "who's touched this repo through Glit" — capped at 4 with a "+N" overflow chip. */
 function ContributorStack({ contributors }: { contributors: RepoCard["contributors"] }) {
   if (!contributors || contributors.length === 0) return null;
   const shown = contributors.slice(0, 4);
@@ -721,7 +721,7 @@ function Dashboard() {
           <p className="text-xs text-muted-foreground">
             <Users className="mr-1 inline size-3" />
             Every repository anyone in <span className="text-foreground">{activeWorkspace?.name}</span> has opened
-            in GitPush, across everyone's connected GitHub accounts.
+            in Glit, across everyone's connected GitHub accounts.
           </p>
         ) : (
           <AccountStrip
