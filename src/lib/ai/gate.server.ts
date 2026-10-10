@@ -23,5 +23,5 @@ export async function assertPro(userId: string): Promise<void> {
   if (isOwner(row?.role)) return;
   if (row?.subscription_plan === "pro") return;
 
-  throw new Error("AI tools are a GitPush Pro feature. Upgrade to use them.");
+  throw new Error("AI tools are a Glit Pro feature. Upgrade to use them.");
 }

@@ -9,10 +9,10 @@ import { EmptyState } from "@/components/empty-state";
 export const Route = createFileRoute("/_authenticated/activity")({
   head: () => ({
     meta: [
-      { title: "Activity — GitPush" },
-      { name: "description", content: "Every file you pushed to GitHub through GitPush." },
-      { property: "og:title", content: "Activity — GitPush" },
-      { property: "og:description", content: "Every file you pushed to GitHub through GitPush." },
+      { title: "Activity — Glit" },
+      { name: "description", content: "Every file you pushed to GitHub through Glit." },
+      { property: "og:title", content: "Activity — Glit" },
+      { property: "og:description", content: "Every file you pushed to GitHub through Glit." },
     ],
   }),
   component: Activity,
@@ -87,7 +87,7 @@ function Activity() {
           className="mt-6"
           icon={History}
           title="No pushes yet."
-          description="Commits you push through GitPush will show up here."
+          description="Commits you push through Glit will show up here."
         />
       )}
     </main>

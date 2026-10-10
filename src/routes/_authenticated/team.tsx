@@ -95,15 +95,15 @@ import { GITIGNORE_TEMPLATES, LICENSE_TEMPLATES } from "@/lib/github-templates";
 export const Route = createFileRoute("/_authenticated/team")({
   head: () => ({
     meta: [
-      { title: "Team & workspaces — GitPush" },
+      { title: "Team & workspaces — Glit" },
       {
         name: "description",
-        content: "Manage your GitPush workspaces, invite teammates and set per-workspace roles.",
+        content: "Manage your Glit workspaces, invite teammates and set per-workspace roles.",
       },
-      { property: "og:title", content: "Team & workspaces — GitPush" },
+      { property: "og:title", content: "Team & workspaces — Glit" },
       {
         property: "og:description",
-        content: "Manage your GitPush workspaces, invite teammates and set per-workspace roles.",
+        content: "Manage your Glit workspaces, invite teammates and set per-workspace roles.",
       },
     ],
   }),
@@ -1134,7 +1134,7 @@ function SettingsTab({ workspaceId }: { workspaceId: string }) {
             className="font-mono text-xs"
           />
           <p className="text-[11px] text-muted-foreground">
-            Repositories created from GitPush in this workspace get renamed to this branch after
+            Repositories created from Glit in this workspace get renamed to this branch after
             their first commit.
           </p>
         </div>

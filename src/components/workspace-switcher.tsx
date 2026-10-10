@@ -143,7 +143,7 @@ export function CreateWorkspaceDialog({
           <DialogDescription>
             {isPro
               ? "Team workspaces let you share repositories, activity and AI settings with others."
-              : "Team workspaces are a GitPush Pro feature. Upgrade to create one."}
+              : "Team workspaces are a Glit Pro feature. Upgrade to create one."}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">

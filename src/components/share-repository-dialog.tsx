@@ -377,7 +377,7 @@ function AccessLinkTab({ accountId, fullName }: { accountId: string; fullName: s
     <div className="space-y-4 py-2">
       <p className="text-xs text-muted-foreground">
         Keep the repository private and generate a controlled access link instead. The link
-        resolves through GitPush — GitHub visibility never changes.
+        resolves through Glit — GitHub visibility never changes.
       </p>
 
       <div className="grid grid-cols-2 gap-3">

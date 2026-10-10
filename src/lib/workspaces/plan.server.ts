@@ -1,5 +1,5 @@
 /**
- * Team workspaces are a GitPush Pro feature. Personal workspaces are always
+ * Team workspaces are a Glit Pro feature. Personal workspaces are always
  * available, so this only guards *creating* a team.
  *
  * Reads `user_roles.subscription_plan` for the same reason `gate.server.ts`
@@ -18,5 +18,5 @@ export async function assertTeamsPlan(userId: string): Promise<void> {
   const row = data as { role?: string; subscription_plan?: string } | null;
   if (isOwner(row?.role)) return;
   if (row?.subscription_plan === "pro") return;
-  throw new Error("Team workspaces are a GitPush Pro feature. Upgrade to create one.");
+  throw new Error("Team workspaces are a Glit Pro feature. Upgrade to create one.");
 }

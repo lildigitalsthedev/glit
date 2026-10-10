@@ -16,7 +16,7 @@ import {
 import { createMcpKey, deleteMcpKey, listMcpKeys } from "@/lib/mcp.functions";
 import { usePlan } from "@/hooks/usePlan";
 
-/** Lets users connect Claude and other AI tools to GitPush with a personal access key. */
+/** Lets users connect Claude and other AI tools to Glit with a personal access key. */
 export function McpAccessSection() {
   const qc = useQueryClient();
   const { isPro } = usePlan();
@@ -62,7 +62,7 @@ export function McpAccessSection() {
             Connect AI tools
           </h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            Connect an MCP-compatible AI tool to browse repositories, pull files, and push changes through GitPush.
+            Connect an MCP-compatible AI tool to browse repositories, pull files, and push changes through Glit.
           </p>
         </div>
         {isPro && (
@@ -76,7 +76,7 @@ export function McpAccessSection() {
       {!isPro ? (
         <div className="mt-3 rounded-md border border-primary/30 bg-primary/5 p-4 text-sm">
           <Sparkles className="mr-1.5 inline size-3.5 text-primary" />
-          Connecting AI tools is a GitPush Pro feature.
+          Connecting AI tools is a Glit Pro feature.
         </div>
       ) : (
         <>
@@ -91,13 +91,13 @@ export function McpAccessSection() {
             <div className="mt-3 space-y-1 text-xs text-muted-foreground">
               <p>Create a key below, then add this URL as a remote MCP server.</p>
               <p>
-                For Claude web/Desktop, choose <strong>Sign in now</strong> and <strong>Register automatically</strong> in the OAuth setup. Sign in to GitPush and approve access when prompted.
+                For Claude web/Desktop, choose <strong>Sign in now</strong> and <strong>Register automatically</strong> in the OAuth setup. Sign in to Glit and approve access when prompted.
               </p>
               <p>
                 Claude Code and clients that use custom headers can instead send{" "}
                 <code className="font-mono">Authorization: Bearer YOUR_GITPUSH_KEY</code>.
               </p>
-              <p>Once connected, ask the tool to list repositories, read or pull files, and commit changes with GitPush.</p>
+              <p>Once connected, ask the tool to list repositories, read or pull files, and commit changes with Glit.</p>
             </div>
           </div>
 

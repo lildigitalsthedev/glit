@@ -1,6 +1,6 @@
 // Server-only. Repo-wide content search — the gap the existing command
 // palette doesn't cover: the palette matches file *paths* against a query
-// (see `fileItems` in workspace.tsx), but nothing in GitPush lets you find
+// (see `fileItems` in workspace.tsx), but nothing in Glit lets you find
 // which files actually *contain* a string. This is the equivalent of an
 // editor's "Find in Files" / VS Code's Ctrl+Shift+F, scoped to whichever
 // branch is currently checked out.

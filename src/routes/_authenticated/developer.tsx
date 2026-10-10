@@ -41,7 +41,7 @@ import { EmptyState } from "@/components/empty-state";
 export const Route = createFileRoute("/_authenticated/developer")({
   head: () => ({
     meta: [
-      { title: "Developer Dashboard — GitPush" },
+      { title: "Developer Dashboard — Glit" },
       { name: "description", content: "Feature flags, diagnostics, and debugging tools." },
     ],
   }),
@@ -412,7 +412,7 @@ function SystemLogsSection() {
           System Logs
         </CardTitle>
         <CardDescription>
-          GitPush doesn't have a centralized log store wired up yet — this is live process
+          Glit doesn't have a centralized log store wired up yet — this is live process
           state instead, refreshed on load.
         </CardDescription>
       </CardHeader>
@@ -441,7 +441,7 @@ function BackgroundJobsSection() {
           Background Jobs
         </CardTitle>
         <CardDescription>
-          GitPush doesn't currently run a background job queue or scheduler — every request
+          Glit doesn't currently run a background job queue or scheduler — every request
           (push, sync, refresh) happens inline in the request that triggers it. This section is
           here for when that changes.
         </CardDescription>
@@ -465,7 +465,7 @@ function VersionInfoSection() {
       <CardContent className="space-y-1 font-mono text-[11px] text-muted-foreground">
         {info.data && (
           <>
-            <p>app: GitPush</p>
+            <p>app: Glit</p>
             <p>node: {info.data.nodeVersion}</p>
             <p>commit: {info.data.commitSha ?? "not set in this environment"}</p>
             <p>environment: {info.data.environment}</p>

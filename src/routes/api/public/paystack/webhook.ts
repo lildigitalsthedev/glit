@@ -29,7 +29,7 @@ function planCodeOf(plan: string | PaystackPlanRef | null | undefined): string |
 
 /**
  * Paystack webhook. This is the ONLY place in the app that can grant
- * GitPush Pro — see `src/lib/paystack/subscriptions.server.ts`. Everything
+ * Glit Pro — see `src/lib/paystack/subscriptions.server.ts`. Everything
  * here runs after the HMAC-SHA512 signature check, so nothing downstream
  * trusts anything from the client.
  *

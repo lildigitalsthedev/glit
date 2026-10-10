@@ -56,7 +56,7 @@ export function ProUpgradeDialog({
           <Button asChild className="w-full" onClick={() => onOpenChange(false)}>
             <Link to="/pricing">
               <Sparkles className="size-4" />
-              Upgrade to GitPush Pro — {proPrice}/mo
+              Upgrade to Glit Pro — {proPrice}/mo
               {proPriceLocal ? ` (${proPriceLocal})` : ""}
             </Link>
           </Button>

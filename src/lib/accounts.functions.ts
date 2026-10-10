@@ -119,7 +119,7 @@ export const startGithubOAuth = createServerFn({ method: "POST" })
   });
 
 /**
- * Permanently deletes the CALLING USER'S OWN GitPush account (auth user +
+ * Permanently deletes the CALLING USER'S OWN Glit account (auth user +
  * every row that references it). Not to be confused with `deleteAccount`
  * above, which only disconnects one linked GitHub account.
  *

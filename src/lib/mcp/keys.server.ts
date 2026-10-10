@@ -2,7 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 
 /**
  * Personal access keys for connecting external AI tools (Claude, Cursor,
- * ChatGPT…) to GitPush over MCP. Only a SHA-256 hash is stored; the
+ * ChatGPT…) to Glit over MCP. Only a SHA-256 hash is stored; the
  * plaintext key is shown to the user exactly once at creation.
  */
 async function admin() {

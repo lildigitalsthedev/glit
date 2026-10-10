@@ -134,9 +134,9 @@ export const Route = createFileRoute("/_authenticated/settings")({
   },
   head: () => ({
     meta: [
-      { title: "Settings — GitPush" },
+      { title: "Settings — Glit" },
       { name: "description", content: "Manage your account, connections and app settings." },
-      { property: "og:title", content: "Settings — GitPush" },
+      { property: "og:title", content: "Settings — Glit" },
       { property: "og:description", content: "Manage your account, connections and app settings." },
     ],
   }),
@@ -297,9 +297,9 @@ function DeleteAccountDialog({ email }: { email: string | null | undefined }) {
         <DialogHeader>
           <DialogTitle>Delete your account?</DialogTitle>
           <DialogDescription>
-            This permanently deletes your GitPush account — connected GitHub accounts, AI provider
+            This permanently deletes your Glit account — connected GitHub accounts, AI provider
             keys, drafts, and every preference. GitHub itself is untouched; this only removes
-            GitPush's access and data. This can't be undone.
+            Glit's access and data. This can't be undone.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-1.5">
@@ -473,7 +473,7 @@ function Settings() {
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium">{isPro ? "GitPush Pro" : "Free plan"}</p>
+                    <p className="text-sm font-medium">{isPro ? "Glit Pro" : "Free plan"}</p>
                     <Badge variant={isPro ? "default" : "secondary"} className="font-mono text-[10px]">
                       {plan}
                     </Badge>
@@ -527,7 +527,7 @@ function Settings() {
           <section className="flex items-center justify-between gap-3 rounded-md border border-border bg-card p-4">
             <div>
               <p className="text-sm font-medium">Log out</p>
-              <p className="text-xs text-muted-foreground">Sign out of GitPush on this device.</p>
+              <p className="text-xs text-muted-foreground">Sign out of Glit on this device.</p>
             </div>
             <Button
               variant="outline"
@@ -548,7 +548,7 @@ function Settings() {
               <div>
                 <p className="text-sm font-medium">Delete account</p>
                 <p className="text-xs text-muted-foreground">
-                  Permanently erase your GitPush account and all its data.
+                  Permanently erase your Glit account and all its data.
                 </p>
               </div>
               <DeleteAccountDialog email={user?.email} />
@@ -565,7 +565,7 @@ function Settings() {
                     </div>
                     <div>
                       <p className="text-sm font-medium">Owner Dashboard</p>
-                      <p className="text-xs text-muted-foreground">Manage user roles across GitPush.</p>
+                      <p className="text-xs text-muted-foreground">Manage user roles across Glit.</p>
                     </div>
                   </div>
                   <Button asChild variant="outline" size="sm">

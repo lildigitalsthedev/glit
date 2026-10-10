@@ -1,3 +1,4 @@
+import { BrandLogo } from "@/components/brand-logo";
 import { Link } from "@tanstack/react-router";
 import { LayoutGrid, Code2, History, Settings, Sparkles, Crown, Wrench, Users, ShieldCheck } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -19,7 +20,7 @@ const ACCOUNT = [
 ] as const;
 
 /**
- * Left navigation drawer, opened by tapping the GitPush logo in the header.
+ * Left navigation drawer, opened by tapping the Glit logo in the header.
  * Holds the full navigation map — including the secondary destinations that
  * used to need their own header real estate — so the header itself can stay
  * a single slim row.
@@ -75,7 +76,7 @@ export function NavDrawer({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="left" className="w-72 p-4">
         <SheetHeader className="space-y-0 text-left">
-          <SheetTitle className="font-mono text-sm">gitpush</SheetTitle>
+          <SheetTitle className="font-mono text-sm"><BrandLogo /></SheetTitle>
         </SheetHeader>
         <div className="mt-4">
           <WorkspaceSwitcher onNavigate={() => onOpenChange(false)} />

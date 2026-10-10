@@ -82,7 +82,7 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/_authenticated/prompts")({
   head: () => ({
     meta: [
-      { title: "Prompt Library — GitPush" },
+      { title: "Prompt Library — Glit" },
       { name: "description", content: "Shared, reusable AI prompts for your workspace." },
     ],
   }),
@@ -579,7 +579,7 @@ function PromptLibraryPage() {
 
   function handleExport() {
     const payload = {
-      workspace: activeWorkspace?.name ?? "GitPush",
+      workspace: activeWorkspace?.name ?? "Glit",
       exportedAt: new Date().toISOString(),
       prompts: (prompts.data ?? []).map((p) => ({ title: p.title, category: p.category, body: p.body })),
     };
@@ -587,7 +587,7 @@ function PromptLibraryPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `gitpush-prompts-${(activeWorkspace?.name ?? "workspace").toLowerCase().replace(/\s+/g, "-")}.json`;
+    link.download = `glit-prompts-${(activeWorkspace?.name ?? "workspace").toLowerCase().replace(/\s+/g, "-")}.json`;
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -603,7 +603,7 @@ function PromptLibraryPage() {
         if (!list) throw new Error("not an array");
         importMutation.mutate(list);
       } catch {
-        toast.error("That file doesn't look like a GitPush prompt export.");
+        toast.error("That file doesn't look like a Glit prompt export.");
       }
     };
     reader.onerror = () => toast.error("Couldn't read that file.");

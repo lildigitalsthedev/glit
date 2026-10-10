@@ -23,7 +23,7 @@ export async function loadAccountToken(
 
 /**
  * Same as `loadAccountToken`, but via the service-role client instead of a
- * request-scoped RLS client. Used only where there is no signed-in GitPush
+ * request-scoped RLS client. Used only where there is no signed-in Glit
  * user to scope RLS to — redeemed access-link sessions (Feature: Expiring
  * Access Links) and the background sweep that reverts temporary-public
  * repos. Both callers must independently verify the caller is authorized

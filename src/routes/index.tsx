@@ -1,3 +1,4 @@
+import { BrandLogo } from "@/components/brand-logo";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import {
@@ -12,7 +13,6 @@ import {
   Search,
   ShieldCheck,
   Sparkles,
-  Terminal,
   UploadCloud,
   Users,
   Zap,
@@ -81,7 +81,7 @@ const FAQS = [
   {
     question: "Do I need to install anything?",
     answer:
-      "No. gitpush runs entirely in the browser. There's no CLI to install and no need to clone a repo locally — connect GitHub, open a repo, and start editing.",
+      "No. glit runs entirely in the browser. There's no CLI to install and no need to clone a repo locally — connect GitHub, open a repo, and start editing.",
   },
   {
     question: "What's included on the Free plan?",
@@ -123,8 +123,7 @@ function Index() {
       <main className="mx-auto max-w-5xl overflow-x-hidden px-4 py-16 sm:py-24">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-2 font-mono text-sm">
-          <Terminal className="size-4 text-primary" />
-          <span className="font-semibold tracking-tight">gitpush</span>
+          <BrandLogo />
         </div>
         <nav className="flex items-center gap-4 text-sm text-muted-foreground">
           <a href="#features" className="hidden transition-colors hover:text-foreground sm:inline">
@@ -180,7 +179,7 @@ function Index() {
         <div className="min-w-0 animate-in fade-in slide-in-from-bottom-2 duration-500">
           <ProductPreview />
           <p className="mt-3 text-center text-xs text-muted-foreground">
-            The actual GitPush editor — file tree, diff, and commit, live.
+            The actual Glit editor — file tree, diff, and commit, live.
           </p>
         </div>
       </div>
@@ -287,7 +286,7 @@ function Index() {
           <span className="text-code-comment"># the old way</span>
           {"\n"}git clone git@github.com:you/repo.git && cd repo{"\n"}vim README.md && git add . &&
           git commit -m "fix" && git push{"\n\n"}
-          <span className="text-code-comment"># with gitpush</span>
+          <span className="text-code-comment"># with glit</span>
           {"\n"}
           <span className="text-primary">open</span> repo → edit →{" "}
           <span className="text-code-string">commit</span>

@@ -15,7 +15,7 @@ export const submitFeatureRequest = createServerFn({ method: "POST" })
     const email = data.email.trim();
     const feature = data.feature.trim();
 
-    if (!gitpushUsername) throw new Error("Enter your GitPush username.");
+    if (!gitpushUsername) throw new Error("Enter your Glit username.");
     if (!email) throw new Error("Enter an email address.");
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("Enter a valid email address.");
     if (!feature) throw new Error("Describe the feature you'd like to see.");

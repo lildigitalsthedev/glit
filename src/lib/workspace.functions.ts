@@ -102,7 +102,7 @@ export const updatePreferences = createServerFn({ method: "POST" })
 // directly from a client-callable server function. That column granted
 // `authenticated` full RLS access to their own row, so it could be set to
 // "pro" by calling Supabase directly, bypassing this function entirely.
-// GitPush Pro is now tracked in `user_roles.subscription_plan`, which has
+// Glit Pro is now tracked in `user_roles.subscription_plan`, which has
 // zero client write grants, and is only ever set by the Paystack webhook
 // handler. See `src/lib/billing.functions.ts` (`startCheckout`,
 // `cancelSubscription`) and `src/lib/paystack/subscriptions.server.ts`.

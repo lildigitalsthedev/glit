@@ -69,7 +69,7 @@ export const Route = createFileRoute("/api/public/github/callback")({
 
         try {
           const account = await saveOAuthConnection(stored.userId, tokenBody.access_token);
-          return page("Connected", `@${account.login} is now linked to GitPush.`, true);
+          return page("Connected", `@${account.login} is now linked to Glit.`, true);
         } catch (error) {
           return page(
             "Could not save connection",

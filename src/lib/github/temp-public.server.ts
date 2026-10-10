@@ -7,7 +7,7 @@
 // is written *before* the GitHub call, and every status read re-checks
 // whether `expires_at` has passed and self-heals if the sweep hasn't
 // caught up yet. That's what makes "browser closed / device offline /
-// logged out / GitPush restarted" all fine — the next thing that looks at
+// logged out / Glit restarted" all fine — the next thing that looks at
 // this repo (a poll from another tab, the cron sweep, the owner reopening
 // the app) finishes the revert.
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
