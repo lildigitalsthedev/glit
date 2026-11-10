@@ -424,6 +424,18 @@ export function getPullRequest(token: string, fullName: string, number: number) 
   return ghFetch<GhPullRequest>(token, `/repos/${fullName}/pulls/${number}`);
 }
 
+export function listPullRequestFiles(token: string, fullName: string, number: number) {
+  return ghFetch<{
+    filename: string;
+    status: string;
+    additions: number;
+    deletions: number;
+    changes: number;
+    patch?: string;
+    blob_url: string;
+  }[]>(token, `/repos/${fullName}/pulls/${number}/files?per_page=100`);
+}
+
 export function mergePullRequest(
   token: string,
   fullName: string,

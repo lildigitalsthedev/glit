@@ -94,6 +94,73 @@ async function readFileBase64(token: string, repoName: string, branch: string, p
   return { content: (b64 ?? "").replace(/\s+/g, ""), size: meta.size };
 }
 
+function checkedRepoName(value: string) {
+  if (!/^[\w.-]+\/[\w.-]+$/.test(value)) {
+    throw new Error('Repository must use the "owner/repository" format.');
+  }
+  return value;
+}
+
+function checkedPath(value: string) {
+  const normalized = value.replaceAll("\\", "/").replace(/^\/+|\/+$/g, "");
+  if (!normalized || normalized.split("/").some((part) => !part || part === "." || part === "..")) {
+    throw new Error("File paths must be repository-relative and cannot contain '.' or '..' segments.");
+  }
+  return normalized;
+}
+
+async function commitFileChanges(
+  token: string,
+  fullName: string,
+  branch: string,
+  message: string,
+  updates: { path: string; content: string }[],
+  deletions: string[],
+) {
+  checkedRepoName(fullName);
+  const paths = [...updates.map((file) => checkedPath(file.path)), ...deletions.map(checkedPath)];
+  if (new Set(paths).size !== paths.length) throw new Error("A path can only be changed once per commit.");
+  if (updates.length + deletions.length > 100) throw new Error("A single change can contain at most 100 files.");
+
+  const { getRef, listTree, createBlob, createTree, createCommit, updateRef } =
+    await import("../github/api.server");
+  const ref = await getRef(token, fullName, branch);
+  const current = await listTree(token, fullName, branch);
+  const existingFiles = new Set(current.tree.filter((entry) => entry.type === "blob").map((entry) => entry.path));
+  for (const path of deletions) {
+    if (!existingFiles.has(path)) throw new Error(`Cannot delete "${path}": it does not exist on ${branch}.`);
+  }
+  for (const file of updates) {
+    if (!existingFiles.has(file.path) && current.tree.some((entry) => entry.path === file.path && entry.type === "tree")) {
+      throw new Error(`Cannot write "${file.path}": that path is a directory.`);
+    }
+  }
+
+  const blobs: { path: string; sha: string }[] = [];
+  for (let i = 0; i < updates.length; i += 6) {
+    const created = await Promise.all(
+      updates.slice(i, i + 6).map((file) =>
+        createBlob(token, fullName, { content: file.content, encoding: "base64" }),
+      ),
+    );
+    created.forEach((blob, offset) => blobs.push({ path: updates[i + offset]?.path ?? "", sha: blob.sha }));
+  }
+  const tree = await createTree(token, fullName, {
+    base_tree: ref.object.sha,
+    tree: [
+      ...blobs.map((blob) => ({ path: blob.path, mode: "100644" as const, type: "blob" as const, sha: blob.sha })),
+      ...deletions.map((path) => ({ path, mode: "100644" as const, type: "blob" as const, sha: null })),
+    ],
+  });
+  const commit = await createCommit(token, fullName, {
+    message,
+    tree: tree.sha,
+    parents: [ref.object.sha],
+  });
+  await updateRef(token, fullName, branch, { sha: commit.sha });
+  return { sha: commit.sha, url: commit.html_url, branch, updated: updates.map((file) => file.path), deleted: deletions };
+}
+
 export const TOOLS = {
   list_accounts: {
     description: "List the GitHub accounts connected to Glit.",
