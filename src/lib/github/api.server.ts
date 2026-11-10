@@ -158,6 +158,7 @@ export interface GhTreeEntry {
   path: string;
   type: "blob" | "tree" | "commit";
   sha: string;
+  mode?: string;
   size?: number;
 }
 
@@ -256,10 +257,184 @@ export interface GhCommit {
   commit: { message: string; author: { name: string; date: string } };
 }
 
-export function listCommits(token: string, fullName: string, branch: string, path?: string) {
-  const q = new URLSearchParams({ sha: branch, per_page: "10" });
+export function listCommits(
+  token: string,
+  fullName: string,
+  branch: string,
+  path?: string,
+  perPage = 10,
+  page = 1,
+) {
+  const q = new URLSearchParams({ sha: branch, per_page: String(perPage), page: String(page) });
   if (path) q.set("path", path);
   return ghFetch<GhCommit[]>(token, `/repos/${fullName}/commits?${q.toString()}`);
+}
+
+export interface GhCommitWithFiles extends GhCommit {
+  files?: {
+    filename: string;
+    status: string;
+    additions: number;
+    deletions: number;
+    changes: number;
+    patch?: string;
+  }[];
+}
+
+export function getCommitWithFiles(token: string, fullName: string, sha: string) {
+  return ghFetch<GhCommitWithFiles>(token, `/repos/${fullName}/commits/${encodeURIComponent(sha)}`);
+}
+
+export interface GhCodeSearchResult {
+  total_count: number;
+  incomplete_results: boolean;
+  items: {
+    name: string;
+    path: string;
+    html_url: string;
+    text_matches?: { fragment: string }[];
+  }[];
+}
+
+export function searchCode(
+  token: string,
+  fullName: string,
+  query: string,
+  page = 1,
+  perPage = 50,
+) {
+  const q = new URLSearchParams({ q: `${query} repo:${fullName}`, page: String(page), per_page: String(perPage) });
+  return ghFetch<GhCodeSearchResult>(token, `/search/code?${q.toString()}`, {
+    headers: { Accept: "application/vnd.github.text-match+json" },
+  });
+}
+
+export interface GhWorkflow {
+  id: number;
+  name: string;
+  path: string;
+  state: string;
+  html_url: string;
+}
+
+export function listWorkflows(token: string, fullName: string) {
+  return ghFetch<{ total_count: number; workflows: GhWorkflow[] }>(
+    token,
+    `/repos/${fullName}/actions/workflows?per_page=100`,
+  );
+}
+
+export function dispatchWorkflow(
+  token: string,
+  fullName: string,
+  workflow: string | number,
+  ref: string,
+  inputs: Record<string, string>,
+) {
+  return ghFetch<null>(token, `/repos/${fullName}/actions/workflows/${encodeURIComponent(String(workflow))}/dispatches`, {
+    method: "POST",
+    body: JSON.stringify({ ref, inputs }),
+  });
+}
+
+export interface GhWorkflowRun {
+  id: number;
+  name: string;
+  event: string;
+  status: string;
+  conclusion: string | null;
+  html_url: string;
+  head_sha: string;
+  head_branch: string;
+  run_number: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export function listWorkflowRuns(token: string, fullName: string, branch: string | undefined, perPage = 10) {
+  const q = new URLSearchParams({ per_page: String(perPage) });
+  if (branch) q.set("branch", branch);
+  return ghFetch<{ total_count: number; workflow_runs: GhWorkflowRun[] }>(
+    token,
+    `/repos/${fullName}/actions/runs?${q.toString()}`,
+  );
+}
+
+export interface GhCheckRun {
+  id: number;
+  name: string;
+  status: string;
+  conclusion: string | null;
+  html_url: string;
+  started_at: string | null;
+  completed_at: string | null;
+  output?: { title?: string | null; summary?: string | null };
+}
+
+export function listCheckRuns(token: string, fullName: string, ref: string) {
+  return ghFetch<{ total_count: number; check_runs: GhCheckRun[] }>(
+    token,
+    `/repos/${fullName}/commits/${encodeURIComponent(ref)}/check-runs?per_page=100`,
+  );
+}
+
+export interface GhCombinedStatus {
+  state: "error" | "failure" | "pending" | "success";
+  total_count: number;
+  statuses: { context: string; state: string; description: string | null; target_url: string | null }[];
+}
+
+export function getCombinedStatus(token: string, fullName: string, ref: string) {
+  return ghFetch<GhCombinedStatus>(
+    token,
+    `/repos/${fullName}/commits/${encodeURIComponent(ref)}/status`,
+  );
+}
+
+export interface GhPullRequest {
+  number: number;
+  title: string;
+  body: string | null;
+  state: string;
+  draft: boolean;
+  merged: boolean;
+  mergeable: boolean | null;
+  html_url: string;
+  head: { ref: string; sha: string; repo: { full_name: string } | null };
+  base: { ref: string; sha: string; repo: { full_name: string } };
+}
+
+export function listPullRequests(token: string, fullName: string, state: "open" | "closed" | "all", perPage: number) {
+  const q = new URLSearchParams({ state, per_page: String(perPage), sort: "updated", direction: "desc" });
+  return ghFetch<GhPullRequest[]>(token, `/repos/${fullName}/pulls?${q.toString()}`);
+}
+
+export function createPullRequest(
+  token: string,
+  fullName: string,
+  args: { title: string; head: string; base: string; body?: string; draft: boolean },
+) {
+  return ghFetch<GhPullRequest>(token, `/repos/${fullName}/pulls`, {
+    method: "POST",
+    body: JSON.stringify(args),
+  });
+}
+
+export function getPullRequest(token: string, fullName: string, number: number) {
+  return ghFetch<GhPullRequest>(token, `/repos/${fullName}/pulls/${number}`);
+}
+
+export function mergePullRequest(
+  token: string,
+  fullName: string,
+  number: number,
+  method: "merge" | "squash" | "rebase",
+) {
+  return ghFetch<{ sha: string; merged: boolean; message: string }>(
+    token,
+    `/repos/${fullName}/pulls/${number}/merge`,
+    { method: "PUT", body: JSON.stringify({ merge_method: method }) },
+  );
 }
 
 export interface GhRef {
