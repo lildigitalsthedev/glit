@@ -13,12 +13,19 @@ export interface NotificationRecord {
   workspaceId: string | null;
   repoFullName: string | null;
   actorId: string | null;
-  metadata: Json;
+  /** Always a plain object (never an array/primitive) so callers can index it by key. */
+  metadata: Record<string, Json | undefined>;
   readAt: string | null;
   createdAt: string;
 }
 
 const PAGE_SIZE = 30;
+
+/** `metadata` is stored as arbitrary JSON; the UI only ever reads keys off an object, so anything else collapses to `{}`. */
+function toMetadata(value: Json | null | undefined): Record<string, Json | undefined> {
+  if (value && typeof value === "object" && !Array.isArray(value)) return value;
+  return {};
+}
 
 /**
  * Reads go straight through the caller's own RLS-scoped client — unlike
@@ -48,7 +55,7 @@ export const listNotifications = createServerFn({ method: "POST" })
       workspaceId: row.workspace_id as string | null,
       repoFullName: row.repo_full_name as string | null,
       actorId: row.actor_id as string | null,
-      metadata: row.metadata ?? {},
+      metadata: toMetadata(row.metadata),
       readAt: row.read_at as string | null,
       createdAt: row.created_at as string,
     }));

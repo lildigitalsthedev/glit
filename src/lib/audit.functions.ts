@@ -1,8 +1,33 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { AuditLogFilters } from "@/lib/workspaces/audit.server";
 
 export type { AuditLogEntry, AuditLogFilters, AuditLogPage } from "@/lib/workspaces/audit.server";
 export { AUDIT_CATEGORIES, ALL_AUDIT_ACTIONS } from "@/lib/audit-categories";
+
+interface RawAuditFilters {
+  search?: string | undefined;
+  actions?: string[] | undefined;
+  actorId?: string | undefined;
+  from?: string | undefined;
+  to?: string | undefined;
+}
+
+/**
+ * `exactOptionalPropertyTypes` is on, so an optional property can't be
+ * assigned `undefined` explicitly — only set the keys that actually have a
+ * value. Shared by list and export so both build filters identically.
+ */
+function buildFilters(raw: RawAuditFilters): AuditLogFilters {
+  const filters: AuditLogFilters = {};
+  if (raw.search !== undefined) filters.search = raw.search;
+  // Action names are validated server-side against the known enum by the query itself.
+  if (raw.actions !== undefined) filters.actions = raw.actions as NonNullable<AuditLogFilters["actions"]>;
+  if (raw.actorId !== undefined) filters.actorId = raw.actorId;
+  if (raw.from !== undefined) filters.from = raw.from;
+  if (raw.to !== undefined) filters.to = raw.to;
+  return filters;
+}
 
 /**
  * Feature 9: Audit Logs. `listWorkspaceAuditLog` and `exportWorkspaceAuditLog`
@@ -17,25 +42,18 @@ export const listWorkspaceAuditLog = createServerFn({ method: "POST" })
   .inputValidator(
     (data: {
       workspaceId: string;
-      page?: number;
-      pageSize?: number;
-      search?: string;
-      actions?: string[];
-      actorId?: string;
-      from?: string;
-      to?: string;
+      page?: number | undefined;
+      pageSize?: number | undefined;
+      search?: string | undefined;
+      actions?: string[] | undefined;
+      actorId?: string | undefined;
+      from?: string | undefined;
+      to?: string | undefined;
     }) => data,
   )
   .handler(async ({ data, context }) => {
     const { listAuditLog } = await import("./workspaces/audit.server");
-    return listAuditLog(context.userId, data.workspaceId, data.page ?? 1, data.pageSize ?? 25, {
-      search: data.search,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      actions: data.actions as any,
-      actorId: data.actorId,
-      from: data.from,
-      to: data.to,
-    });
+    return listAuditLog(context.userId, data.workspaceId, data.page ?? 1, data.pageSize ?? 25, buildFilters(data));
   });
 
 export const exportWorkspaceAuditLog = createServerFn({ method: "POST" })
@@ -43,23 +61,16 @@ export const exportWorkspaceAuditLog = createServerFn({ method: "POST" })
   .inputValidator(
     (data: {
       workspaceId: string;
-      search?: string;
-      actions?: string[];
-      actorId?: string;
-      from?: string;
-      to?: string;
+      search?: string | undefined;
+      actions?: string[] | undefined;
+      actorId?: string | undefined;
+      from?: string | undefined;
+      to?: string | undefined;
     }) => data,
   )
   .handler(async ({ data, context }) => {
     const { exportAuditLogCsv } = await import("./workspaces/audit.server");
-    const csv = await exportAuditLogCsv(context.userId, data.workspaceId, {
-      search: data.search,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      actions: data.actions as any,
-      actorId: data.actorId,
-      from: data.from,
-      to: data.to,
-    });
+    const csv = await exportAuditLogCsv(context.userId, data.workspaceId, buildFilters(data));
     return { csv };
   });
 
